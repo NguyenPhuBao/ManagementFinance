@@ -3,6 +3,7 @@ import soundService from '../../../services/sound.service';
 import { useLanguageSafe } from '../../../store/language.context';
 import { useAlertSafe } from '../../../store/alert.context';
 import { API_BASE_URL } from '../../../utils/constants';
+import { formatNumber } from '../../../utils/format';
 import { Badge, Button } from '../../ui';
 import { ChoiceGroup, SettingRow, Switch, selectClass } from './settingsUi';
 
@@ -46,7 +47,7 @@ export const GeneralSection = ({ settings, updateSetting }) => {
 };
 
 export const NotificationSection = ({ settings, updateSetting }) => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const ids = useId();
   return (
     <div className="flex flex-col gap-3">
@@ -60,7 +61,7 @@ export const NotificationSection = ({ settings, updateSetting }) => {
         <select id={`${ids}-toast`} value={settings.toastDuration} onChange={(e) => updateSetting('toastDuration', Number(e.target.value))} className={selectClass}>
           {[3000, 4500, 7000, 10000].map((ms) => (
             <option key={ms} value={ms}>
-              {t('settings.alerts.seconds', { n: (ms / 1000).toLocaleString('vi-VN') })}
+              {t('settings.alerts.seconds', { n: formatNumber(ms / 1000, { maxFrac: 1 }, language) })}
             </option>
           ))}
         </select>
@@ -129,7 +130,7 @@ export const ConnectionSection = ({ socket, settings, updateSetting, pingLatency
 };
 
 export const SecuritySection = ({ settings, updateSetting, usageKb, onChangePin, onLockNow, onClearCache }) => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const ids = useId();
   const info = [
     [t('settings.security.environment'), import.meta.env.MODE || 'development'],
@@ -156,7 +157,7 @@ export const SecuritySection = ({ settings, updateSetting, usageKb, onChangePin,
           {t('settings.security.lockNow')}
         </Button>
       </SettingRow>
-      <SettingRow label={t('settings.security.cache')} hint={t('settings.security.cacheHint', { kb: usageKb })}>
+      <SettingRow label={t('settings.security.cache')} hint={t('settings.security.cacheHint', { kb: formatNumber(usageKb, { minFrac: 1, maxFrac: 1 }, language) })}>
         <Button size="sm" variant="danger-ghost" icon="delete_sweep" onClick={onClearCache}>
           {t('settings.security.clearCache')}
         </Button>

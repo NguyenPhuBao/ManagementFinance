@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNumberFormat } from '../../../utils/format';
 import adminApi from '../../../api/admin.api';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Badge, DataTable, Modal, Spinner, Tabs } from '../../../components/ui';
@@ -36,6 +37,7 @@ const queryOf = ({ kind, year, month, quarter }) =>
  */
 const AvailabilityModal = ({ open, onClose, initialYear, initialMonth }) => {
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
   const [sel, setSel] = useState({ kind: 'month', year: initialYear, month: initialMonth, quarter: Math.ceil(initialMonth / 3) });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -131,7 +133,7 @@ const AvailabilityModal = ({ open, onClose, initialYear, initialMonth }) => {
               {pct === null ? (
                 <div className="text-lg font-semibold text-ink-muted">{t('dashboard.availability.noData')}</div>
               ) : (
-                <div className={`text-3xl font-bold tabular-nums ${TONE_TEXT[availabilityTone(pct)]}`}>{`${pct.toFixed(2)}%`}</div>
+                <div className={`text-3xl font-bold tabular-nums ${TONE_TEXT[availabilityTone(pct)]}`}>{nf.percent(pct, 2)}</div>
               )}
               {data.coverageFrom && pct !== null && (
                 <div className="text-sm text-ink-muted">{t('dashboard.availability.coverageFrom', { date: formatDate(data.coverageFrom) })}</div>
@@ -158,7 +160,7 @@ const AvailabilityModal = ({ open, onClose, initialYear, initialMonth }) => {
                     return (
                       <div
                         key={`${b.label}-${b.start}`}
-                        title={`${b.label}: ${has ? `${b.percent.toFixed(2)}%` : '—'}`}
+                        title={`${b.label}: ${has ? nf.percent(b.percent, 2) : '—'}`}
                         className={`flex-1 rounded-sm ${has ? TONE_BAR[availabilityTone(b.percent)] : 'bg-line'}`}
                         style={{ height: has ? `${Math.max(15, b.percent)}%` : '15%' }}
                       />

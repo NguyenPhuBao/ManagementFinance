@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
-import { formatDateTime } from '../../../utils/format';
+import { formatDateTime, useNumberFormat } from '../../../utils/format';
 import { Badge, Button, Card, ConfirmModal, DataTable, Pagination, SearchInput, Tabs } from '../../../components/ui';
 import { VECTOR_TONE, incidentActor, maskIp } from './aiopsFormat';
 
 const IncidentsSection = ({ ops }) => {
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
   const [target, setTarget] = useState(null);
   const [blocking, setBlocking] = useState(false);
   const { incidents, incidentTotal, quarantineList, myCurrentIp, actionLoading } = ops;
@@ -63,9 +64,9 @@ const IncidentsSection = ({ ops }) => {
         const ratio = baseline > 0 ? Number(current) / Number(baseline) : 0;
         return (
           <div className="flex flex-col items-start gap-0.5">
-            <span className="font-semibold tabular-nums text-danger">{current} {unit}</span>
-            <span className="text-xs text-ink-faint">{t('aiopsPage.incidents.threshold', { v: `${baseline} ${unit}`.trim() })}</span>
-            {ratio > 1 && <Badge tone="danger">{t('aiopsPage.incidents.exceeded', { r: Number(ratio.toFixed(1)).toLocaleString('vi-VN') })}</Badge>}
+            <span className="font-semibold tabular-nums text-danger">{nf.number(current)} {unit}</span>
+            <span className="text-xs text-ink-faint">{t('aiopsPage.incidents.threshold', { v: `${nf.number(baseline)} ${unit}`.trim() })}</span>
+            {ratio > 1 && <Badge tone="danger">{t('aiopsPage.incidents.exceeded', { r: nf.number(ratio, { maxFrac: 1 }) })}</Badge>}
           </div>
         );
       },

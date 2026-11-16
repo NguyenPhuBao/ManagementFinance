@@ -1,4 +1,5 @@
 import { baseURL } from '../../api/axios-client';
+import { formatCurrency } from '../../utils/format';
 
 export const STATUS_TONE = {
   PAID: 'success',
@@ -12,7 +13,8 @@ export const STATUS_TONE = {
 
 export const STATUSES = Object.keys(STATUS_TONE);
 
-export const formatVnd = (amount) => `${Number(amount || 0).toLocaleString('vi-VN')} ₫`;
+// Tiền VND theo ngôn ngữ: "49.000 ₫" (vi) / "₫49,000" (en). Component nên dùng useNumberFormat().currency.
+export const formatVnd = (amount, lang = 'vi') => formatCurrency(amount, 'VND', lang);
 
 export const formatDate = (value) => {
   if (!value) return '—';

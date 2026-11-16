@@ -19,6 +19,8 @@ const emit = (event, payload) => act(() => {
   (handlers[event] || []).forEach((fn) => fn(payload));
 });
 
+const alertSpy = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
+vi.mock('../store/alert.context', async (importOriginal) => ({ ...(await importOriginal()), useAlertSafe: () => alertSpy }));
 vi.mock('../hooks/useSocket', () => ({ default: () => fakeSocket }));
 vi.mock('../hooks/useAuth', () => ({ default: () => ({ user: { username: 'admin.local' } }) }));
 vi.mock('../api/aiops.api', () => ({
@@ -77,9 +79,10 @@ const status = (over = {}) => ({
     ...over,
   },
 });
+// Thời điểm tương đối: biểu đồ bỏ mẫu nằm ngoài khung 10 phút mặc định.
 const HISTORY = [
-  { timestamp: '2026-11-13T04:55:00Z', vectorScores: { auth: 10, traffic: 40, exploit: 0, resource: 20 }, threatScore: 40 },
-  { timestamp: '2026-11-13T04:58:00Z', vectorScores: { auth: 75, traffic: 30, exploit: 5, resource: 25 }, threatScore: 75 },
+  { timestamp: new Date(Date.now() - 5 * 60e3).toISOString(), vectorScores: { auth: 10, traffic: 40, exploit: 0, resource: 20 }, threatScore: 40 },
+  { timestamp: new Date(Date.now() - 2 * 60e3).toISOString(), vectorScores: { auth: 75, traffic: 30, exploit: 5, resource: 25 }, threatScore: 75 },
 ];
 
 const renderPage = async () => {
@@ -141,6 +144,12 @@ describe('AIOps — Tầng 1: hiển thị', () => {
     const load = card('Tải máy chủ');
     expect(within(load).getByText('CPU').parentElement).toHaveTextContent('42%');
     expect(within(load).getByText('RAM').parentElement).toHaveTextContent('2.048 / 8.192 MB');
+  });
+
+  it('1.4 số nhân CPU có phần thập phân hiện theo kiểu Việt: "0,15 nhân"', async () => {
+    aiopsApi.getStatus.mockResolvedValue(status({ sample: { ...SAMPLE, cpuCores: 0.15 } }));
+    await renderPage();
+    await waitFor(() => expect(within(card('Tải máy chủ')).getByText('0,15 nhân')).toBeInTheDocument());
   });
 
   it('xu hướng: 5 tab nhóm rủi ro, 5 khoảng thời gian, biểu đồ có dữ liệu; rỗng thì báo', async () => {
@@ -490,8 +499,118 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     await waitFor(() => expect(rowOf(card('Nguồn bị chặn'), '203.0.xxx.xxx')).toBeTruthy());
     emit('admin.security_blocked', { hash: 'h-3', maskedIp: '192.0.xxx.xxx', reason: 'Tự chặn', bannedAt: '2026-11-13T05:00:00Z', hits: 1 });
     await waitFor(() => expect(rowOf(card('Nguồn bị chặn'), '192.0.xxx.xxx')).toBeTruthy());
-    emit('admin.anomaly_detected', { ...INCIDENTS[0], id: 'i9', message: 'Quét lỗ hổng mới', vector: 'exploit' });
+    emit('admin.anomaly_detected', { ...INCIDENTS[0], id: 'i9', hits: 1, message: 'Quét lỗ hổng mới', vector: 'exploit' });
     await waitFor(() => expect(rowOf(card('Sự cố'), 'Quét lỗ hổng mới')).toBeTruthy());
+  });
+});
+
+// Sự cố mới vừa phát hiện: Backend chèn với hits = 1, trạng thái ACTIVE (aiops.repository.upsertIncident).
+const freshIncident = (id, over = {}) => ({
+  ...INCIDENTS[0], id, hits: 1, status: 'ACTIVE', message: `Sự cố mới ${id}`, first_detected_at: new Date().toISOString(), ...over,
+});
+const manyIncidents = (n) => Array.from({ length: n }, (_, i) => ({ ...INCIDENTS[0], id: `m${i}`, message: `Sự cố cũ ${i}` }));
+// Nhãn đếm ở đầu thẻ (phân trang cũng in tổng, nằm sau trong DOM).
+const countBadge = () => within(card('Sự cố')).getAllByText(/^\d+ sự cố$/)[0];
+
+describe('AIOps — 1.1 đếm sự cố realtime đúng bộ lọc và trang', () => {
+  beforeEach(withData);
+
+  it('sự kiện trùng sự cố đang hiện: cập nhật số lần tại chỗ, tổng giữ nguyên', async () => {
+    await renderPage();
+    await waitFor(() => expect(rowOf(card('Sự cố'), 'Dò mật khẩu liên tục')).toBeTruthy());
+    expect(countBadge()).toHaveTextContent('2 sự cố');
+    emit('admin.anomaly_detected', { ...INCIDENTS[0], hits: 4 });
+    await waitFor(() => expect(rowOf(card('Sự cố'), 'Dò mật khẩu liên tục')).toHaveTextContent('Lặp 4 lần'));
+    expect(countBadge()).toHaveTextContent('2 sự cố');
+  });
+
+  it('đang lọc "Đã giảm thiểu": sự cố ACTIVE mới không chen vào bảng, tổng không đổi', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: [INCIDENTS[1]], total: 1 } });
+    fireEvent.click(within(within(incidents).getByRole('tablist', { name: 'Lọc theo trạng thái' })).getByRole('tab', { name: 'Đã giảm thiểu' }));
+    await waitFor(() => expect(countBadge()).toHaveTextContent('1 sự cố'));
+    emit('admin.anomaly_detected', freshIncident('i9'));
+    expect(rowOf(card('Sự cố'), 'Sự cố mới i9')).toBeUndefined();
+    expect(countBadge()).toHaveTextContent('1 sự cố');
+  });
+
+  it('đang lọc nhóm Khai thác: sự cố mới nhóm Xác thực không chen vào bảng', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: [], total: 0 } });
+    fireEvent.click(within(within(incidents).getByRole('tablist', { name: 'Lọc theo nhóm' })).getByRole('tab', { name: 'Khai thác' }));
+    await waitFor(() => expect(countBadge()).toHaveTextContent('0 sự cố'));
+    emit('admin.anomaly_detected', freshIncident('i9', { vector: 'auth' }));
+    expect(rowOf(card('Sự cố'), 'Sự cố mới i9')).toBeUndefined();
+    expect(countBadge()).toHaveTextContent('0 sự cố');
+  });
+
+  it('trang 1 đã đủ 5 dòng: sự cố mới lên đầu, bảng vẫn 5 dòng, tổng +1', async () => {
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: manyIncidents(5), total: 12 } });
+    await renderPage();
+    await waitFor(() => expect(countBadge()).toHaveTextContent('12 sự cố'));
+    emit('admin.anomaly_detected', freshIncident('i9'));
+    await waitFor(() => expect(rowOf(card('Sự cố'), 'Sự cố mới i9')).toBeTruthy());
+    const rows = within(card('Sự cố')).getAllByRole('row').filter((r) => /Sự cố (cũ|mới)/.test(r.textContent));
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toHaveTextContent('Sự cố mới i9');
+    expect(countBadge()).toHaveTextContent('13 sự cố');
+  });
+
+  it('đang ở trang 2: sự cố mới không chen vào trang đang xem, tổng +1', async () => {
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: manyIncidents(5), total: 12 } });
+    await renderPage();
+    await waitFor(() => expect(countBadge()).toHaveTextContent('12 sự cố'));
+    fireEvent.click(within(card('Sự cố')).getByRole('button', { name: '2' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ page: 2 }));
+    emit('admin.anomaly_detected', freshIncident('i9'));
+    expect(rowOf(card('Sự cố'), 'Sự cố mới i9')).toBeUndefined();
+    expect(countBadge()).toHaveTextContent('13 sự cố');
+  });
+
+  it('sự cố đang hiện chuyển sang Đã giảm thiểu khi đang lọc Đang diễn ra: bỏ khỏi bảng, tổng -1', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: [INCIDENTS[0]], total: 1 } });
+    fireEvent.click(within(within(incidents).getByRole('tablist', { name: 'Lọc theo trạng thái' })).getByRole('tab', { name: 'Đang diễn ra' }));
+    await waitFor(() => expect(countBadge()).toHaveTextContent('1 sự cố'));
+    emit('admin.anomaly_detected', { ...INCIDENTS[0], status: 'MITIGATED' });
+    await waitFor(() => expect(rowOf(card('Sự cố'), 'Dò mật khẩu liên tục')).toBeUndefined());
+    expect(countBadge()).toHaveTextContent('0 sự cố');
+  });
+});
+
+describe('AIOps — 1.2 nút Làm mới', () => {
+  beforeEach(withData);
+
+  it('đang ở trang 3: Làm mới tải lại đúng trang 3 và bộ lọc đang xem', async () => {
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: manyIncidents(5), total: 20 } });
+    await renderPage();
+    await waitFor(() => expect(countBadge()).toHaveTextContent('20 sự cố'));
+    fireEvent.click(within(card('Sự cố')).getByRole('button', { name: '3' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ page: 3 }));
+    const before = aiopsApi.getIncidents.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.length).toBeGreaterThan(before));
+    expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ page: 3 });
+  });
+
+  it('máy chủ lỗi: báo lỗi, không báo "Đã làm mới"', async () => {
+    await renderPage();
+    alertSpy.success.mockClear();
+    alertSpy.error.mockClear();
+    aiopsApi.getStatus.mockRejectedValue(new Error('Network Error'));
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    await waitFor(() => expect(alertSpy.error).toHaveBeenCalledWith('Không làm mới được dữ liệu.'));
+    expect(alertSpy.success).not.toHaveBeenCalledWith('Đã làm mới dữ liệu.');
+  });
+
+  it('thành công: báo "Đã làm mới"', async () => {
+    await renderPage();
+    alertSpy.success.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    await waitFor(() => expect(alertSpy.success).toHaveBeenCalledWith('Đã làm mới dữ liệu.'));
   });
 });
 
@@ -527,7 +646,7 @@ describe('Sức khỏe máy chủ (ServerHealthPanel)', () => {
     expect(await screen.findByText('CPU')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'CPU' })).toHaveAttribute('aria-valuenow', '35');
     expect(screen.getByRole('progressbar', { name: 'RAM' })).toHaveAttribute('aria-valuenow', '50');
-    expect(screen.getByText('Độ khả dụng (tháng)').parentElement).toHaveTextContent('99.90%');
+    expect(screen.getByText('Độ khả dụng (tháng)').parentElement).toHaveTextContent('99,90%');
     expect(screen.getByText('Chạy liên tục').parentElement).toHaveTextContent('2 ngày');
     expect(screen.getByText('Phiên bản').parentElement).toHaveTextContent('abc123def456');
     expect(screen.getByText('3/16')).toBeInTheDocument();

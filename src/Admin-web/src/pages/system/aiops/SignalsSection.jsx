@@ -1,12 +1,14 @@
 import React from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
+import { useNumberFormat } from '../../../utils/format';
 import { Card, StatCard } from '../../../components/ui';
 
-const num = (v) => Number(v || 0).toLocaleString('vi-VN');
 const pct = (v) => Math.round((v || 0) * 100);
 
 const SignalsSection = ({ ops }) => {
   const { t } = useLanguageSafe();
+  const f = useNumberFormat();
+  const num = (v) => f.number(v, { maxFrac: 1 });
   const sample = ops.sample || {};
   const ram = sample.ramUsedMb && sample.ramTotalMb ? `${num(sample.ramUsedMb)} / ${num(sample.ramTotalMb)} MB` : '-- / -- MB';
 
@@ -46,13 +48,13 @@ const SignalsSection = ({ ops }) => {
           />
           <StatCard
             label="CPU"
-            value={`${sample.cpuPercent ?? 0}%`}
-            hint={sample.cpuCores ? t('aiopsPage.signals.cores', { n: sample.cpuCores }) : undefined}
+            value={`${num(sample.cpuPercent)}%`}
+            hint={sample.cpuCores ? t('aiopsPage.signals.cores', { n: f.number(sample.cpuCores) }) : undefined}
             hintTone={sample.cpuPercent >= 85 ? 'warning' : 'neutral'}
           />
           <StatCard
             label="RAM"
-            value={`${sample.ramPercent ?? 0}%`}
+            value={`${num(sample.ramPercent)}%`}
             hint={ram}
             hintTone={sample.ramPercent >= 90 ? 'danger' : 'neutral'}
           />

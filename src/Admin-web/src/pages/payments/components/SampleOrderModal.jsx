@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Badge, Button, Icon, Modal, SecurityConfirmModal } from '../../../components/ui';
-import { formatCountdown, formatVnd } from '../paymentFormat';
+import { formatCountdown } from '../paymentFormat';
+import { useNumberFormat } from '../../../utils/format';
 
 /**
  * Đơn thử nghiệm: một mức tiền cố định do Backend quyết định (2.000 ₫), hạn mức chung toàn hệ thống mỗi ngày,
@@ -9,6 +10,7 @@ import { formatCountdown, formatVnd } from '../paymentFormat';
  */
 const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy, quota }) => {
   const { t } = useLanguageSafe();
+  const { currency: money } = useNumberFormat();
   const [seconds, setSeconds] = useState(600);
   const [pinOpen, setPinOpen] = useState(false);
 
@@ -41,7 +43,7 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy, qu
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-1">
             <p className="m-0 text-sm font-medium text-ink">{t('payments.sample.amountLabel')}</p>
-            <p className="m-0 text-base font-semibold tabular-nums text-brand">{t('payments.sample.amountFixed', { amount: formatVnd(amount) })}</p>
+            <p className="m-0 text-base font-semibold tabular-nums text-brand">{t('payments.sample.amountFixed', { amount: money(amount) })}</p>
             {quota && (
               <p className={`m-0 text-xs ${exhausted ? 'text-danger' : 'text-ink-muted'}`}>
                 {exhausted
@@ -90,7 +92,7 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy, qu
                   [t('payments.detail.bank'), order.bankName || '—'],
                   [t('payments.detail.accountNo'), order.accountNumber || '—'],
                   [t('payments.detail.accountName'), order.accountName || '—'],
-                  [t('payments.detail.amount'), formatVnd(order.amount || amount)],
+                  [t('payments.detail.amount'), money(order.amount || amount)],
                   [t('payments.detail.transferContent'), order.description || '—'],
                   [t('payments.detail.status'), <Badge key="s" tone="warning">{t('payments.status.PENDING')}</Badge>],
                 ].map(([label, value]) => (
@@ -111,7 +113,7 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy, qu
       isOpen={open && pinOpen}
       onClose={() => setPinOpen(false)}
       title={t('payments.sample.pinTitle')}
-      description={t('payments.sample.pinDescription', { amount: formatVnd(amount) })}
+      description={t('payments.sample.pinDescription', { amount: money(amount) })}
       confirmText={t('payments.sample.pinConfirm')}
       actionType="CREATE_SAMPLE_ORDER"
       onVerify={({ pin }) => onCreate(pin)}

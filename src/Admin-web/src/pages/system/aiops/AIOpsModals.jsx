@@ -1,6 +1,7 @@
 import React, { useId, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Button, Modal, SecurityConfirmModal } from '../../../components/ui';
+import { formatNumber } from '../../../utils/format';
 
 const fieldClass =
   'w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -15,7 +16,7 @@ const THRESHOLDS = [
 ];
 
 export const CalibrateModal = ({ ops }) => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const ids = useId();
   const {
     showCalibrateModal,
@@ -35,7 +36,7 @@ export const CalibrateModal = ({ ops }) => {
       closeDisabled={calibrating}
       size="lg"
       title={t('aiopsPage.calibrate.title')}
-      description={t('aiopsPage.calibrate.desc', { n: Number(targetConcurrency).toLocaleString('vi-VN') })}
+      description={t('aiopsPage.calibrate.desc', { n: formatNumber(targetConcurrency, {}, language) })}
       footer={
         <>
           <Button onClick={() => setShowCalibrateModal(false)} disabled={calibrating}>{t('common.cancel', 'Hủy bỏ')}</Button>

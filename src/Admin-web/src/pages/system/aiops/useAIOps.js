@@ -6,6 +6,7 @@ import { useAlertSafe } from '../../../store/alert.context';
 import { useSettingsSafe } from '../../../store/settings.context';
 import { useLanguageSafe } from '../../../store/language.context';
 import useAuth from '../../../hooks/useAuth';
+import { formatNumber } from '../../../utils/format';
 
 const SCALE_KEY = 'aiops_target_concurrency';
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
@@ -41,6 +42,29 @@ const saveScale = (n) => {
   return undefined;
 };
 
+const endOfRange = (to) => {
+  const d = new Date(to);
+  if (typeof to === 'string' && to.length === 10) d.setHours(23, 59, 59, 999);
+  return d.getTime();
+};
+
+// Sự cố có thuộc trang đang xem không: cùng điều kiện lọc với Backend (aiops.repository.getIncidents).
+const matchesIncidentView = (incident, s) => {
+  if (s.incidentVector !== 'all' && incident.vector !== s.incidentVector) return false;
+  if (s.incidentStatus !== 'all' && incident.status !== s.incidentStatus) return false;
+  const q = String(s.incidentSearch || '').trim().toLowerCase();
+  if (q) {
+    const fields = [incident.actorIdentity ?? incident.actor_identity, incident.username, incident.code, incident.message];
+    if (!fields.some((f) => String(f || '').toLowerCase().includes(q))) return false;
+  }
+  const custom = s.customRange;
+  if (custom?.applied && custom.from && custom.to) {
+    const at = new Date(incident.firstDetectedAt ?? incident.first_detected_at).getTime();
+    if (Number.isNaN(at) || at < new Date(custom.from).getTime() || at > endOfRange(custom.to)) return false;
+  }
+  return true;
+};
+
 const isLoopback = (ip) => ['127.0.0.1', '::1', 'localhost'].includes(ip);
 const cleanIp = (ip) => String(ip || '').replace(/^::ffff:/, '').trim();
 
@@ -53,7 +77,7 @@ const useCurrentUser = () => {
 };
 
 const useAIOps = () => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const alert = useAlertSafe();
   const settingsCtx = useSettingsSafe();
   const currentUser = useCurrentUser();
@@ -95,6 +119,12 @@ const useAIOps = () => {
 
   const latest = useRef({});
   latest.current = { timePreset, customRange, incidentPage, incidentPageSize, incidentVector, incidentStatus, incidentSearch };
+  // Bản danh sách sự cố mới nhất, cập nhật ngay khi đổi (sự kiện realtime đến dồn trước khi kịp render).
+  const incidentsRef = useRef([]);
+  const applyIncidents = useCallback((next) => {
+    incidentsRef.current = next;
+    setIncidents(next);
+  }, []);
 
   const notify = useCallback(
     (ok, msg) => {
@@ -134,8 +164,9 @@ const useAIOps = () => {
       }
       if (Array.isArray(history)) setHistoryData(history);
       if (Array.isArray(quarantine)) setQuarantineList(quarantine);
+      return true;
     } catch (_) {
-      setLoading(false);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -172,13 +203,14 @@ const useAIOps = () => {
       );
       const list = data?.incidents || data?.data || (Array.isArray(data) ? data : null);
       if (Array.isArray(list)) {
-        setIncidents(list);
+        applyIncidents(list);
         setIncidentTotal(data.total ?? list.length);
       }
+      return true;
     } catch (_) {
-      setIncidents((prev) => prev);
+      return false;
     }
-  }, []);
+  }, [applyIncidents]);
 
   const metricsInterval = settingsCtx?.settings?.metricsInterval || 3;
   useEffect(() => {
@@ -245,16 +277,29 @@ const useAIOps = () => {
         })
         .catch(() => undefined);
     };
+    // Backend phát cùng sự kiện cho sự cố mới (hits = 1, ACTIVE) và cho sự cố cũ đổi số lần / trạng thái.
+    // Chỉ sự cố mới khớp bộ lọc mới làm tăng tổng; chỉ chèn khi đang xem trang 1.
     const onAnomaly = (incident) => {
       if (!incident) return;
-      setIncidents((prev) => {
-        const i = prev.findIndex((x) => x.id === incident.id);
-        if (i < 0) return [incident, ...prev];
-        const next = [...prev];
-        next[i] = incident;
-        return next;
-      });
+      const view = latest.current;
+      const list = incidentsRef.current;
+      const i = list.findIndex((x) => x.id === incident.id);
+      const matches = matchesIncidentView(incident, view);
+      if (i >= 0) {
+        if (matches) {
+          const next = [...list];
+          next[i] = { ...list[i], ...incident };
+          applyIncidents(next);
+        } else {
+          applyIncidents(list.filter((x) => x.id !== incident.id));
+          setIncidentTotal((n) => Math.max(0, n - 1));
+        }
+        return;
+      }
+      const isNew = Number(incident.hits) === 1 && incident.status === 'ACTIVE';
+      if (!isNew || !matches) return;
       setIncidentTotal((n) => n + 1);
+      if (view.incidentPage === 1) applyIncidents([incident, ...list].slice(0, view.incidentPageSize));
     };
     const onMaintenance = (m) => m && setMaintenanceStatus(m);
     const onVectorConfig = (c) => c && setVectorConfig(c);
@@ -269,16 +314,13 @@ const useAIOps = () => {
     };
     Object.entries(handlers).forEach(([name, fn]) => socket.on(name, fn));
     return () => Object.entries(handlers).forEach(([name, fn]) => socket.off(name, fn));
-  }, [socket, notify, t]);
+  }, [socket, notify, t, applyIncidents]);
 
+  // Tải lại đúng trang và bộ lọc đang xem; báo theo kết quả thật của cả hai lần gọi.
   const handleManualRefresh = async () => {
-    try {
-      await fetchAIOpsData();
-      await fetchIncidents({ incidentPage: 1 });
-      notify(true, t('aiopsPage.feedback.refreshed'));
-    } catch (_) {
-      notify(false, t('aiopsPage.feedback.refreshFailed'));
-    }
+    const [okData, okIncidents] = await Promise.all([fetchAIOpsData(), fetchIncidents()]);
+    if (okData && okIncidents) notify(true, t('aiopsPage.feedback.refreshed'));
+    else notify(false, t('aiopsPage.feedback.refreshFailed'));
   };
 
   const handleSelectTimePreset = (preset) => {
@@ -324,7 +366,7 @@ const useAIOps = () => {
       setCustomConcurrency(String(n));
       saveScale(n);
       setStatusData((prev) => ({ ...prev, targetConcurrency: n }));
-      notify(true, t('aiopsPage.feedback.scaleSaved', { n: n.toLocaleString('vi-VN') }));
+      notify(true, t('aiopsPage.feedback.scaleSaved', { n: formatNumber(n, {}, language) }));
     } catch (err) {
       notify(false, errorOf(err, 'aiopsPage.feedback.scaleFailed'));
     } finally {

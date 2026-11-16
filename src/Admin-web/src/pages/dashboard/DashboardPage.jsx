@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNumberFormat } from '../../utils/format';
 import { Link } from 'react-router-dom';
 import useSocket from '../../hooks/useSocket';
 import adminApi from '../../api/admin.api';
@@ -22,7 +23,6 @@ const PERIODS = [
 ];
 const EMPTY_STATS = { summary: { total: 0, max: 0, avg: 0 }, timeline: [], format: 'hour' };
 
-const num = (v) => Number(v || 0).toLocaleString('vi-VN');
 
 const toActivity = (item, t) => ({
   key: item.id ? String(item.id) : `${item.time_req}-${item.action}`,
@@ -39,6 +39,8 @@ const toActivity = (item, t) => ({
 const DashboardPage = () => {
   const socket = useSocket();
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
+  const num = (v) => nf.number(v);
   const today = useMemo(() => vnToday(), []);
 
   const [timeFilter, setTimeFilter] = useState('today');
@@ -191,7 +193,7 @@ const DashboardPage = () => {
     }
     const pct = typeof avail?.percent === 'number' ? avail.percent : null;
     if (pct === null) return { value: t('dashboard.kpi.noData'), hint: running, tone: 'neutral' };
-    return { value: `${pct.toFixed(2)}%`, hint: running, tone: availabilityTone(pct) };
+    return { value: nf.percent(pct, 2), hint: running, tone: availabilityTone(pct) };
   })();
 
   const growth = Number(newUsers.growth) || 0;
