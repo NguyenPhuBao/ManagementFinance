@@ -71,8 +71,10 @@ npm run dev   # nodemon, hot-reload
 ```bash
 npx prisma studio          # GUI xem DB (port 5555)
 npx prisma migrate status  # kiểm tra migration
-npx prisma migrate dev     # tạo migration mới (CHỈ KHI schema.prisma thay đổi)
 npx prisma generate        # tái sinh Prisma Client
+# ⚠️ KHÔNG `npx prisma migrate dev` / `prisma db push`: `src/Backend/scripts/db-guard.js` chặn (xoá & tạo lại index).
+# Đổi lược đồ = tệp `src/Backend/database/N_*.sql` áp tay theo `docs/Rule_Project/Rule_project.md` §3.2
+# (client không áp — quy tắc 1 `CLAUDE.md`). Đính chính 2026-11-16 theo đơn client-app mục 15.
 ```
 
 ### Client App (`src/Client-app/`)
@@ -588,7 +590,7 @@ src/Backend/
 1. **KHÔNG dùng DELETE vật lý** với dữ liệu user — dùng soft delete (`delete_at`, `is_deleted`)
 2. **Chỉ sửa Client-app** trừ khi user yêu cầu rõ ràng được phép sửa Backend
 3. **Sau khi sửa Drift tables/DAOs** → chạy `dart run build_runner build` để tái sinh `.g.dart`
-4. **Sau khi sửa schema.prisma** → chạy `npx prisma migrate dev` và `npx prisma generate`
+4. **Đổi lược đồ backend** → tệp `src/Backend/database/N_*.sql` áp tay theo `docs/Rule_Project/Rule_project.md` §3.2, rồi `npx prisma generate`; **không** `npx prisma migrate dev` / `prisma db push` (`scripts/db-guard.js` chặn). Client không tự áp migration (quy tắc 1 `CLAUDE.md`). Đính chính 2026-11-16, đơn client-app mục 15.
 5. **Category default** (`idaccount=0`) → KHÔNG push lên backend
 6. **`idaccount` CHỈ đến từ phiên đăng nhập** — tuyệt đối không suy ra từ dữ liệu trong SQLite, và không bao giờ mặc định về `1` (đó là tài khoản admin thật)
 7. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`** — xem mục 11.8
@@ -2398,7 +2400,8 @@ con số / dấu so sánh theo bẫy 4.36). Mục **15** `AI_EDGE_FEATURE.md`; �
   Riêng tư nay thêm vế *"và vài tin gần nhất của cuộc trò chuyện"* (người dùng chốt 2026-10-18 khuya) — lệch Stitch đúng một vế,
   không vẽ lại.
 - **Nghiệm thu OnePlus 13R (CPH2691, Android 16, ≈ 361 dp) — 2026-10-18 00:08–00:40**, bản debug `418b9e2d` với `baseUrl` đổi tạm
-  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev; tài khoản thử
+  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev (mô hình lúc đo; từ 2026-11 chatbot chính DeepSeek,
+  `gemini-3.5-flash` dự phòng — đơn client-app mục 15); tài khoản thử
   `quangdat` (id 18) nâng Premium **tạm** trên CSDL dev bằng một câu `UPDATE` (người dùng cho phép đích danh) rồi trả về Basic cho ca
   7. **Cổng G0 đạt**: Gemini trả lời thật (15–40 s / lượt). **Đạt** theo chữ trên màn: ca 1 (nhãn *Trợ lý online* chấm xanh, không
   chip) · ca 2 (Gemini và máy đều *chưa có khoản chi*) · ca 3 (gỡ `adb reverse` → nhãn đỏ *AI trên máy · máy chủ không phản hồi*) ·
@@ -4004,7 +4007,7 @@ vẫn ghi 0, vì client không sửa tệp ấy) *(đóng ở `eceb6c9` ngày h�
 - **Đơn vòng hai `AI_EDGE_SLM_SOAT_SAU_B147FEE.md`**: ✅ **đủ 12 chỗ** — bốn lệnh nghiệm thu ra 0 dòng, B5 và D1 nói cùng một
   cửa sổ cuộn, câu G1 mới khớp `buocLamTron` của `tai_phan_bo.dart`.
 - **Đơn 10 chức năng AI**: sửa đủ chữ (ba lệnh `grep` nghiệm thu ra 0 dòng); chức năng 7 **chốt lối A** (backend tự tính FHS;
-  client chỉ gọi `GET /api/ai/chatbot/snapshot`). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini) không được trả lời trực
+  client chỉ gọi `GET /api/ai/chatbot/snapshot` — ⚠️ endpoint này backend **đã gỡ 2026-11-07**, câu là ảnh chụp 2026-09-27). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini) không được trả lời trực
   tiếp**: backend dựng *Privacy Shield* — snapshot gộp theo danh mục, `maskPII` che dãy số và email — và coi thế là đủ.
   Đọc mã: tool `get_category_transactions` vẫn gửi **từng giao dịch** (số tiền không làm tròn, tên danh mục, ghi chú sau
   `maskPII`) cho Gemini. Module chatbot **không gọi hàm giải mã nào**, nên ghi chú nằm trong CSDL ở dạng nào thì đi ra ở

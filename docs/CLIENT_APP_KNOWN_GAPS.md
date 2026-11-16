@@ -2731,7 +2731,8 @@ lượt `grep` 2026-10-20 không còn khuôn `data?['message']` nào trong `lib/
 ### G96 — Đường Trợ lý online phụ thuộc ba việc backend: Dừng không tới server, server im lặng quá 45 s khi Gemini suy nghĩ, câu trả lời cụt vì trần token · ⏳ CHỜ BACKEND (đơn 47 việc 5–7; mở 2026-10-18 sau nghiệm thu OnePlus)
 
 **Nguồn.** Nghiệm thu máy thật 2026-10-18 00:08–00:40 (OnePlus 13R, backend dev chạy thật, Node v22.19.0, `gemini-3.8-flash`
-với khoá dev) — khối 🌐 mục 14 `PROJECT_CONTEXT.md`, spec §6, đơn 47 (`CAN-LAM/CLIENT_TRO_LY_ONLINE.md`, phần *đo 2026-10-18*).
+với khoá dev — mô hình lúc đo; từ 2026-11 backend dùng DeepSeek cho chatbot chính, `gemini-3.5-flash` cho dự phòng, đơn client-app
+mục 15) — khối 🌐 mục 14 `PROJECT_CONTEXT.md`, spec §6, đơn 47 (`CAN-LAM/CLIENT_TRO_LY_ONLINE.md`, phần *đo 2026-10-18*).
 
 **Ba hiện tượng người dùng thấy, cả ba do backend:**
 
