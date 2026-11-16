@@ -10,6 +10,9 @@
 
 const logger = require('../logger');
 
+/** Lịch bảo trì chỉ được đặt trong 14 ngày tới (dưới giới hạn ~24,8 ngày của setTimeout). */
+const MAX_LEAD_TIME_MS = 14 * 24 * 3600 * 1000;
+
 class MaintenanceManager {
   constructor(options = {}) {
     this.active = false;
@@ -630,6 +633,12 @@ class MaintenanceManager {
     const minLeadTimeMs = 3 * 3600 * 1000;
     if (targetDate.getTime() < now + minLeadTimeMs) {
       throw new Error('Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 3 tiếng!');
+    }
+
+    // Chủ dự án chốt 2026-11-16: chỉ đặt lịch trong 14 ngày tới. Hẹn giờ của Node tối đa ~24,8 ngày,
+    // quá mức đó setTimeout chạy ngay và bảo trì bật lập tức.
+    if (targetDate.getTime() > now + MAX_LEAD_TIME_MS) {
+      throw new Error('Chỉ được lên lịch bảo trì trong vòng 14 ngày tới!');
     }
 
     let targetEndDate = null;

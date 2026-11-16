@@ -7,6 +7,13 @@ test('Admin Permission 4 Pillars API Suite', async (t) => {
   const paymentService = require('../../modules/payment/payment.service');
   const permissionRepository = require('../../modules/payment/permission.repository');
 
+  // Lưu / đặt lại phân quyền bắt buộc PIN (2026-11-16); bộ test này kiểm ma trận, PIN đã có tests/unit/admin.pin.guard.test.js
+  const origVerify = adminService.verifySecurityAction;
+  adminService.verifySecurityAction = async () => ({ verified: true });
+  t.after(() => {
+    adminService.verifySecurityAction = origVerify;
+  });
+
   const mockRes = () => {
     const res = {};
     res.statusCode = 200;
@@ -62,6 +69,7 @@ test('Admin Permission 4 Pillars API Suite', async (t) => {
       const res = mockRes();
       const req = {
         body: {
+          pin: '246810',
           updates: [
             {
               account_type: 'Basic',
@@ -97,7 +105,7 @@ test('Admin Permission 4 Pillars API Suite', async (t) => {
 
     try {
       const res = mockRes();
-      await adminController.resetPermissions({ user: { idaccount: 1 } }, res);
+      await adminController.resetPermissions({ body: { pin: '246810' }, user: { idaccount: 1 } }, res);
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.success, true);
       assert.ok(resetCalled);
