@@ -17,7 +17,7 @@ const NAV_ITEMS = [
 
 const itemBase = 'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors';
 
-const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => {
+const Sidebar = ({ collapsed, mobileOpen = false, onCloseMobile }) => {
   const navigate = useNavigate();
   const { logout } = useAuthContext();
   const { t } = useLanguageSafe();
@@ -69,17 +69,6 @@ const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => 
         </nav>
 
         <div className="space-y-1 border-t border-line px-3 py-3">
-          <button
-            type="button"
-            onClick={onToggle}
-            title={collapsed ? t('nav.expand', 'Mở rộng menu') : undefined}
-            className={`${itemBase} hidden w-full cursor-pointer font-medium text-ink-muted hover:bg-muted hover:text-ink md:flex ${
-              collapsed ? 'md:justify-center md:px-0' : ''
-            }`}
-          >
-            <Icon name={collapsed ? 'chevron_right' : 'chevron_left'} className="shrink-0" />
-            {label(collapsed ? t('nav.expand', 'Mở rộng menu') : t('nav.collapse', 'Thu gọn menu'))}
-          </button>
           <button
             type="button"
             onClick={handleLogout}

@@ -82,7 +82,6 @@ const useAIOps = () => {
 
   const [showMitigationModal, setShowMitigationModal] = useState(false);
   const [mitigationReason, setMitigationReason] = useState(() => t('aiopsPage.mitigation.defaultReason'));
-  const [mitigating, setMitigating] = useState(false);
 
   const [incidents, setIncidents] = useState([]);
   const [incidentTotal, setIncidentTotal] = useState(0);
@@ -373,17 +372,16 @@ const useAIOps = () => {
     }
   };
 
-  const handleTriggerMitigation = async () => {
-    setMitigating(true);
-    try {
-      await adminApi.setMaintenanceStatus({ active: true, reason: mitigationReason.trim() || t('aiopsPage.mitigation.defaultReason'), isEmergency: true });
-      notify(true, t('aiopsPage.feedback.mitigationOn'));
-      setShowMitigationModal(false);
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.mitigationFailed'));
-    } finally {
-      setMitigating(false);
-    }
+  // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, ném lại cho hộp PIN hiện.
+  const handleTriggerMitigation = async (credentials) => {
+    await adminApi.setMaintenanceStatus({
+      active: true,
+      reason: mitigationReason.trim() || t('aiopsPage.mitigation.defaultReason'),
+      isEmergency: true,
+      ...credentials,
+    });
+    notify(true, t('aiopsPage.feedback.mitigationOn'));
+    setShowMitigationModal(false);
   };
 
   const isEmergencyResourceRisk = useMemo(() => {
@@ -584,7 +582,6 @@ const useAIOps = () => {
     setShowMitigationModal,
     mitigationReason,
     setMitigationReason,
-    mitigating,
     handleTriggerMitigation,
     isEmergencyResourceRisk,
     toggleVector,

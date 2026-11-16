@@ -41,8 +41,8 @@ stateDiagram-v2
 
 ### 2.1. Quy trình Khóa Tài Khoản & Cưỡng Chế Đăng Xuất (Force Logout)
 Khi quản trị viên phát hiện tài khoản người dùng có dấu hiệu gian lận, rửa tiền hoặc vi phạm điều khoản:
-1. Admin chọn **"Vô hiệu hóa (Khóa tài khoản)"** và nhập lý do (ví dụ: *"Phát hiện dấu hiệu đăng nhập bất thường từ nhiều thiết bị lạ"*).
-2. Backend kiểm tra tính hợp lệ của lý do (`validateReasonInactive`).
+1. Admin chọn **"Vô hiệu hóa (Khóa tài khoản)"**, nhập lý do (ví dụ: *"Phát hiện dấu hiệu đăng nhập bất thường từ nhiều thiết bị lạ"*), rồi nhập mã PIN quản trị (từ 2026-11-16; hủy hộp PIN thì quay lại hộp lý do, lý do còn nguyên).
+2. Backend kiểm PIN (`DEACTIVATE_USER`, thiếu / sai thì 400), rồi kiểm tra tính hợp lệ của lý do (`validateReasonInactive`).
 3. Cập nhật `status = 'Inactive'` và lưu lý do vào database.
 4. Xóa sạch cache xác thực `invalidateAccountCache(idaccount)`.
 5. Phát sự kiện Socket.io `force_logout` mang mã `ACCOUNT_INACTIVE` tới thiết bị di động của người dùng.
@@ -108,11 +108,11 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (cập nhật 2026-11-14 theo mã)
 
-1. **Danh sách người dùng (`UserListPage.jsx`):** 4 thẻ số liệu; 5 tab trạng thái (mặc định ẩn "Đã xóa"); tìm kiếm; bộ lọc gói và trạng thái; phân trang; số điện thoại đã che; cập nhật realtime. Vô hiệu hóa bắt buộc lý do; kích hoạt lại có xác nhận; xóa mềm phải xác thực PIN và chỉ áp cho tài khoản đã vô hiệu hóa.
+1. **Danh sách người dùng (`UserListPage.jsx`):** 4 thẻ số liệu; 5 tab trạng thái (mặc định ẩn "Đã xóa"); tìm kiếm; bộ lọc gói và trạng thái; phân trang; số điện thoại đã che; cập nhật realtime. Vô hiệu hóa bắt buộc lý do rồi PIN; kích hoạt lại và xóa mềm đều bắt buộc PIN (từ 2026-11-16 PIN gửi kèm lệnh, Backend kiểm, lỗi hiện trong hộp PIN) và chỉ áp cho tài khoản đã vô hiệu hóa.
 2. **Hộp chi tiết người dùng (`UserDetailModal.jsx`):** ngày tạo, gói, trạng thái, lý do khóa, ngày chờ xóa; dòng **Chính sách bảo mật** ("Đã đồng ý vN · thời gian" hoặc "Chưa đồng ý vN", `GET /api/admin/getuser/:id/policy`); dòng **Bản sao dữ liệu** (trạng thái yêu cầu gần nhất: chưa yêu cầu / đang tạo / sẵn sàng tới … / đã hết hạn / tạo lỗi, `GET /api/admin/getuser/:id/data-exports`).
 3. **Thiết bị đăng nhập (`components/common/UserDevices.jsx`):** 10 lượt truy cập gần nhất, tên thiết bị rút gọn, IP đã che; "Xem IP đầy đủ" bắt buộc PIN trong cùng request và ghi nhật ký; IP đầy đủ quá 365 ngày đã bị xóa nên không còn nút xem.
 4. **Cập nhật realtime:** `admin.user_registered` chèn người dùng mới; `admin.user_status_changed` cập nhật trạng thái và số ngày chờ xóa.
-5. **Kiểm thử:** `src/Admin-web/src/tests/users.test.jsx` (17 ca).
+5. **Kiểm thử:** `src/Admin-web/src/tests/users.test.jsx` (18 ca, đếm 2026-11-16); Backend `tests/unit/admin.pin.guard.test.js`.
 
 ---
 
@@ -136,8 +136,8 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 |---|---|---|---|
 | `GET` | `/api/admin/getuser` | Lấy danh sách toàn bộ người dùng Client-app (đã mask) | Admin |
 | `GET` | `/api/admin/getuser/:id` | Lấy chi tiết thông tin tài khoản và người dùng | Admin |
-| `PATCH` | `/api/admin/updatestatus/:id` | Khóa hoặc mở khóa tài khoản người dùng | Admin |
-| `DELETE` | `/api/admin/deleteuser/:id` | Xóa mềm tài khoản an toàn 5 bước | Admin |
+| `PATCH` | `/api/admin/updatestatus/:id` | Khóa hoặc mở khóa tài khoản người dùng; bắt buộc `pin` (`DEACTIVATE_USER` / `ACTIVATE_USER`) | Admin |
+| `DELETE` | `/api/admin/deleteuser/:id` | Xóa mềm tài khoản an toàn 5 bước; bắt buộc `pin` trong body (`DELETE_USER`) | Admin |
 | `GET` | `/api/admin/getuser/:id/devices` | 10 lượt truy cập gần nhất (IP đã che) | Admin |
 | `POST` | `/api/admin/getuser/:id/devices/:deviceId/reveal-ip` | Xem IP đầy đủ, bắt buộc PIN (`REVEAL_IP`), ghi nhật ký | Admin |
 | `GET` | `/api/admin/getuser/:id/policy` | Phiên bản chính sách hiện hành và các lần đồng ý | Admin |

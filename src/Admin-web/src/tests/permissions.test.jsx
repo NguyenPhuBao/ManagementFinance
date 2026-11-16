@@ -45,8 +45,11 @@ const lastUpdates = () => adminApi.updatePermissions.mock.calls.at(-1)[0];
 const confirmSave = async () => {
   fireEvent.click(saveButton());
   const dialog = screen.getByRole('dialog', { name: 'Lưu thay đổi phân quyền' });
+  expect(within(dialog).getByRole('button', { name: 'Lưu' })).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Lưu' }));
   await waitFor(() => expect(adminApi.updatePermissions).toHaveBeenCalledTimes(1));
+  expect(adminApi.updatePermissions.mock.calls[0][1]).toEqual({ pin: '246810' });
 };
 
 beforeEach(() => {
@@ -110,6 +113,20 @@ describe('Chỉnh sửa và lưu', () => {
     expect(screen.queryByRole('button', { name: /Trí tuệ nhân tạo/ })).not.toBeInTheDocument();
   });
 
+  it('đang lọc "Chỉ xem dòng đã sửa" mà hoàn tác dòng cuối: bộ lọc tự tắt, các phân hệ hiện lại', async () => {
+    await renderPage();
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Hạn mức Ví (Basic)' }), { target: { value: '5' } });
+    fireEvent.click(screen.getByLabelText('Chỉ xem dòng đã sửa'));
+    expect(screen.queryByRole('button', { name: /Trí tuệ nhân tạo/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tác Ví (Basic)' }));
+    expect(screen.queryByText('Không tìm thấy tính năng')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tài nguyên \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Trí tuệ nhân tạo \(1\)/ })).toBeInTheDocument();
+    // sửa lại một dòng: ô lọc hiện ra ở trạng thái chưa chọn
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Hạn mức Ví (Basic)' }), { target: { value: '6' } });
+    expect(screen.getByLabelText('Chỉ xem dòng đã sửa')).not.toBeChecked();
+  });
+
   it('không giới hạn khóa ô hạn mức; lưu qua hộp xác nhận gửi đúng dòng đã đổi rồi tải lại', async () => {
     await renderPage();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Không giới hạn Ví (Basic)' }));
@@ -141,14 +158,29 @@ describe('Chỉnh sửa và lưu', () => {
     ]);
   });
 
-  it('đặt lại mặc định qua hộp xác nhận rồi tải lại', async () => {
+  it('đặt lại mặc định: nhập PIN, gửi PIN cùng lệnh đặt lại rồi tải lại', async () => {
     await renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Đặt lại mặc định' }));
     const dialog = screen.getByRole('dialog', { name: 'Đặt lại phân quyền mặc định' });
     expect(within(dialog).getByText(/không hoàn tác/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Đặt lại' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Đặt lại' }));
-    await waitFor(() => expect(adminApi.resetPermissionsDefault).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(adminApi.resetPermissionsDefault).toHaveBeenCalledWith({ pin: '246810' }));
     await waitFor(() => expect(adminApi.getPermissions).toHaveBeenCalledTimes(2));
+  });
+
+  it('lưu với PIN sai: hộp PIN hiện lỗi máy chủ, giữ bản nháp, không tải lại', async () => {
+    adminApi.updatePermissions.mockRejectedValue({ response: { data: { message: 'Mã PIN quản trị viên không chính xác!' } } });
+    await renderPage();
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Hạn mức Ví (Basic)' }), { target: { value: '5' } });
+    fireEvent.click(saveButton());
+    const dialog = screen.getByRole('dialog', { name: 'Lưu thay đổi phân quyền' });
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '111111' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lưu' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Mã PIN quản trị viên không chính xác!');
+    expect(adminApi.getPermissions).toHaveBeenCalledTimes(1);
+    expect(saveButton()).toHaveTextContent('Lưu thay đổi (1)');
   });
 });
 

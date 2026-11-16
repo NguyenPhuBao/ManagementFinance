@@ -2,9 +2,9 @@ import React, { useEffect, useId, useState } from 'react';
 import adminApi from '../../../api/admin.api';
 import { useLanguageSafe } from '../../../store/language.context';
 import { formatDateTime } from '../../../utils/format';
-import { Button, Card, ConfirmModal, Icon, SecurityConfirmModal } from '../../../components/ui';
+import { Button, Card, Icon, SecurityConfirmModal } from '../../../components/ui';
 import MaintenanceHistory from './MaintenanceHistory';
-import { HOUR, MIN_LEAD_HOURS, scheduledListOf, toLocalInput } from './maintenanceFormat';
+import { HOUR, MAX_LEAD_DAYS, MIN_LEAD_HOURS, scheduledListOf, toLocalInput } from './maintenanceFormat';
 
 const fieldClass =
   'h-10 w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -19,6 +19,7 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
   const [reason, setReason] = useState('');
   const [formError, setFormError] = useState('');
   const [confirmEmergency, setConfirmEmergency] = useState(false);
+  const [confirmSchedule, setConfirmSchedule] = useState(false);
   const [cancelId, setCancelId] = useState(null);
 
   const emergencyBlocked = Boolean(maintenance.active && maintenance.isEmergency);
@@ -52,11 +53,22 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
       setFormError(t('broadcast.schedule.errorLeadTime'));
       return;
     }
+    if (startMs > Date.now() + MAX_LEAD_DAYS * 24 * HOUR) {
+      setFormError(t('broadcast.schedule.errorMaxLead'));
+      return;
+    }
     if (end && new Date(end).getTime() <= startMs) {
       setFormError(t('broadcast.schedule.errorEndBeforeStart'));
       return;
     }
-    const ok = await act(
+    setConfirmSchedule(true);
+  };
+
+  const scheduleTime = `${start ? formatDateTime(start) : ''}${end ? ` - ${formatDateTime(end)}` : ''}`;
+
+  // Ba thao tác dưới đây gửi PIN kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, hiện trong hộp PIN.
+  const schedule = (credentials) =>
+    act(
       () =>
         adminApi.setMaintenanceStatus({
           scheduledAt: new Date(start).toISOString(),
@@ -64,30 +76,36 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
           reason: reason.trim() || t('broadcast.defaults.scheduledReason'),
           isEmergency: false,
           type: 'SCHEDULED',
+          ...credentials,
         }),
-      t('broadcast.feedback.scheduled', { time: `${formatDateTime(start)}${end ? ` - ${formatDateTime(end)}` : ''}` }),
-      t('broadcast.feedback.scheduleFailed')
+      t('broadcast.feedback.scheduled', { time: scheduleTime }),
+      t('broadcast.feedback.scheduleFailed'),
+      { rethrow: true }
     );
-    if (ok) resetForm();
-  };
 
-  const activateEmergency = async () => {
-    const ok = await act(
-      () => adminApi.setMaintenanceStatus({ active: true, reason: reason.trim() || t('broadcast.defaults.emergencyReason'), isEmergency: true }),
+  const activateEmergency = (credentials) =>
+    act(
+      () =>
+        adminApi.setMaintenanceStatus({
+          active: true,
+          reason: reason.trim() || t('broadcast.defaults.emergencyReason'),
+          isEmergency: true,
+          ...credentials,
+        }),
       t('broadcast.feedback.emergencyOn'),
-      t('broadcast.feedback.failed')
+      t('broadcast.feedback.failed'),
+      { rethrow: true }
     );
-    if (ok) {
-      setEmergency(false);
-      resetForm();
-    }
+
+  const emergencyActivated = () => {
+    setEmergency(false);
+    resetForm();
   };
 
-  const cancelSchedule = async () => {
-    const id = cancelId;
-    setCancelId(null);
-    await act(() => adminApi.cancelScheduledMaintenance(id), t('broadcast.feedback.cancelled'), t('broadcast.feedback.cancelFailed'));
-  };
+  const cancelSchedule = (credentials) =>
+    act(() => adminApi.cancelScheduledMaintenance(cancelId, credentials), t('broadcast.feedback.cancelled'), t('broadcast.feedback.cancelFailed'), {
+      rethrow: true,
+    });
 
   const schedules = scheduledListOf(maintenance);
   const nearest = schedules.find((s) => new Date(s.scheduledAt).getTime() > now) || schedules[0];
@@ -149,6 +167,7 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
                   id={`${ids}-start`}
                   type="datetime-local"
                   min={toLocalInput(now + MIN_LEAD_HOURS * HOUR)}
+                  max={toLocalInput(now + MAX_LEAD_DAYS * 24 * HOUR)}
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
                   className={fieldClass}
@@ -222,21 +241,29 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
         title={t('broadcast.emergencyModal.title')}
         description={reason.trim() ? t('broadcast.emergencyModal.descReason', { reason: reason.trim() }) : t('broadcast.emergencyModal.desc')}
         confirmText={t('broadcast.emergencyModal.confirm')}
-        requirePin={false}
         dangerLevel="critical"
-        actionType="EMERGENCY_MAINTENANCE"
-        onConfirm={activateEmergency}
+        onVerify={activateEmergency}
+        onConfirm={emergencyActivated}
       />
 
-      <ConfirmModal
-        open={cancelId !== null}
+      <SecurityConfirmModal
+        isOpen={confirmSchedule}
+        onClose={() => setConfirmSchedule(false)}
+        title={t('broadcast.scheduleModal.title')}
+        description={t('broadcast.scheduleModal.desc', { time: scheduleTime })}
+        confirmText={t('broadcast.scheduleModal.confirm')}
+        onVerify={schedule}
+        onConfirm={resetForm}
+      />
+
+      <SecurityConfirmModal
+        isOpen={cancelId !== null}
+        onClose={() => setCancelId(null)}
         title={t('broadcast.cancelModal.title')}
-        message={t('broadcast.cancelModal.message')}
+        description={t('broadcast.cancelModal.message')}
         confirmText={t('broadcast.schedule.cancelBtn')}
-        confirmDanger
-        loading={busy}
-        onConfirm={cancelSchedule}
-        onCancel={() => setCancelId(null)}
+        dangerLevel="critical"
+        onVerify={cancelSchedule}
       />
     </div>
   );

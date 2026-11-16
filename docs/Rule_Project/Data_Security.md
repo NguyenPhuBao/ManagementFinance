@@ -171,6 +171,7 @@ Cập nhật 2026-11-13 theo `Khao_sat_phap_ly_2026-11.md` (nguồn thứ cấp,
 * **OWASP Top 10:**
   * Phòng chống Cryptographic Failures: Mật khẩu băm bằng Argon2id hoặc bcrypt (cost $\ge$ 12); OTP và Refresh Token băm 1 chiều bằng SHA-256; dữ liệu nhạy cảm mã hóa AES-256-GCM với khóa mã hóa quản lý độc lập.
   * Chống dò mã PIN quản trị: sai 5 lần trong 15 phút thì khóa xác thực 15 phút theo tài khoản admin (`verifySecurityAction`).
+  * Thao tác nhạy cảm của Admin-web (bảo trì, chính sách, khóa / mở / xóa người dùng, danh mục, phân quyền, xem IP, hoàn tiền, đóng sự cố) gửi PIN kèm chính lệnh và Backend kiểm trước khi làm (từ 2026-11-16 cho bảo trì, người dùng, danh mục, phân quyền); lộ token admin mà không có PIN vẫn không làm được. Danh sách: `docs/Admin-web/01-authentication-and-authorization.md` mục 7.
   * PIN hệ thống dự phòng (quản trị viên chưa có `pin_hash` riêng) lấy từ `ADMIN_SECURITY_PIN`. Production thiếu biến thì không PIN dự phòng nào khớp (từ 2026-11-14, `systemPinMatches` trong `admin.service.js`); chỉ dev mới dùng mặc định `123456`.
 * **Tham chiếu quốc tế về IP:** IP là dữ liệu cá nhân (phán quyết Breyer C-582/14); xử lý vì an ninh mạng là lợi ích chính đáng nếu cần thiết, tương xứng (GDPR Recital 49).
 

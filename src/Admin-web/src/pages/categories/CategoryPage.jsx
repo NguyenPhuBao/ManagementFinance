@@ -214,12 +214,16 @@ const CategoryPage = () => {
     if (notify) notify.success(t('categories.draftAlerts.resetSuccess'));
   };
 
-  const saveDraft = async () => {
-    const payload = (item) => ({ name: item.name, classify: item.classify, is_default: true, keyword: item.keyword || null });
+  // PIN gửi kèm từng lệnh, máy chủ kiểm; PIN sai thì lệnh đầu tiên bị từ chối và không lệnh nào được áp.
+  const saveDraft = async (credentials) => {
+    const payload = (item) => ({ name: item.name, classify: item.classify, is_default: true, keyword: item.keyword || null, ...credentials });
     for (const item of draft.added) await adminApi.createCategory(payload(item));
     for (const item of draft.updated) await adminApi.updateCategory(item.id, payload(item));
-    for (const item of draft.restored) await adminApi.restoreCategory(item.id);
-    for (const id of draft.deleted) await adminApi.deleteCategory(id);
+    for (const item of draft.restored) await adminApi.restoreCategory(item.id, credentials);
+    for (const id of draft.deleted) await adminApi.deleteCategory(id, credentials);
+  };
+
+  const draftSaved = async () => {
     await fetchCategories();
     if (notify) notify.success(t('categories.syncModal.syncSuccess'));
   };
@@ -517,9 +521,8 @@ const CategoryPage = () => {
         title={t('categories.syncModal.title')}
         description={t('categories.syncModal.description')}
         confirmText={t('categories.syncModal.confirmBtn')}
-        actionType="SYNC_CATEGORIES"
-        targetLabel="SYSTEM_CATEGORIES"
-        onConfirm={saveDraft}
+        onVerify={saveDraft}
+        onConfirm={draftSaved}
       />
     </div>
   );

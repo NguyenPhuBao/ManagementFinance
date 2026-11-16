@@ -217,7 +217,7 @@ describe('Lọc và tìm kiếm', () => {
 });
 
 describe('Thao tác trạng thái', () => {
-  it('vô hiệu hóa bắt buộc lý do rồi gọi API với lý do đã nhập', async () => {
+  it('vô hiệu hóa: bắt buộc lý do, rồi nhập PIN; PIN gửi kèm lệnh; huỷ PIN thì quay lại, lý do còn nguyên', async () => {
     await renderPage();
     fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Vô hiệu hóa' }));
     const dialog = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
@@ -225,18 +225,30 @@ describe('Thao tác trạng thái', () => {
     expect(submit).toBeDisabled();
     fireEvent.change(within(dialog).getByLabelText(/Lý do/), { target: { value: ' Spam quảng cáo ' } });
     fireEvent.click(submit);
+    let pin = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
+    expect(within(pin).getByText(/Spam quảng cáo/)).toBeInTheDocument();
+    fireEvent.click(within(pin).getByRole('button', { name: 'Hủy bỏ' }));
+    expect(screen.getByLabelText(/Lý do/)).toHaveValue(' Spam quảng cáo ');
+    expect(adminApi.updateUserStatus).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' })).getByRole('button', { name: 'Vô hiệu hóa' }));
+    pin = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
+    fireEvent.change(within(pin).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(pin).getByRole('button', { name: 'Vô hiệu hóa' }));
     await waitFor(() =>
-      expect(adminApi.updateUserStatus).toHaveBeenCalledWith(1, { status: 'Inactive', reason_inactive: 'Spam quảng cáo' })
+      expect(adminApi.updateUserStatus).toHaveBeenCalledWith(1, { status: 'Inactive', reason_inactive: 'Spam quảng cáo', pin: '246810' })
     );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() => expect(within(row('Nguyễn Văn An')).getByText('Vô hiệu hóa')).toHaveAttribute('data-tone', 'neutral'));
   });
 
-  it('kích hoạt lại qua hộp xác nhận', async () => {
+  it('kích hoạt lại phải nhập PIN; PIN gửi kèm lệnh kích hoạt', async () => {
     await renderPage();
     fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Kích hoạt' }));
     const dialog = screen.getByRole('dialog', { name: 'Kích hoạt lại tài khoản?' });
+    expect(within(dialog).getByRole('button', { name: 'Kích hoạt' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Kích hoạt' }));
-    await waitFor(() => expect(adminApi.updateUserStatus).toHaveBeenCalledWith(2, { status: 'Active' }));
+    await waitFor(() => expect(adminApi.updateUserStatus).toHaveBeenCalledWith(2, { status: 'Active', pin: '246810' }));
     await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đang hoạt động')).toBeInTheDocument());
   });
 
@@ -247,9 +259,20 @@ describe('Thao tác trạng thái', () => {
     expect(adminApi.deleteUser).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
-    await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2));
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', action: 'DELETE_USER', targetId: '@binh' });
+    await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2, { pin: '246810' }));
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
     await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đã xóa')).toHaveAttribute('data-tone', 'danger'));
+  });
+
+  it('PIN sai khi xoá: hộp PIN hiện lỗi máy chủ, người dùng giữ nguyên trạng thái', async () => {
+    adminApi.deleteUser.mockRejectedValue({ response: { data: { message: 'Mã PIN quản trị viên không chính xác!' } } });
+    await renderPage();
+    fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Xóa' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xóa người dùng' });
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '111111' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Mã PIN quản trị viên không chính xác!');
+    expect(within(row('Trần Thị Bình')).queryByText('Đã xóa')).not.toBeInTheDocument();
   });
 
   it('xem chi tiết mở hộp thoại và tải người dùng theo id', async () => {

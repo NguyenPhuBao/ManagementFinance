@@ -243,14 +243,21 @@ describe('AIOps — Tầng 2: tác động thật', () => {
     }));
   });
 
-  it('bảo trì khẩn cấp: gửi lý do đã nhập, bật chế độ khẩn cấp', async () => {
+  it('bảo trì khẩn cấp: nhập lý do, rồi bắt buộc PIN; gửi lý do kèm PIN, bật chế độ khẩn cấp', async () => {
     aiopsApi.getStatus.mockResolvedValue(status({ recommendedAction: 'EMERGENCY_MAINTENANCE' }));
     await renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Bảo trì khẩn cấp' }));
     const dialog = await screen.findByRole('dialog', { name: 'Bật bảo trì khẩn cấp' });
     fireEvent.change(within(dialog).getByLabelText('Lý do'), { target: { value: 'CPU quá tải' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Kích hoạt' }));
-    await waitFor(() => expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'CPU quá tải', isEmergency: true }));
+    expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
+    const pin = screen.getByRole('dialog', { name: 'Bật bảo trì khẩn cấp' });
+    expect(within(pin).getByRole('button', { name: 'Kích hoạt' })).toBeDisabled();
+    fireEvent.change(within(pin).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(pin).getByRole('button', { name: 'Kích hoạt' }));
+    await waitFor(() =>
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'CPU quá tải', isEmergency: true, pin: '246810' })
+    );
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Bật bảo trì khẩn cấp' })).not.toBeInTheDocument());
   });
 
@@ -538,8 +545,10 @@ describe('Sức khỏe máy chủ (ServerHealthPanel)', () => {
     expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Bật bảo trì' }));
-    await waitFor(() => expect(adminApi.verifySecurityAction).toHaveBeenCalledWith(expect.objectContaining({ pin: '246810', action: 'EMERGENCY_MAINTENANCE' })));
-    await waitFor(() => expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'Nâng cấp CSDL', isEmergency: true }));
+    await waitFor(() =>
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'Nâng cấp CSDL', isEmergency: true, pin: '246810' })
+    );
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
   });
 
   it('Tầng 2: bảo trì đang bật thì công tắc khóa; socket cập nhật CPU', async () => {

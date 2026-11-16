@@ -133,7 +133,20 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 7. **Modal Xác Thực Mã PIN Bảo Mật Cấp 2 Trước Thao Tác Chí Mạng (`SecurityConfirmModal.jsx`):**
    - **Nguyên tắc an ninh tối cao:** Mọi hành động có tác động hệ thống lớn hoặc thay đổi trạng thái nhạy cảm (Khóa/Mở khóa tài khoản người dùng, Xóa mềm người dùng, Khôi phục danh mục đã xóa, Lưu thay đổi phân quyền gói cước Staged Changes, Kích hoạt bảo trì khẩn cấp) **bắt buộc phải qua xác thực mã PIN quản trị viên 6 chữ số**.
    - **Chỉ chấp nhận mã PIN, không chấp nhận mật khẩu:** popup không có lựa chọn "Dùng mật khẩu"; Backend (`adminService.verifySecurityAction`) bỏ qua trường `password` nếu có gửi lên và từ chối 400 khi thiếu PIN. Mục đích: kẻ gian lấy được mật khẩu đăng nhập vẫn không thay đổi được hệ thống. Đổi PIN và đổi mật khẩu đều đòi PIN hiện tại, nên không có đường vòng chỉ cần mật khẩu.
-   - **Quy trình hoạt động:** Frontend hiển thị popup `SecurityConfirmModal`, Admin nhập mã PIN 6 số, gọi `POST /api/admin/verify-security-action` với `{ pin, action, targetId }` (hoặc gửi `pin` kèm lời gọi API của chính thao tác: xem IP, đăng chính sách, đóng sự cố dữ liệu). PIN đi qua HTTPS, Backend so với `pin_hash` (bcrypt) của tài khoản; tài khoản chưa có `pin_hash` thì so với PIN hệ thống `ADMIN_SECURITY_PIN`. Khớp thì thực thi và ghi nhật ký `[SECURITY]`; sai thì từ chối 400 "Mã PIN quản trị viên không chính xác!". Sai 5 lần trong 15 phút thì khóa xác thực 15 phút (429).
+   - **Máy chủ kiểm PIN (từ 2026-11-16):** các thao tác dưới đây gửi `pin` kèm chính lời gọi API của thao tác; Backend kiểm trước khi làm (`requirePin` trong `admin.controller.js`), thiếu hoặc sai PIN thì từ chối, nên gọi thẳng API bằng token admin mà không có PIN cũng không làm được. Lỗi (kể cả PIN sai) hiện ngay trong hộp PIN.
+
+     | Trang | Thao tác | API | Hành động ghi nhật ký |
+     |---|---|---|---|
+     | Bảo trì & Thông báo, băng cảnh báo AIOps, Sức khỏe máy chủ, AIOps | Lên lịch, bật khẩn cấp, kết thúc bảo trì | `POST /api/admin/system/maintenance` | `SCHEDULE_MAINTENANCE` / `EMERGENCY_MAINTENANCE` / `STOP_MAINTENANCE` |
+     | Bảo trì & Thông báo | Hủy lịch | `DELETE /api/admin/system/maintenance/schedule[/:id]` | `CANCEL_MAINTENANCE` |
+     | Bảo trì & Thông báo → Chính sách | Thêm, ngừng, kích hoạt chính sách | `POST /api/admin/policies`, `PATCH /api/admin/policies/:id/status` | `PUBLISH_POLICY` / `CHANGE_POLICY_STATUS` |
+     | Quản lý người dùng | Vô hiệu hóa (nhập lý do rồi PIN), kích hoạt | `PATCH /api/admin/updatestatus/:id` | `DEACTIVATE_USER` / `ACTIVATE_USER` |
+     | Quản lý người dùng | Xóa | `DELETE /api/admin/deleteuser/:id`, `/api/admin/users/:id` | `DELETE_USER` |
+     | Quản lý danh mục | Lưu thay đổi (PIN nhập một lần, gửi kèm từng lệnh thêm / sửa / khôi phục / xóa) | `addcategory`, `updatecategory/:id`, `restorecategory/:id`, `deletecategory/:id` | `SYNC_CATEGORIES` |
+     | Phân quyền dịch vụ | Lưu thay đổi, đặt lại mặc định | `PUT /api/admin/permissions`, `POST /api/admin/permissions/reset` | `UPDATE_PERMISSIONS` / `RESET_PERMISSIONS` |
+     | Hộp chi tiết người dùng, AIOps | Xem IP đầy đủ | `.../reveal-ip` | `REVEAL_IP` |
+     | Thanh toán, Sự cố dữ liệu | Hoàn tiền, tạo đơn mẫu, đóng sự cố | API của thao tác | `REFUND_ORDER` / `CREATE_SAMPLE_ORDER` / `CLOSE_DATA_INCIDENT` |
+   - **Quy trình hoạt động:** Frontend hiển thị popup `SecurityConfirmModal`, Admin nhập mã PIN 6 số, gửi `pin` kèm lời gọi API của thao tác (bảng trên). Từ 2026-11-16 mọi hộp PIN trên Admin-web đều đi đường này; `POST /api/admin/verify-security-action` (`{ pin, action, targetId }`, chỉ kiểm PIN, không thực thi) vẫn còn nhưng không trang nào gọi. PIN đi qua HTTPS, Backend so với `pin_hash` (bcrypt) của tài khoản; tài khoản chưa có `pin_hash` thì so với PIN hệ thống `ADMIN_SECURITY_PIN`. Khớp thì thực thi và ghi nhật ký `[SECURITY]`; sai thì từ chối 400 "Mã PIN quản trị viên không chính xác!". Sai 5 lần trong 15 phút thì khóa xác thực 15 phút (429).
 8. **Quy Trình Cấp Tài Khoản Quản Trị Viên Mới (`SettingsModal.jsx`):**
    - **Giao diện Modal chuẩn hóa Grid 2 cột (`max-w-lg` 512px):**
      + `FullName`: Họ và tên quản trị viên (Bắt buộc, tối thiểu 2 ký tự).

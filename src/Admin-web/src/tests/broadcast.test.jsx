@@ -86,7 +86,7 @@ describe('Tab Bảo trì', () => {
     expect(document.body.textContent).not.toMatch(/PostgreSQL|Client-app|HTTP 503|Socket/);
   });
 
-  it('đang bảo trì khẩn cấp: banner hiện lý do; ô khẩn cấp bị khóa; kết thúc qua hộp xác nhận', async () => {
+  it('đang bảo trì khẩn cấp: banner hiện lý do; ô khẩn cấp bị khóa; kết thúc phải nhập PIN, PIN gửi kèm lệnh', async () => {
     adminApi.getMaintenanceStatus.mockResolvedValue({ data: { ...IDLE, active: true, isEmergency: true, reason: 'Sửa máy chủ', activatedBy: 'admin', activatedAt: iso(NOW - H) } });
     await renderPage();
     expect(await screen.findByText('Đang bảo trì khẩn cấp')).toBeInTheDocument();
@@ -94,11 +94,15 @@ describe('Tab Bảo trì', () => {
     expect(screen.getByLabelText('Bảo trì khẩn cấp')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Kết thúc bảo trì' }));
     const dialog = screen.getByRole('dialog', { name: 'Kết thúc bảo trì' });
+    expect(within(dialog).getByRole('button', { name: 'Kết thúc' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Kết thúc' }));
-    await waitFor(() => expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: false, reason: 'Sửa máy chủ', isEmergency: true }));
+    await waitFor(() =>
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: false, reason: 'Sửa máy chủ', isEmergency: true, pin: '246810' })
+    );
   });
 
-  it('lên lịch: chặn khi trước dưới 3 giờ và khi kết thúc trước bắt đầu; hợp lệ thì gửi đúng dữ liệu rồi tải lại lịch sử', async () => {
+  it('lên lịch: chặn khi trước dưới 3 giờ và khi kết thúc trước bắt đầu; hợp lệ thì hỏi PIN, gửi đúng dữ liệu kèm PIN rồi tải lại lịch sử', async () => {
     await renderPage();
     const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Lên lịch bảo trì' }));
     fireEvent.change(screen.getByLabelText('Bắt đầu'), { target: { value: local(NOW + H) } });
@@ -113,6 +117,11 @@ describe('Tab Bảo trì', () => {
     fireEvent.change(screen.getByLabelText('Lý do'), { target: { value: 'Nâng cấp' } });
     const before = adminApi.getMaintenanceHistory.mock.calls.length;
     submit();
+    expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog', { name: 'Xác nhận lên lịch bảo trì' });
+    expect(within(dialog).getByRole('button', { name: 'Lên lịch' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lên lịch' }));
     await waitFor(() =>
       expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({
         scheduledAt: iso(new Date(local(NOW + 8 * H)).getTime()),
@@ -120,13 +129,39 @@ describe('Tab Bảo trì', () => {
         reason: 'Nâng cấp',
         isEmergency: false,
         type: 'SCHEDULED',
+        pin: '246810',
       })
     );
     await waitFor(() => expect(adminApi.getMaintenanceHistory.mock.calls.length).toBeGreaterThan(before));
     expect(screen.getByLabelText('Bắt đầu')).toHaveValue('');
   });
 
-  it('bảo trì khẩn cấp: ẩn ô thời gian, xác nhận qua hộp bảo mật rồi kích hoạt', async () => {
+  it('lên lịch: chặn thời điểm bắt đầu xa hơn 14 ngày, không mở hộp PIN; ô Bắt đầu giới hạn tối đa 14 ngày; quy tắc ghi rõ', async () => {
+    await renderPage();
+    expect(screen.getByText(/không quá 14 ngày/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Bắt đầu')).toHaveAttribute('max', local(NOW + 14 * 24 * H));
+    fireEvent.change(screen.getByLabelText('Bắt đầu'), { target: { value: local(NOW + 15 * 24 * H) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lên lịch bảo trì' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('trong vòng 14 ngày');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Bắt đầu'), { target: { value: local(NOW + 13 * 24 * H) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lên lịch bảo trì' }));
+    expect(screen.getByRole('dialog', { name: 'Xác nhận lên lịch bảo trì' })).toBeInTheDocument();
+  });
+
+  it('lên lịch với PIN sai: hộp PIN hiện lỗi máy chủ, biểu mẫu giữ nguyên', async () => {
+    adminApi.setMaintenanceStatus.mockRejectedValue({ response: { data: { message: 'Mã PIN quản trị viên không chính xác!' } } });
+    await renderPage();
+    fireEvent.change(screen.getByLabelText('Bắt đầu'), { target: { value: local(NOW + 8 * H) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lên lịch bảo trì' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xác nhận lên lịch bảo trì' });
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '111111' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lên lịch' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Mã PIN quản trị viên không chính xác!');
+    expect(screen.getByLabelText('Bắt đầu')).toHaveValue(local(NOW + 8 * H));
+  });
+
+  it('bảo trì khẩn cấp: ẩn ô thời gian; bắt buộc PIN, PIN gửi kèm lệnh kích hoạt', async () => {
     await renderPage();
     fireEvent.click(screen.getByLabelText('Bảo trì khẩn cấp'));
     expect(screen.queryByLabelText('Bắt đầu')).not.toBeInTheDocument();
@@ -134,8 +169,13 @@ describe('Tab Bảo trì', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Kích hoạt bảo trì khẩn cấp' }));
     expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
     const dialog = screen.getByRole('dialog', { name: 'Xác nhận bảo trì khẩn cấp' });
+    expect(within(dialog).getByRole('button', { name: 'Kích hoạt' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Kích hoạt' }));
-    await waitFor(() => expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'Sự cố', isEmergency: true }));
+    await waitFor(() =>
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'Sự cố', isEmergency: true, pin: '246810' })
+    );
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
   });
 
   it('không còn bảng "Lịch đã đặt"; lịch còn dưới 1 giờ vẫn hiện cảnh báo; hủy lịch qua bảng Lịch sử bảo trì', async () => {
@@ -158,8 +198,10 @@ describe('Tab Bảo trì', () => {
     const row = screen.getByRole('row', { name: /Nâng cấp xa/ });
     fireEvent.click(within(row).getByRole('button', { name: 'Hủy lịch' }));
     const dialog = screen.getByRole('dialog', { name: 'Hủy lịch bảo trì' });
+    expect(within(dialog).getByRole('button', { name: 'Hủy lịch' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy lịch' }));
-    await waitFor(() => expect(adminApi.cancelScheduledMaintenance).toHaveBeenCalledWith(42));
+    await waitFor(() => expect(adminApi.cancelScheduledMaintenance).toHaveBeenCalledWith(42, { pin: '246810' }));
   });
 
   it('lịch sử: lọc loại gửi lên máy chủ; chỉ cho hủy lịch còn từ 3 giờ', async () => {

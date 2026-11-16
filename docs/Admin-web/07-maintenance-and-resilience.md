@@ -22,6 +22,7 @@ Cơ chế bảo trì gồm hai lớp: lớp **chặn yêu cầu** chạy trong b
    - **Lưu trữ thời lượng thực tế (Migration 36 - `actual_duration_seconds`):** Bổ sung cột `actual_duration_seconds` trong bảng `maintenance_history` để ghi nhận chính xác từng giây thời gian gián đoạn thực tế khi kết thúc phiên. Đối với phiên đang diễn ra (`ONGOING`), giao diện tích hợp Live Timer đếm thời lượng thực tế theo thời gian thực ($T_{\text{hiện tại}} - T_{\text{bắt đầu}}$).
 5. **Ràng Buộc Thời Gian Lập Lịch:**
    - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **3 tiếng** (`scheduledAt >= now + 3h`, kiểm ở cả Admin-web và Backend).
+   - Thời điểm bắt đầu không được xa quá **14 ngày** (`scheduledAt <= now + 14 ngày`, từ 2026-11-16, kiểm ở cả Admin-web và Backend: `MAX_LEAD_TIME_MS` trong `maintenance.manager.js`, `MAX_LEAD_DAYS` trong `maintenanceFormat.js`). Lý do: hẹn giờ `setTimeout` của Node tối đa khoảng 24,8 ngày; vượt mức đó hẹn giờ chạy ngay và hệ thống vào bảo trì lập tức (đã tái hiện ngày 2026-11-16 với lịch 30 ngày trên CSDL thử).
    - Thời điểm kết thúc (nếu có) phải sau thời điểm bắt đầu.
    - Lịch mới không được trùng khung giờ với lịch đã có, và khoảng cách giữa lúc kết thúc lịch này với lúc bắt đầu lịch kia ít nhất **12 tiếng** (lịch không có giờ kết thúc thì tính kết thúc = bắt đầu).
    - Hủy lịch bảo trì: Admin-web chỉ cho bấm hủy khi còn cách thời điểm bắt đầu tối thiểu **3 tiếng**; dưới 3 tiếng nút bị khóa, hiện `< 3h`.
@@ -150,6 +151,7 @@ CSDL là nguồn sự thật của trạng thái bảo trì. Mã: `MaintenanceMa
    - Khi kích hoạt bảo trì khẩn cấp: Modal xác nhận yêu cầu nhập mã PIN bảo mật cấp 2. Banner hiển thị tông đỏ `rose`, badge `[KHẨN CẤP]`, tiêu đề: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**.
    - Khi bảo trì theo lịch kích hoạt: Banner hiển thị tông cam `amber`, badge `[THEO LỊCH]`, tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"**.
    - Khi tắt bảo trì: Modal xác nhận cảnh báo hệ thống sắp mở lại kết nối cho toàn bộ người dùng Client-app.
+   - **PIN bắt buộc, máy chủ kiểm (từ 2026-11-16):** lên lịch, bật khẩn cấp, kết thúc bảo trì (`POST /api/admin/system/maintenance`) và hủy lịch (`DELETE /api/admin/system/maintenance/schedule[/:id]`) đều phải gửi `pin` kèm lệnh; thiếu / sai PIN trả 400, khóa sau 5 lần sai trả 429. Áp dụng cho mọi nơi bật bảo trì: trang Bảo trì & Thông báo, băng cảnh báo quá tải (`AppLayout`), hộp giảm thiểu của AIOps, `ServerHealthPanel`. Thêm / ngừng / kích hoạt chính sách cũng bắt buộc PIN (`PUBLISH_POLICY`, `CHANGE_POLICY_STATUS`).
 2. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Chỉ hiển thị khi $\le 1$ tiếng):**
    - Card/Banner cảnh báo tông cam viền amber nhấp nháy hiển thị số phút đếm ngược.
    - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.

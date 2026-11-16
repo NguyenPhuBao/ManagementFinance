@@ -4,7 +4,7 @@ import useSocket from '../../hooks/useSocket';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { formatDateTime } from '../../utils/format';
-import { Badge, Button, ConfirmModal, Icon, PageHeader, Tabs } from '../../components/ui';
+import { Badge, Button, Icon, PageHeader, SecurityConfirmModal, Tabs } from '../../components/ui';
 import MaintenanceTab from './broadcast/MaintenanceTab';
 import BroadcastTab from './broadcast/BroadcastTab';
 import PolicyTab from './broadcast/PolicyTab';
@@ -60,8 +60,9 @@ const BroadcastPage = () => {
     return () => socket.off('admin.maintenance_changed', onChanged);
   }, [socket]);
 
+  // rethrow: lỗi ném lại cho hộp PIN hiện (kể cả PIN sai), không báo lỗi riêng.
   const act = useCallback(
-    async (call, successText, failText) => {
+    async (call, successText, failText, { rethrow = false } = {}) => {
       initiator.current = true;
       setBusy(true);
       try {
@@ -72,6 +73,7 @@ const BroadcastPage = () => {
         return true;
       } catch (err) {
         initiator.current = false;
+        if (rethrow) throw err;
         if (notify) notify.error(err?.response?.data?.message || failText, t('broadcast.feedback.errorTitle'));
         return false;
       } finally {
@@ -81,19 +83,19 @@ const BroadcastPage = () => {
     [notify, t]
   );
 
-  const stopMaintenance = async () => {
-    setConfirmStop(false);
-    await act(
+  const stopMaintenance = (credentials) =>
+    act(
       () =>
         adminApi.setMaintenanceStatus({
           active: false,
           reason: (maintenance.reason || '').trim() || t('broadcast.defaults.emergencyReason'),
           isEmergency: true,
+          ...credentials,
         }),
       t('broadcast.feedback.ended'),
-      t('broadcast.feedback.failed')
+      t('broadcast.feedback.failed'),
+      { rethrow: true }
     );
-  };
 
   const dot = maintenance.active ? (maintenance.isEmergency ? 'bg-danger' : 'bg-warning') : scheduledListOf(maintenance).length ? 'bg-info' : null;
 
@@ -166,14 +168,13 @@ const BroadcastPage = () => {
         <BroadcastTab />
       )}
 
-      <ConfirmModal
-        open={confirmStop}
+      <SecurityConfirmModal
+        isOpen={confirmStop}
+        onClose={() => setConfirmStop(false)}
         title={t('broadcast.stopModal.title')}
-        message={t('broadcast.stopModal.message')}
+        description={t('broadcast.stopModal.message')}
         confirmText={t('broadcast.stopModal.confirm')}
-        loading={busy}
-        onConfirm={stopMaintenance}
-        onCancel={() => setConfirmStop(false)}
+        onVerify={stopMaintenance}
       />
     </div>
   );

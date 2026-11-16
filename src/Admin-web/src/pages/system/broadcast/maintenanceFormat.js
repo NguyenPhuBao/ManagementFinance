@@ -1,5 +1,7 @@
 export const HOUR = 3600 * 1000;
 export const MIN_LEAD_HOURS = 3;
+/** Backend chỉ nhận lịch trong 14 ngày tới (khớp MAX_LEAD_TIME_MS của maintenance.manager.js). */
+export const MAX_LEAD_DAYS = 14;
 
 export const toLocalInput = (ms) => {
   const d = new Date(ms);

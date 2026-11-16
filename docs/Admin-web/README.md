@@ -165,6 +165,6 @@ Mọi module và chức năng của Admin-web bắt buộc phải có bài kiể
 ## 🖥️ 7. THIẾT KẾ FLUID RESPONSIVE & ĐA TỶ LỆ MÀN HÌNH
 
 - **Bố cục:** `AppLayout` gồm `Sidebar` (8 mục menu) và `Header`; nội dung trang nằm trong khung `max-w-screen-2xl` (1.536px) căn giữa.
-- **Sidebar:** rộng 240px (`w-60`), thu gọn còn 72px trên máy tính (nhãn ẩn, chỉ còn biểu tượng); trên điện thoại là ngăn kéo trượt, mặc định đóng.
+- **Sidebar:** rộng 240px (`w-60`), thu gọn còn 72px trên máy tính (nhãn ẩn, chỉ còn biểu tượng) bằng nút menu trên thanh đầu trang; cuối thanh bên chỉ còn nút Đăng xuất (bỏ nút "Thu gọn menu" từ 2026-11-16); trên điện thoại là ngăn kéo trượt, mặc định đóng.
 - **Màn hẹp:** bảng dữ liệu cuộn ngang trong khung riêng (`DataTable` có `minWidth`), trang không cuộn ngang ở bề rộng 390px (đã kiểm bằng trình duyệt cho từng màn hình đã làm lại).
 - **Chủ đề:** màu lấy từ token `--ui-*` trong `src/styles/theme.css` (cả `:root` và `.dark`), dùng qua lớp Tailwind `bg-card`, `text-ink`, `border-line`, `bg-brand`…

@@ -109,6 +109,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * **Bảo toàn dữ liệu gốc**: Khi lưu vào CSDL vẫn giữ trọn vẹn đúng định dạng chữ hoa/thường ban đầu người dùng nhập vào (ví dụ: "Ăn Uống").
   * **Cơ chế Sửa thông minh**: Tự động loại trừ chính danh mục đang sửa (`idcategory !== current_id`), cho phép giữ nguyên tên để đổi icon/keyword/classify.
   * **Chuẩn hóa phản hồi lỗi**: Trả về đúng mã **HTTP 400** kèm thông báo lỗi cụ thể khi vi phạm ràng buộc Unique.
+* **PIN quản trị do máy chủ kiểm (2026-11-16):** `requirePin` trong `admin.controller.js` bắt buộc `pin` trong body của: `POST /system/maintenance` (lên lịch / bật khẩn cấp / tắt), `DELETE /system/maintenance/schedule[/:id]`, `PATCH /updatestatus/:id`, `DELETE /deleteuser/:id` và `/users/:id`, thêm / sửa / xóa / khôi phục danh mục, `PUT /permissions`, `POST /permissions/reset`. Thiếu / sai PIN → 400, sai 5 lần → 429; PIN không chuyển xuống service. Chỉ API `/admin/*`, Client-app không bị ảnh hưởng. Test: `tests/unit/admin.pin.guard.test.js` (39 ca). Bảng đầy đủ: `docs/Admin-web/01-authentication-and-authorization.md` mục 7. Thứ tự triển khai: Admin-web (Vercel) trước, Backend (Render) sau; Backend cũ bỏ qua trường `pin` thừa.
 
 ---
 
