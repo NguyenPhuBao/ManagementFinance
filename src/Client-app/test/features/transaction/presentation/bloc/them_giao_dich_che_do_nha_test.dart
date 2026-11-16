@@ -6,6 +6,7 @@ import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/vi_chung_cho_form_nguon.dart';
+import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/them_giao_dich_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -189,5 +190,14 @@ void main() {
     final kq = await c.chuanBiLuu();
     expect(kq, isA<LoiLuu>());
     expect((kq as LoiLuu).cau, 'Bạn không còn quyền ghi khoản vào nhà này.');
+  });
+  test('ở chế độ nhà, điền sẵn về muộn (giọng nói) bị BỎ QUA — không ghi ví / danh mục riêng vào khoản nhà', () async {
+    final c = await vaoNha();
+    c.dienKetQua(const KetQuaDocCau(soTien: 99000, walletId: 'cash', categoryId: 'food', ghiChu: 'phở'),
+        chonDuoc: [anUong]);
+    await cho();
+    expect(c.state.viNguon?.id, 'nha-v', reason: 'ví riêng + idhousehold = server từ chối HOUSEHOLD_SCOPE_MISMATCH');
+    expect(c.state.danhMuc?.id, 'nha-food');
+    expect(c.state.chuoiSoTien, '45000');
   });
 }

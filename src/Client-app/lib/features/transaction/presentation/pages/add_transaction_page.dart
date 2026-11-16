@@ -830,6 +830,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       listener: (_, __) => _cuonToiTheGoiY(),
       child: content,
     );
+    // Vào chế độ nhà tại chỗ (spec 2026-11-16): micro đang nghe thì huỷ — câu nói về muộn là ví / danh mục RIÊNG, điền vào
+    // khoản của nhà là trỏ ví riêng mà mang `idhousehold` (cubit cũng bỏ qua `dienKetQua` ở chế độ nhà).
+    final coVaoNha = BlocListener<ThemGiaoDichCubit, ThemGiaoDichState>(
+      bloc: _cubit,
+      listenWhen: (a, b) => a.nhaDangGhi == null && b.nhaDangGhi != null,
+      listener: (_, __) => unawaited(_nghe?.huy()),
+      child: coCuon,
+    );
     final coGhiChu = BlocListener<ThemGiaoDichCubit, ThemGiaoDichState>(
       bloc: _cubit,
       // CHỈ khi Cubit tự đặt ghi chú (bộ đếm) — nghe mọi lần `ghiChu` đổi thì một state về muộn đè chữ vừa gõ.
@@ -837,7 +845,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       listener: (_, s) {
         if (_noteController.text != s.ghiChu) _noteController.text = s.ghiChu;
       },
-      child: coCuon,
+      child: coVaoNha,
     );
     final nghe = _nghe;
     final coNghe = nghe == null

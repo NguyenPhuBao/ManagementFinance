@@ -984,7 +984,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// - ghi chú đặt SAU danh mục: [ghiChuDoi] thấy đã có danh mục thì không hẹn gợi ý;
   /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
   void dienKetQua(KetQuaDocCau kq, {required List<CategoryEntity> chonDuoc}) {
-    if (isClosed) return;
+    if (isClosed || state.nhaDangGhi != null) return; // chế độ nhà: kết quả là ví / danh mục RIÊNG (spec 2026-11-16)
     // Cờ chỉ nói về lần điền GẦN NHẤT — Điền lần hai bằng luật mà để sót cờ cũ là đánh dấu một danh mục luật đã chọn.
     _danhMucAi = null;
     final now = DateTime.now();
