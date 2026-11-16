@@ -45,6 +45,8 @@ import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/chinh_sach/presentation/pages/danh_sach_van_ban_page.dart';
+import '../../features/chinh_sach/presentation/pages/van_ban_page.dart';
 import '../../features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
 import '../../features/ban_sao_du_lieu/presentation/pages/du_lieu_cua_toi_page.dart';
 import '../../features/khoa_app/presentation/pages/khoa_app_page.dart';
@@ -113,6 +115,11 @@ const _publicRoutes = {
   '/otp',
   '/reset-password'
 };
+
+/// Route mở cho CẢ HAI phía (chưa / đã đăng nhập) — Điều khoản sử dụng + Chính sách bảo mật viết cứng: `authRedirect` không
+/// đẩy đi. KHÔNG nằm trong `_publicRoutes` nên lớp khoá ứng dụng vẫn che khi đã đăng nhập (spec điều khoản viết cứng
+/// 2026-11-16 mục 2).
+bool _laRouteChinhSach(String? r) => r == '/chinh-sach' || (r?.startsWith('/chinh-sach/') ?? false);
 
 /// Cửa quyền GHI khoản của nhà (`/nha/khoan` và route con). Khuôn G92: chờ kho trước khi đọc vai, vì router chạy `redirect`
 /// lúc phiên vừa nối mà kho chưa trả lời. Không được ghi (Chỉ xem, nhà chỉ xem, đã rời) → về Nhà mình; mọi lối vào qua đây.
@@ -191,6 +198,11 @@ class AppRouter {
           // Auth routes (public)
           GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
           GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
+          // Điều khoản + Chính sách viết cứng — mở cho cả hai phía (`laRouteMoChoCaHai`).
+          GoRoute(path: '/chinh-sach', builder: (_, __) => const DanhSachVanBanPage()),
+          GoRoute(
+              path: '/chinh-sach/:ma',
+              builder: (_, state) => VanBanPage(ma: state.pathParameters['ma'])),
           GoRoute(
               path: '/forgot-password',
               builder: (_, __) => const ForgotPasswordPage()),
@@ -737,10 +749,14 @@ class AppRouter {
   /// Route công khai (không cần đăng nhập) — MỘT định nghĩa cho `authRedirect` và cho lớp khoá ứng dụng.
   static bool laRouteCongKhai(String? tenRoute) => _publicRoutes.contains(tenRoute);
 
+  /// Route Điều khoản / Chính sách — mở được khi chưa lẫn đã đăng nhập.
+  static bool laRouteMoChoCaHai(String? tenRoute) => _laRouteChinhSach(tenRoute);
+
   static String? authRedirect({
     required AuthState authState,
     required String matchedLocation,
   }) {
+    if (laRouteMoChoCaHai(matchedLocation)) return null;
     final isGoingPublic = laRouteCongKhai(matchedLocation);
 
     // Startup restoration may keep the requested route while token state is
