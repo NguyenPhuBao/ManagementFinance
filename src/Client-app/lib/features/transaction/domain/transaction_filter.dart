@@ -110,6 +110,8 @@ TransactionSummary summarizeTransactions(Iterable<TransactionEntity> list) {
   var income = 0.0;
   var expense = 0.0;
   for (final t in list) {
+    // Khoản của nhà (Sổ hiện khoản nhà tôi ghi): chỉ hiện, không cộng — góp quỹ đã là khoản chi riêng (spec 2026-11-16).
+    if (t.idhousehold != null) continue;
     if (!khoanVaoThongKe(loai: t.type, categoryId: t.categoryId, ghiChu: t.note)) continue;
     if (t.type == 'thu') income += t.amount;
     if (t.type == 'chi') expense += t.amount;

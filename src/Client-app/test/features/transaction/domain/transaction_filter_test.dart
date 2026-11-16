@@ -201,4 +201,11 @@ void main() {
         reason:
             'b là thu (loại), c là transfer (loại), d chỉ 45.000 (dưới ngưỡng)');
   });
+  test('khoản của NHÀ hiện trong danh sách nhưng KHÔNG cộng vào tổng (spec 2026-11-16 quyết định 6)', () {
+    final rieng = tx('r', categoryId: 'c-food', amount: 100000);
+    final nha = tx('n', categoryId: 'c-cho', amount: 500000).copyWith(idhousehold: 7);
+    final s = summarizeTransactions([rieng, nha]);
+    expect(s.expense, 100000,
+        reason: 'góp quỹ đã là một khoản chi cá nhân; cộng thêm khoản chi từ ví chung là đếm một đồng tiền hai lần');
+  });
 }
