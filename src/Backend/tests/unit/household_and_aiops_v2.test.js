@@ -378,9 +378,9 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
       const andConditions = unlockCall.where.AND;
       assert.ok(andConditions.some(c => c.status === 'Inactive'));
       // Chỉ mở hàng mang dấu khoá tự động
-      const onlyAIOpsCond = andConditions.find(c => c.reason_inactive?.startsWith);
+      const onlyAIOpsCond = andConditions.find((c) => Array.isArray(c.OR) && c.OR.some((o) => o.reason_inactive?.startsWith));
       assert.ok(onlyAIOpsCond);
-      assert.strictEqual(onlyAIOpsCond.reason_inactive.startsWith, '[AIOPS_AUTO_QUARANTINE]');
+      assert.deepStrictEqual(onlyAIOpsCond.OR.map((o) => o.reason_inactive.startsWith), ['[AIOPS_AUTO_QUARANTINE]', '[AIOPS_ADMIN_TEMP]']);
     } finally {
       prisma.account.updateMany = origUpdateMany;
     }

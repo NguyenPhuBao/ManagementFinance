@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import dayjs from 'dayjs';
+import { useLanguageSafe } from '../store/language.context';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/vi';
@@ -54,6 +56,41 @@ export const maskPhone = (phone) => {
   const first = cleanPhone.slice(0, 3);
   const last = cleanPhone.slice(-3);
   return `${first}****${last}`;
+};
+
+// ── Định dạng số / tiền theo ngôn ngữ giao diện (vi → vi-VN, en → en-US) ──
+const LOCALE_OF = { vi: 'vi-VN', en: 'en-US' };
+const localeOf = (lang) => LOCALE_OF[lang] || LOCALE_OF.vi;
+const toNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Số thường. Mặc định tối đa 2 chữ số thập phân: 1.234,5 (vi) / 1,234.5 (en).
+export const formatNumber = (value, { minFrac = 0, maxFrac = 2 } = {}, lang = 'vi') =>
+  new Intl.NumberFormat(localeOf(lang), { minimumFractionDigits: minFrac, maximumFractionDigits: Math.max(minFrac, maxFrac) }).format(toNumber(value));
+
+// Giá trị đã ở đơn vị phần trăm (99.95 → "99,95%").
+export const formatPercent = (value, frac = 2, lang = 'vi') => `${formatNumber(value, { minFrac: frac, maxFrac: frac }, lang)}%`;
+
+// Tiền tệ theo quy ước của Intl cho từng ngôn ngữ: "49.000 ₫" (vi) / "₫49,000" (en).
+export const formatCurrency = (value, currency = 'VND', lang = 'vi') =>
+  new Intl.NumberFormat(localeOf(lang), { style: 'currency', currency })
+    .format(toNumber(value))
+    .replace(/ /g, ' ');
+
+// Hook cho component: bám ngôn ngữ đang chọn.
+export const useNumberFormat = () => {
+  const { language } = useLanguageSafe();
+  return useMemo(
+    () => ({
+      lang: language,
+      number: (value, opts) => formatNumber(value, opts, language),
+      percent: (value, frac) => formatPercent(value, frac, language),
+      currency: (value, currency = 'VND') => formatCurrency(value, currency, language),
+    }),
+    [language]
+  );
 };
 
 export default dayjs;

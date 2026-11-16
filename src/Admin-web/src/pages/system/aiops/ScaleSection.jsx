@@ -1,9 +1,9 @@
 import React, { useId } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Badge, Button, Card, StatCard } from '../../../components/ui';
+import { useNumberFormat } from '../../../utils/format';
 
 const PRESETS = [500, 1000, 5000, 10000];
-const fmt = (n) => Number(n || 0).toLocaleString('vi-VN');
 
 const REPORT_TONE = (assessment) => {
   if (assessment?.isOverCapacity) return 'danger';
@@ -13,6 +13,8 @@ const REPORT_TONE = (assessment) => {
 
 const CalibrationReport = ({ report }) => {
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
+  const fmt = (n) => nf.number(n);
   const specs = report.serverSpecs || {};
   const metrics = report.calculatedMetrics || {};
   return (
@@ -24,12 +26,12 @@ const CalibrationReport = ({ report }) => {
       {report.capacityAssessment?.recommendation && <p className="m-0 mt-1 text-sm text-ink-muted">{report.capacityAssessment.recommendation}</p>}
       <dl className="m-0 mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
         {[
-          [t('aiopsPage.scale.reportCores'), specs.cpuCores ?? '--'],
-          [t('aiopsPage.scale.reportRam'), `${((specs.totalRamMb || 0) / 1024).toFixed(1)} GB`],
+          [t('aiopsPage.scale.reportCores'), specs.cpuCores == null ? '--' : fmt(specs.cpuCores)],
+          [t('aiopsPage.scale.reportRam'), `${nf.number((specs.totalRamMb || 0) / 1024, { minFrac: 1, maxFrac: 1 })} GB`],
           [t('aiopsPage.scale.reportUsers'), fmt(report.targetConcurrency)],
-          [t('aiopsPage.scale.reportCpu'), `${metrics.expectedCpuPercent ?? '--'}%`],
-          [t('aiopsPage.scale.reportRamPct'), `${metrics.expectedRamPercent ?? '--'}%`],
-          [t('aiopsPage.scale.reportLag'), `${metrics.expectedEventLoopLagMs ?? '--'} ms`],
+          [t('aiopsPage.scale.reportCpu'), `${metrics.expectedCpuPercent == null ? '--' : fmt(metrics.expectedCpuPercent)}%`],
+          [t('aiopsPage.scale.reportRamPct'), `${metrics.expectedRamPercent == null ? '--' : fmt(metrics.expectedRamPercent)}%`],
+          [t('aiopsPage.scale.reportLag'), `${metrics.expectedEventLoopLagMs == null ? '--' : fmt(metrics.expectedEventLoopLagMs)} ms`],
         ].map(([label, value]) => (
           <div key={label}>
             <dt className="text-ink-faint">{label}</dt>
@@ -43,6 +45,8 @@ const CalibrationReport = ({ report }) => {
 
 const ScaleSection = ({ ops }) => {
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
+  const fmt = (n) => nf.number(n);
   const inputId = useId();
   const { targetConcurrency, customConcurrency, setCustomConcurrency, handleApplyScale, savingScale, calibrationReport } = ops;
   const baselineRpm = targetConcurrency * 10;

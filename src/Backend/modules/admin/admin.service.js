@@ -1,4 +1,5 @@
 const adminRepository = require('./admin.repository');
+const logger = require('../../core/logger');
 
 const PIN_MAX_FAILURES = 5;
 const PIN_WINDOW_MS = 15 * 60 * 1000;
@@ -207,7 +208,7 @@ const adminService = {
     };
   },
 
-  async updateStatus(iduser, data = {}) {
+  async updateStatus(iduser, data = {}, actor = null) {
     const u = await adminRepository.getUserById(iduser);
     if (!u) throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
 
@@ -265,6 +266,18 @@ const adminService = {
       await adminRepository.updateAccountStatus(iduser, 'Active', null);
       const { invalidateAccountCache } = require('../../middleware/auth');
       invalidateAccountCache(u.account.idaccount);
+
+      // Khoá AIOps (nếu có) của tài khoản này cũng coi như đã mở, để danh sách khoá trên trang AIOps khớp.
+      try {
+        const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
+        await defaultAIOpsQuarantine.releaseAccountFromUserPage({
+          idaccount: u.account.idaccount,
+          username: u.account.username,
+          by: actor?.username || actor?.email || 'Admin',
+        });
+      } catch (err) {
+        logger.warn('Không cập nhật được dòng khoá AIOps khi mở tài khoản', { error: err.message });
+      }
 
       try {
         const { emitUserStatusChanged } = require('../../core/socket');

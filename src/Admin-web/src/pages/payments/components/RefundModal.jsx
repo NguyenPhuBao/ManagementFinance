@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Button, Modal, SecurityConfirmModal } from '../../../components/ui';
-import { formatVnd } from '../paymentFormat';
+import { useNumberFormat } from '../../../utils/format';
 
 const inputClass =
   'w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -19,6 +19,7 @@ const localNow = () => {
  */
 const RefundModal = ({ order, onClose, onSubmit }) => {
   const { t } = useLanguageSafe();
+  const { currency: money } = useNumberFormat();
   const id = useId();
   const [form, setForm] = useState({ amount: '', reason: '', proofUrl: '', bankReference: '', refundedAt: '' });
   const [proofFile, setProofFile] = useState(null);
@@ -84,11 +85,11 @@ const RefundModal = ({ order, onClose, onSubmit }) => {
             <dl className="m-0 grid grid-cols-2 gap-3 rounded-lg bg-muted p-3 text-sm">
               <div>
                 <dt className="text-xs text-ink-faint">{t('payments.refund.expectedAmount')}</dt>
-                <dd className="m-0 font-medium tabular-nums text-ink">{formatVnd(order.amount)}</dd>
+                <dd className="m-0 font-medium tabular-nums text-ink">{money(order.amount)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-ink-faint">{t('payments.refund.receivedAmount')}</dt>
-                <dd className="m-0 font-semibold tabular-nums text-warning">{formatVnd(order.amount_received || order.amount)}</dd>
+                <dd className="m-0 font-semibold tabular-nums text-warning">{money(order.amount_received || order.amount)}</dd>
               </div>
             </dl>
             <div className="flex flex-col gap-1.5">
@@ -190,7 +191,7 @@ const RefundModal = ({ order, onClose, onSubmit }) => {
         isOpen={pinOpen}
         onClose={() => setPinOpen(false)}
         title={t('payments.refund.pinTitle')}
-        description={order ? t('payments.refund.pinDescription', { amount: formatVnd(form.amount), code: order.order_code }) : undefined}
+        description={order ? t('payments.refund.pinDescription', { amount: money(form.amount), code: order.order_code }) : undefined}
         confirmText={t('payments.refund.confirmBtn')}
         actionType="REFUND_ORDER"
         targetLabel={order ? `#${order.order_code}` : ''}

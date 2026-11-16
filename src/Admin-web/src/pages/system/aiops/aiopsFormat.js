@@ -24,7 +24,7 @@ export const incidentActor = (item, myIp) => {
   const prefix = myIp ? myIp.split('.').slice(0, 2).join('.') : '';
   const mine = Boolean(myIp && (identity === myIp || identity.includes(myIp) || (prefix && identity.startsWith(`${prefix}.`))));
   const loopback = ['127.0.0.1', '::1', 'localhost', 'Internal', 'Loopback'].some((x) => identity.includes(x));
-  return { identity, hash, username, userId, vector, system, mine, protectedActor: system || mine || loopback };
+  return { identity, hash, username, userId, vector, system, mine, protectedActor: system || loopback };
 };
 
 const minutesLeft = (expiresAt, remaining, fallback, now) => {
@@ -45,7 +45,8 @@ export const lockState = (item, now = Date.now()) => {
   };
   const account = item.username && item.username !== 'N/A' ? item.username : item.idaccount || null;
   return {
-    ip: describe(item.ipStatus || 'temporary', item.ipExpiresAt || item.expiresAt, item.ipRemainingMinutes),
+    // Dòng chỉ có tài khoản (khoá thủ công, không gắn IP) thì không có phần IP.
+    ip: item.ipHash || item.hash ? describe(item.ipStatus || 'temporary', item.ipExpiresAt || item.expiresAt, item.ipRemainingMinutes) : null,
     account: account ? describe(item.accountStatus, item.accountExpiresAt, item.accountRemainingMinutes) : null,
     accountLabel: account,
   };

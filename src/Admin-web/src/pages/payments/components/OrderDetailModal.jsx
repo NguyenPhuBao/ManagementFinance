@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Badge, Button, Icon, Modal, Spinner } from '../../../components/ui';
-import { STATUS_TONE, assetUrl, effectiveStatus, formatCountdown, formatDate, formatVnd, packageLabel } from '../paymentFormat';
+import { STATUS_TONE, assetUrl, effectiveStatus, formatCountdown, formatDate, packageLabel } from '../paymentFormat';
+import { useNumberFormat } from '../../../utils/format';
 
 const Field = ({ label, children, wide }) => (
   <div className={wide ? 'col-span-2' : ''}>
@@ -39,6 +40,7 @@ const CopyButton = ({ value, label, onCopy }) =>
 
 const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmUpgrade, onRefund, actionLoading, onCopy }) => {
   const { t } = useLanguageSafe();
+  const { currency: money } = useNumberFormat();
   const [countdown, setCountdown] = useState(null);
 
   useEffect(() => {
@@ -149,7 +151,7 @@ const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmU
           {order.status === 'WAITING_CONFIRMATION' && (
             <section className="flex flex-col gap-3 rounded-lg bg-info-soft p-3">
               <p className="m-0 text-sm text-info">
-                {t('payments.detail.overpaid', { received: formatVnd(order.amount_received), amount: formatVnd(order.amount) })}
+                {t('payments.detail.overpaid', { received: money(order.amount_received), amount: money(order.amount) })}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button variant="primary" loading={actionLoading} onClick={() => onConfirmUpgrade(order.order_code, true)}>
@@ -167,8 +169,8 @@ const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmU
             <Field label={t('payments.detail.status')}>
               <Badge tone={STATUS_TONE[status] || 'neutral'}>{t(`payments.status.${status}`, status)}</Badge>
             </Field>
-            <Field label={t('payments.detail.amount')}>{formatVnd(order.amount)}</Field>
-            <Field label={t('payments.detail.amountReceived')}>{formatVnd(order.amount_received || order.amount)}</Field>
+            <Field label={t('payments.detail.amount')}>{money(order.amount)}</Field>
+            <Field label={t('payments.detail.amountReceived')}>{money(order.amount_received || order.amount)}</Field>
             <Field label={t('payments.detail.recognitionCode')}>{order.recognition_code || '—'}</Field>
             <Field label={t('payments.detail.packageType')}>{packageLabel(order.package_type, t)}</Field>
             <Field label={t('payments.detail.createdAt')}>{formatDate(order.created_at)}</Field>
@@ -187,7 +189,7 @@ const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmU
 
           {showRefund && (
             <Section title={t('payments.detail.refundInfo')}>
-              <Field label={t('payments.detail.refundedAmount')}>{formatVnd(order.refunded_amount || order.amount_received)}</Field>
+              <Field label={t('payments.detail.refundedAmount')}>{money(order.refunded_amount || order.amount_received)}</Field>
               <Field label={t('payments.detail.refundedAt')}>{formatDate(order.refunded_at)}</Field>
               <Field wide label={t('payments.detail.refundReason')}>{order.refund_reason || '—'}</Field>
               {order.refund_proof && (
@@ -226,7 +228,7 @@ const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmU
                       <Badge tone={out ? 'warning' : 'success'}>{out ? t('payments.detail.dirOut') : t('payments.detail.dirIn')}</Badge>
                       <span className={`font-semibold tabular-nums ${out ? 'text-warning' : 'text-success'}`}>
                         {out ? '−' : '+'}
-                        {formatVnd(tx.amount)}
+                        {money(tx.amount)}
                       </span>
                     </div>
                     <div className="grid gap-1 text-ink-muted sm:grid-cols-2">

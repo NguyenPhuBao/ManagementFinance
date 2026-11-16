@@ -37,6 +37,10 @@ function initSocket(httpServer) {
         return next(new Error(`Authentication error: ${err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token'}`));
       }
 
+      if (!require('../modules/auth/root-admin').isRootSessionValid(decoded)) {
+        return next(Object.assign(new Error('Authentication error: Root session revoked'), { data: { code: 'ROOT_SESSION_REVOKED' } }));
+      }
+
       const accountInfo = await getAccountValidity(decoded.idaccount);
       if (accountInfo.errorType === 'SCHEMA_ERROR') {
         // Không kèm data.code: đây không phải lý do của tài khoản

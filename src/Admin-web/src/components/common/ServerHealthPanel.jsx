@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
+import { useNumberFormat } from '../../utils/format';
 import { Link } from 'react-router-dom';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
@@ -52,6 +53,7 @@ const formatStart = (iso) =>
 
 const ServerHealthPanel = ({ uptimeData }) => {
   const { t } = useLanguageSafe();
+  const nf = useNumberFormat();
   const reasonId = useId();
   const [health, setHealth] = useState(null);
   const [healthError, setHealthError] = useState(false);
@@ -189,14 +191,14 @@ const ServerHealthPanel = ({ uptimeData }) => {
         <>
           <div className="flex flex-col gap-3">
             <Gauge label="CPU" pct={cpu?.percent ?? 0} detail={`${cpu?.percent ?? 0}%${cpu?.cores ? ` · ${t('serverHealth.cores', { n: cpu.cores })}` : ''}`} warnAt={70} critAt={85} />
-            <Gauge label="RAM" pct={ramPct} detail={ram?.totalMb ? `${Number(ram.usedMb).toLocaleString('vi-VN')} / ${Number(ram.totalMb).toLocaleString('vi-VN')} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
+            <Gauge label="RAM" pct={ramPct} detail={ram?.totalMb ? `${nf.number(ram.usedMb, { maxFrac: 0 })} / ${nf.number(ram.totalMb, { maxFrac: 0 })} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
             <Gauge label={t('serverHealth.lag')} pct={(lag / 200) * 100} detail={`${lag} ms`} warnAt={25} critAt={50} />
           </div>
 
           <div className="flex flex-col gap-1.5 rounded-lg bg-muted p-3">
             <Row
               label={t('serverHealth.availability')}
-              value={availPct === null ? '--' : `${availPct.toFixed(2)}%`}
+              value={availPct === null ? '--' : nf.percent(availPct, 2)}
               valueClass={availPct === null ? 'text-ink' : TEXT[availPct >= 99.5 ? 'success' : availPct >= 95 ? 'warning' : 'danger']}
             />
             {uptime?.runningFormatted && <Row label={t('serverHealth.runtime')} value={uptime.runningFormatted} />}

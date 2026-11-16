@@ -116,6 +116,40 @@ describe('Đăng nhập', () => {
   });
 });
 
+// Phần 3: tài khoản quản trị gốc đăng nhập hai bước (mật khẩu + khoá quản trị gốc trong biến môi trường máy chủ).
+const rootError = (code, status = 401) => Object.assign(new Error('x'), { response: { status, data: { code, message: 'raw' } } });
+describe('Đăng nhập tài khoản quản trị gốc', () => {
+  const fill = () => {
+    fireEvent.change(screen.getByLabelText('Email hoặc tên đăng nhập'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Mật khẩu'), { target: { value: 'Root@2026x' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+  };
+
+  it('chưa có ô khoá ở lần đầu; máy chủ đòi khoá thì hiện ô "Khoá quản trị gốc" và gửi lại kèm rootKey', async () => {
+    authState.login.mockRejectedValueOnce(rootError('ROOT_KEY_REQUIRED')).mockResolvedValueOnce({});
+    inRouter(<LoginPage />);
+    expect(screen.queryByLabelText('Khoá quản trị gốc')).not.toBeInTheDocument();
+    fill();
+    expect(await screen.findByLabelText('Khoá quản trị gốc')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Tài khoản này cần thêm khoá quản trị gốc.');
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Khoá quản trị gốc'), { target: { value: 'khoa-bi-mat' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    await waitFor(() => expect(authState.login).toHaveBeenLastCalledWith({ username: 'admin', password: 'Root@2026x', rootKey: 'khoa-bi-mat' }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/dashboard'));
+  });
+
+  it('sai khoá quản trị gốc: báo rõ, giữ ô khoá', async () => {
+    authState.login.mockRejectedValueOnce(rootError('ROOT_KEY_REQUIRED')).mockRejectedValueOnce(rootError('ROOT_KEY_INVALID'));
+    inRouter(<LoginPage />);
+    fill();
+    fireEvent.change(await screen.findByLabelText('Khoá quản trị gốc'), { target: { value: 'sai' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Khoá quản trị gốc không đúng.'));
+    expect(screen.getByLabelText('Khoá quản trị gốc')).toBeInTheDocument();
+  });
+});
+
 describe('Quên mật khẩu', () => {
   it('có tiêu đề, cảnh báo, số điện thoại gọi được, liên kết về Đăng nhập, nút đổi ngôn ngữ', () => {
     inRouter(<ForgotPasswordPage />);

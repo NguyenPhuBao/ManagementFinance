@@ -1,5 +1,21 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
+import { vi, en, STORAGE_KEY as LANGUAGE_KEY } from '../locales';
+import { formatDateTime } from '../utils/format';
+
+// IP bị AIOps khoá chặn mọi request, kể cả admin (mục 2.5): thay thông báo thô bằng câu rõ ràng theo ngôn ngữ đang chọn.
+const quarantinedMessage = (data) => {
+  let lang = 'vi';
+  try {
+    lang = localStorage.getItem(LANGUAGE_KEY) === 'en' ? 'en' : 'vi';
+  } catch (_) {
+    lang = 'vi';
+  }
+  const common = (lang === 'en' ? en : vi).common;
+  return data?.quarantineExpiresAt
+    ? common.ipQuarantinedUntil.replace('{time}', formatDateTime(data.quarantineExpiresAt))
+    : common.ipQuarantined;
+};
 
 export const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -82,6 +98,11 @@ axiosClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
+
+    if (error.response?.data?.code === 'AIOPS_QUARANTINED') {
+      error.response.data.message = quarantinedMessage(error.response.data);
+      return Promise.reject(error);
+    }
 
     // Không can thiệp nếu lỗi là từ API đăng nhập hoặc làm mới token (để trang Login tự hiển thị lỗi)
     const isAuthUrl = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh');

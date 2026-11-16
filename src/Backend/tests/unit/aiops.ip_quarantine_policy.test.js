@@ -4,6 +4,10 @@ const { AIOpsQuarantine } = require('../../modules/aiops/aiops.quarantine');
 const { AIOpsQuarantineRepository } = require('../../modules/aiops/aiops.quarantine.repository');
 const aiopsController = require('../../modules/aiops/aiops.controller');
 
+// Từ 2026-11-16 mọi thao tác ghi AIOps đòi PIN (máy chủ kiểm). Tệp này kiểm hành vi khác nên giả lập PIN hợp lệ;
+// kiểm PIN thật nằm ở tests/unit/aiops.controller.pin_selflock.test.js.
+require('../../modules/admin/admin.service').verifySecurityAction = async () => ({ verified: true });
+
 test('AIOps IP Quarantine Security Policy Suite (2-Tier Testing)', async (t) => {
 
   await t.test('1. [Tier 1] Controller permanentBanIp chuyển hóa thành Tạm khóa 4 giờ và trả HTTP 200', async () => {

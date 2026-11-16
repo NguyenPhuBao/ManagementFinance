@@ -338,3 +338,10 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Quy tắc ở Backend: báo sau 72 giờ bắt buộc `late_reason`; đóng bắt buộc `root_cause` và (đã báo cơ quan hoặc `report_not_required` + `no_report_reason`), xác thực PIN (`CLOSE_DATA_INCIDENT`); sự cố đã đóng không sửa (409).
 * Trigger `trg_protect_data_incident` chặn DELETE: sổ là hồ sơ pháp lý. Mọi thao tác ghi nhật ký kiểm toán; sự kiện `admin.data_incident_changed` cập nhật màn hình theo thời gian thực.
 * Quy trình: `Quy_trinh_su_co_du_lieu.md`.
+
+### 10.13. Khoá Truy Cập Trên Trang AIOps Và Tài Khoản Quản Trị Gốc (Migration 56, 2026-11-16)
+* **Hiện IP cho admin theo dõi:** danh sách khoá hiện tên tài khoản và IP đã che; IP đầy đủ chỉ xem khi nhập PIN, mỗi lần xem ghi nhật ký (giữ cơ chế mục 10.8). Căn cứ: IP gắn tài khoản là dữ liệu cá nhân, được xử lý vì an ninh mạng ở mức cần thiết (`Khao_sat_phap_ly_2026-11.md` L13); hiện IP đầy đủ thường trực trong danh sách là vượt mức cần thiết.
+* **PIN cho mọi thao tác ghi AIOps:** khoá / mở IP và tài khoản, khoá thủ công, bật / tắt phòng vệ, hiệu chuẩn, đổi quy mô, bảo trì khẩn cấp. Máy chủ kiểm PIN (`adminService.verifySecurityAction`), nhật ký thao tác ghi mọi lệnh không phải `GET`.
+* **Khoá IP chặn cả admin:** không còn miễn khoá theo phiên admin (kẻ chiếm tài khoản admin không tự gỡ khoá IP được). Admin không tự khoá tài khoản của mình; khoá được admin khác.
+* **Tài khoản quản trị gốc:** một tài khoản, email cố định `admin@wealthcommand.com`; trigger `trg_protect_root_admin` chặn xoá, khoá, đổi định danh / vai và chặn người dùng thường chiếm email này. Đăng nhập hai bước: mật khẩu (bcrypt) + khoá `ROOT_ADMIN_SECOND_KEY` trong biến môi trường; thiếu biến thì không đăng nhập được. Bị lộ: đổi `ROOT_ADMIN_SECOND_KEY` và khởi động lại, mọi phiên cũ bị cắt (token mang vân tay HMAC của khoá). Mỗi lần đăng nhập gửi email cảnh báo tới `ADMIN_ALERT_EMAIL`. Mật khẩu khởi tạo `ROOT_ADMIN_PASSWORD` chỉ dùng một lần; lần đăng nhập đầu phải đổi mật khẩu và đặt PIN.
+* **Trách nhiệm:** giữ an toàn tài khoản quản trị gốc (mật khẩu, khoá thứ hai, quyền sửa biến môi trường máy chủ) là trách nhiệm của admin đứng đầu nắm giữ tài khoản này.

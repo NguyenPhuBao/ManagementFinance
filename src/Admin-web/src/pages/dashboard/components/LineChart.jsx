@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { useNumberFormat } from '../../../utils/format';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Spinner } from '../../../components/ui';
 
@@ -43,6 +44,7 @@ const useWidth = (ref, fallback) => {
 };
 
 const Chart = ({ data, unit, format, width, label, t }) => {
+  const nf = useNumberFormat();
   const gradientId = useId();
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -91,7 +93,7 @@ const Chart = ({ data, unit, format, width, label, t }) => {
         [baseY, 0],
       ].map(([y, v]) => (
         <text key={y} x={PAD.left - 8} y={y + 4} textAnchor="end" fontSize="12" className="fill-ink-faint tabular-nums">
-          {v.toLocaleString('vi-VN')}
+          {nf.number(v)}
         </text>
       ))}
 
@@ -128,7 +130,7 @@ const Chart = ({ data, unit, format, width, label, t }) => {
             {hovered.label}
           </text>
           <text x="0" y="32" fontSize="12" fontWeight="700" textAnchor="middle" className="fill-card tabular-nums">
-            {`${hovered.count.toLocaleString('vi-VN')} ${unit}`}
+            {`${nf.number(hovered.count)} ${unit}`}
           </text>
         </g>
       )}

@@ -4,6 +4,10 @@ const aiopsController = require('../../modules/aiops/aiops.controller');
 const { defaultAIOpsQuarantine } = require('../../modules/aiops/aiops.quarantine');
 const { defaultAIOpsQuarantineRepository } = require('../../modules/aiops/aiops.quarantine.repository');
 
+// Từ 2026-11-16 mọi thao tác ghi AIOps đòi PIN (máy chủ kiểm). Tệp này kiểm hành vi khác nên giả lập PIN hợp lệ;
+// kiểm PIN thật nằm ở tests/unit/aiops.controller.pin_selflock.test.js.
+require('../../modules/admin/admin.service').verifySecurityAction = async () => ({ verified: true });
+
 test('AIOps Quarantine Controller & Forensics Endpoint Suite (Task 4)', async (t) => {
   // Mock Response Helper
   const createMockRes = () => {

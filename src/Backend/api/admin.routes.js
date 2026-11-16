@@ -25,6 +25,7 @@ router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
 router.post('/aiops/quarantine/:hash/reveal-ip', aiopsController.revealQuarantineIp);
 router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
+router.post('/aiops/quarantine/extend-ip', aiopsController.extendIp);
 router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
 router.post('/aiops/quarantine/temporary-ip', aiopsController.temporaryBlockIp);
 router.post('/aiops/quarantine/unblock-account', aiopsController.unblockAccount);

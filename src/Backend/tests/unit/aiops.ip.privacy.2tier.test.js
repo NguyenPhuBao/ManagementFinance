@@ -6,6 +6,10 @@ const { AIOpsQuarantine, hashIp } = require('../../modules/aiops/aiops.quarantin
 const { FeatureCollector } = require('../../modules/aiops/feature.collector');
 const { AIOpsService } = require('../../modules/aiops/aiops.service');
 const { AIOpsQuarantineRepository } = require('../../modules/aiops/aiops.quarantine.repository');
+
+// Từ 2026-11-16 mọi thao tác ghi AIOps đòi PIN (máy chủ kiểm). Tệp này kiểm hành vi khác nên giả lập PIN hợp lệ;
+// kiểm PIN thật nằm ở tests/unit/aiops.controller.pin_selflock.test.js.
+require('../../modules/admin/admin.service').verifySecurityAction = async () => ({ verified: true });
 const aiopsController = require('../../modules/aiops/aiops.controller');
 const adminService = require('../../modules/admin/admin.service');
 
@@ -93,14 +97,14 @@ describe('Tầng 2: IP đầy đủ không ra khỏi Backend qua API / socket AI
     assert.ok(!hasRawIp(events.map((e) => e.payload)));
   });
 
-  it('chặn thủ công bằng IP: phản hồi chỉ có bản che và ipHash, không trả lại IP đầy đủ', () => {
+  it('chặn thủ công bằng IP: phản hồi chỉ có bản che và ipHash, không trả lại IP đầy đủ', async () => {
     const { defaultAIOpsQuarantine } = require('../../modules/aiops/aiops.quarantine');
     const origRepo = defaultAIOpsQuarantine.repository;
     defaultAIOpsQuarantine.repository = null;
     try {
       const req = { body: { ip: '198.51.100.51', reason: 'thử', durationMinutes: 5 } };
       const res = fakeRes();
-      aiopsController.quarantineActor(req, res);
+      await aiopsController.quarantineActor(req, res);
       assert.strictEqual(res.statusCode, 200);
       assert.ok(!JSON.stringify(res.body).includes('198.51.100.51'));
       assert.strictEqual(res.body.data.maskedIp, '198.51.xxx.xxx');

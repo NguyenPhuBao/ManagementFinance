@@ -3,6 +3,42 @@ const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 const { getClientIp } = require('../../utils/ip-protection.util');
 
+// Mọi thao tác ghi trên trang AIOps đòi PIN, máy chủ kiểm (mục 2.3 kế hoạch sửa trang AIOps).
+async function requirePin(req, action, targetId) {
+  const { pin, password } = req.body || {};
+  const adminService = require('../admin/admin.service');
+  await adminService.verifySecurityAction({ pin, password, action, targetId: String(targetId ?? 'N/A') }, req.user);
+}
+
+const withoutPin = (body = {}) => {
+  const { pin: _pin, password: _password, ...rest } = body || {};
+  return rest;
+};
+
+const fail = (res, error, fallbackLog) => {
+  if (!error.statusCode) logger.error(fallbackLog, { error: error.message });
+  return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+};
+
+// Không ai khoá được tài khoản quản trị gốc (Phần 3); admin không tự khoá tài khoản của chính mình (mục 2.4);
+// khoá admin khác thì được.
+async function rejectSelfLock(req, target) {
+  const me = req.user;
+  if (target === undefined || target === null || target === '') return;
+  const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+  const acc = await defaultAIOpsQuarantine._resolveAccount(target);
+  if (acc && require('../auth/root-admin').isRootAccount(acc)) {
+    throw Object.assign(new Error('Không thể khóa tài khoản quản trị gốc'), { statusCode: 403, code: 'ROOT_ACCOUNT_PROTECTED' });
+  }
+  if (!me) return;
+  const t = String(target).trim().toLowerCase();
+  const self = t === String(me.username || '').toLowerCase() || t === String(me.idaccount)
+    || (Boolean(acc) && Number(acc.idaccount) === Number(me.idaccount));
+  if (self) {
+    throw Object.assign(new Error('Không thể tự khóa tài khoản của chính mình'), { statusCode: 403, code: 'CANNOT_LOCK_SELF' });
+  }
+}
+
 const aiopsController = {
   getStatus(req, res) {
     try {
@@ -44,12 +80,12 @@ const aiopsController = {
         return ResponseHandler.error(res, 'Vui lòng cung cấp tên vector hợp lệ (auth, traffic, exploit, resource)', 400);
       }
       const isEnabled = enabled !== undefined ? Boolean(enabled) : true;
+      await requirePin(req, 'AIOPS_TOGGLE_VECTOR', vector);
       const result = await defaultAIOpsService.toggleVector(vector, isEnabled);
       req.auditActionName = `${isEnabled ? 'Bật' : 'Tắt'} tính rủi ro vector AIOps [${vector}]`;
       return ResponseHandler.success(res, result, result.message);
     } catch (error) {
-      logger.error('[AIOpsController] toggleVector failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] toggleVector failed');
     }
   },
 
@@ -65,19 +101,19 @@ const aiopsController = {
 
   async calibrate(req, res) {
     try {
-      const result = await defaultAIOpsService.calibrate(req.body);
+      await requirePin(req, 'AIOPS_CALIBRATE', req.body?.targetConcurrency);
+      const result = await defaultAIOpsService.calibrate(withoutPin(req.body));
       req.auditActionName = 'Tái hiệu chuẩn mô hình máy học AIOps';
       return ResponseHandler.success(res, result, 'Hiệu chuẩn thành công');
     } catch (error) {
-      logger.error('[AIOpsController] calibrate failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] calibrate failed');
     }
   },
 
-  getQuarantineList(req, res) {
+  async getQuarantineList(req, res) {
     try {
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const list = defaultAIOpsQuarantine.getQuarantinedList();
+      const list = await defaultAIOpsQuarantine.listQuarantines();
       return ResponseHandler.success(res, list, 'Danh sách nguồn IP đang bị cô lập');
     } catch (error) {
       logger.error('[AIOpsController] getQuarantineList failed', { error: error.message });
@@ -107,15 +143,17 @@ const aiopsController = {
     }
   },
 
-  quarantineActor(req, res) {
+  async quarantineActor(req, res) {
     try {
-      const { hash, ip, maskedIp, reason, durationMinutes } = req.body;
+      const { hash, ip, maskedIp, reason, durationMinutes, username } = req.body;
       if (!hash && !ip) {
         return ResponseHandler.error(res, 'Thiếu thông tin nhận diện đối tượng cần phong tỏa (IP hoặc Hash)', 400);
       }
+      await requirePin(req, 'AIOPS_QUARANTINE', maskedIp || hash || 'ip');
+      if (username) await rejectSelfLock(req, username);
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
       const durationMs = (parseInt(durationMinutes, 10) || 15) * 60 * 1000;
-      const record = defaultAIOpsQuarantine.quarantineActor({
+      const record = await defaultAIOpsQuarantine.quarantineActor({
         rawIp: ip,
         ipHash: hash,
         maskedIp,
@@ -129,20 +167,19 @@ const aiopsController = {
       const { ip: _fullIp, ...publicRecord } = record;
       return ResponseHandler.success(res, publicRecord, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
     } catch (error) {
-      logger.error('[AIOpsController] quarantineActor failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] quarantineActor failed');
     }
   },
 
   async setScale(req, res) {
     try {
       const { concurrency } = req.body;
+      await requirePin(req, 'AIOPS_SET_SCALE', concurrency);
       const result = await defaultAIOpsService.setConcurrencyScale(concurrency);
       req.auditActionName = `Cập nhật quy mô tải AIOps (${result.targetConcurrency} users)`;
       return ResponseHandler.success(res, result, result.message);
     } catch (error) {
-      logger.error('[AIOpsController] setScale failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] setScale failed');
     }
   },
 
@@ -165,38 +202,39 @@ const aiopsController = {
       if (!target) {
         return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần gỡ chặn', 400);
       }
+      await requirePin(req, 'AIOPS_UNBLOCK_IP', target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
       const count = await defaultAIOpsQuarantine.unblockIp(target, { unblockedBy: adminUser });
       req.auditActionName = `Gỡ chặn IP [${target}] (${count} liên kết)`;
       return ResponseHandler.success(res, { count, target }, 'Đã mở khóa IP thành công cho tất cả các bản ghi');
     } catch (error) {
-      logger.error('[AIOpsController] unblockIp failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] unblockIp failed');
     }
   },
 
-  async permanentBanIp(req, res) {
+  // "Khóa thêm 4 giờ" cho IP. IP không có khoá vĩnh viễn.
+  async extendIp(req, res) {
     try {
       const { ipHash, ip } = req.body;
       const target = ipHash || ip;
       if (!target) {
-        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần tạm khóa', 400);
+        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần khóa thêm', 400);
       }
+      await requirePin(req, 'AIOPS_EXTEND_IP', target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      // Chuyển hóa sang tạm khóa 4 giờ theo chính sách mới của PO
-      const count = await defaultAIOpsQuarantine.temporaryBlockIp(target, {
-        durationMs: 4 * 60 * 60 * 1000,
-        blockedBy: adminUser,
-        reason: 'Admin tạm khóa IP 4 giờ (Chính sách không khóa vĩnh viễn IP mạng dùng chung CGNAT)'
-      });
-      req.auditActionName = `Tạm khóa IP [${target}] (4 giờ - Chính sách thay thế khóa vĩnh viễn)`;
-      return ResponseHandler.success(res, { count, target, durationMs: 4 * 60 * 60 * 1000, status: 'TEMPORARY' }, 'Hệ thống đã tạm khóa IP trong 4 giờ (Chính sách an ninh không khóa vĩnh viễn IP để bảo vệ người dùng mạng dùng chung)');
+      const count = await defaultAIOpsQuarantine.extendIp(target, { blockedBy: adminUser });
+      req.auditActionName = `Khóa thêm 4 giờ IP [${target}]`;
+      return ResponseHandler.success(res, { count, target, durationMs: 4 * 60 * 60 * 1000, status: 'TEMPORARY' }, 'Đã khóa thêm IP 4 giờ');
     } catch (error) {
-      logger.error('[AIOpsController] permanentBanIp failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] extendIp failed');
     }
+  },
+
+  // Route cũ /quarantine/permanent-ip: giữ để Admin-web bản cũ không vỡ trong lúc deploy lệch nhau.
+  async permanentBanIp(req, res) {
+    return aiopsController.extendIp(req, res);
   },
 
   async unblockAccount(req, res) {
@@ -205,16 +243,16 @@ const aiopsController = {
       if (!username && !idaccount) {
         return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
       }
+      const target = username || idaccount;
+      await requirePin(req, 'AIOPS_UNBLOCK_ACCOUNT', target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.unblockAccount(target, { unblockedBy: adminUser });
 
       req.auditActionName = `Mở khóa tài khoản [${target}] (${count} liên kết)`;
       return ResponseHandler.success(res, { count, target }, 'Đã mở khóa tài khoản thành công cho tất cả các bản ghi');
     } catch (error) {
-      logger.error('[AIOpsController] unblockAccount failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] unblockAccount failed');
     }
   },
 
@@ -224,16 +262,17 @@ const aiopsController = {
       if (!username && !idaccount) {
         return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
       }
+      const target = username || idaccount;
+      await requirePin(req, 'AIOPS_BAN_ACCOUNT', target);
+      await rejectSelfLock(req, target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.permanentBanAccount(target, { bannedBy: adminUser });
 
       req.auditActionName = `Khóa vĩnh viễn tài khoản [${target}] (${count} liên kết)`;
       return ResponseHandler.success(res, { count, target }, 'Đã khóa vĩnh viễn tài khoản thành công cho tất cả các bản ghi');
     } catch (error) {
-      logger.error('[AIOpsController] permanentBanAccount failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] permanentBanAccount failed');
     }
   },
 
@@ -244,6 +283,7 @@ const aiopsController = {
       if (!target) {
         return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần tạm khóa', 400);
       }
+      await requirePin(req, 'AIOPS_BLOCK_IP', target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const durationMs = durationMinutes ? parseInt(durationMinutes, 10) * 60 * 1000 : 4 * 60 * 60 * 1000;
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
@@ -251,8 +291,7 @@ const aiopsController = {
       req.auditActionName = `Tạm khóa IP [${target}] (${Math.round(durationMs / 3600000)} giờ)`;
       return ResponseHandler.success(res, { count, target, durationMs }, `Đã tạm khóa IP thành công (${Math.round(durationMs / 3600000)} giờ)`);
     } catch (error) {
-      logger.error('[AIOpsController] temporaryBlockIp failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] temporaryBlockIp failed');
     }
   },
 
@@ -262,17 +301,18 @@ const aiopsController = {
       if (!username && !idaccount) {
         return ResponseHandler.error(res, 'Thiếu thông tin nhận diện tài khoản (username hoặc idaccount)', 400);
       }
+      const target = username || idaccount;
+      await requirePin(req, 'AIOPS_BLOCK_ACCOUNT', target);
+      await rejectSelfLock(req, target);
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const durationMs = durationMinutes ? parseInt(durationMinutes, 10) * 60 * 1000 : 4 * 60 * 60 * 1000;
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.temporaryBlockAccount(target, { durationMs, blockedBy: adminUser });
 
       req.auditActionName = `Tạm khóa tài khoản [${target}] (${Math.round(durationMs / 3600000)} giờ)`;
       return ResponseHandler.success(res, { count, target, durationMs }, `Đã tạm khóa tài khoản thành công (${Math.round(durationMs / 3600000)} giờ)`);
     } catch (error) {
-      logger.error('[AIOpsController] temporaryBlockAccount failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return fail(res, error, '[AIOpsController] temporaryBlockAccount failed');
     }
   },
 

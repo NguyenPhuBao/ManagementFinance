@@ -4,6 +4,8 @@
 export default {
   common: {
     confirm: 'Xác nhận',
+    ipQuarantined: 'IP bạn đang dùng bị khóa tạm thời do hệ thống phát hiện hành vi bất thường.',
+    ipQuarantinedUntil: 'IP bạn đang dùng bị khóa tạm thời đến {time} do hệ thống phát hiện hành vi bất thường.',
     cancel: 'Hủy bỏ',
     save: 'Lưu thay đổi',
     saving: 'Đang lưu...',
@@ -1087,6 +1089,9 @@ export default {
       submitBtn: 'Đăng nhập',
       invalidCredentials: 'Sai tài khoản hoặc mật khẩu.',
       failed: 'Đăng nhập thất bại.',
+      rootKeyLabel: 'Khoá quản trị gốc',
+      rootKeyRequired: 'Tài khoản này cần thêm khoá quản trị gốc.',
+      rootKeyInvalid: 'Khoá quản trị gốc không đúng.',
     },
     forgotPassword: {
       title: 'Quên mật khẩu',
@@ -1109,6 +1114,8 @@ export default {
     scale: {
       title: 'Quy mô người dùng',
       inputLabel: 'Số người dùng đồng thời',
+      pinTitle: 'Đổi quy mô người dùng?',
+      pinDesc: 'Áp dụng quy mô {n} người dùng; ngưỡng phát hiện được tính lại theo quy mô này.',
       apply: 'Áp dụng',
       baseline: 'Lưu lượng nền',
       safePeak: 'Trần an toàn',
@@ -1168,6 +1175,8 @@ export default {
       title: 'Hiệu chuẩn ngưỡng',
       desc: 'Đặt lại ngưỡng cảnh báo theo cấu hình máy chủ cho {n} người dùng đồng thời.',
       hint: 'Để trống ô nào thì dùng giá trị gợi ý.',
+      pinTitle: 'Xác nhận hiệu chuẩn ngưỡng',
+      pinDesc: 'Ngưỡng phát hiện mới có hiệu lực ngay.',
       confirm: 'Hiệu chuẩn',
       authFailure: 'Đăng nhập sai (lần/phút)',
       trafficSpike: 'Lưu lượng đột biến (yêu cầu/giây)',
@@ -1290,6 +1299,12 @@ export default {
       banAccountConfirm: 'Khóa vĩnh viễn',
       unblockAccountTitle: 'Mở khóa tài khoản {target}?',
       unblockAccountMsg: 'Tài khoản được kích hoạt lại.',
+      lockFilter: 'Lọc theo trạng thái khóa',
+      lockAll: 'Tất cả',
+      lockActive: 'Đang khóa',
+      lockReleased: 'Đã mở',
+      releasedBy: 'Đã mở bởi {by}',
+      releasedByAt: 'Đã mở bởi {by} lúc {time}',
     },
     forensics: {
       title: 'Hồ sơ điều tra',
@@ -1308,6 +1323,7 @@ export default {
     manual: {
       title: 'Tạm khóa thủ công',
       desc: 'Chặn một IP hoặc tài khoản trong thời hạn đã chọn.',
+      pinTitle: 'Xác nhận tạm khóa thủ công',
       typeLabel: 'Loại đối tượng',
       typeIp: 'Địa chỉ IP',
       typeAccount: 'Tài khoản',
@@ -1335,7 +1351,9 @@ export default {
       vectorFailed: 'Không đổi được phòng vệ.',
       blocked: 'Đã chặn nguồn {ip}.',
       blockFailed: 'Không chặn được nguồn.',
-      protectedSelf: 'Không thể chặn IP máy chủ hoặc máy bạn đang dùng.',
+      protectedSelf: 'Không thể chặn IP của máy chủ.',
+      cannotLockSelf: 'Không thể tự khóa tài khoản của chính mình.',
+      rootProtected: 'Không thể khóa tài khoản quản trị gốc.',
       ipLocked: 'Đã tạm khóa IP {ip}.',
       ipUnlocked: 'Đã mở khóa IP {ip}.',
       ipFailed: 'Thao tác với IP thất bại.',
