@@ -619,6 +619,24 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
 
+### 📜 Điều khoản sử dụng + Chính sách bảo mật viết cứng (2026-11-16 phiên 49, `0f838a05..fe20fea4`, mã xong, ✅ đo máy ảo đạt)
+
+Đơn `client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md` (README mục 12 = đơn 51) **đổi hướng** ở `origin/main` `d6a17999` (NPBao): chính sách viết
+cứng phía app, KHÔNG gọi `/api/policy/*`, KHÔNG nghe `system.policy_updated`, backend không bật `403 POLICY_NOT_ACCEPTED`. Spec
+`docs/superpowers/specs/2026-11-16-dieu-khoan-chinh-sach-viet-cung-design.md` (mục 7 = chỗ mã khác spec); văn bản người dùng duyệt
+`docs/superpowers/specs/2026-11-16-van-ban-dieu-khoan-chinh-sach.md` (Điều khoản theo khuôn YNAB; Chính sách dựng lại từ
+`docs/Rule_Project/Chinh_sach_bao_mat_v1.md` + sửa chỗ lệch app: AI trên máy, đọc biến động số dư, không "đồng ý lại"; CHƯA qua luật sư).
+
+- **Đăng ký:** ô tick bắt buộc trên nút Đăng ký (`ODongYDieuKhoan`, `features/chinh_sach/presentation/widgets/`); chưa tick → dòng lỗi,
+  không gửi `RegisterSendOtpRequested`. Hai liên kết → `/chinh-sach/dieu-khoan`, `/chinh-sach/bao-mat`.
+- **Router:** loại route thứ ba `laRouteMoChoCaHai` (`/chinh-sach`, `/chinh-sach/…`) — `authRedirect` trả `null` ở mọi trạng thái;
+  KHÔNG trong `_publicRoutes` nên lớp khoá ứng dụng vẫn che khi đã đăng nhập.
+- **Cài đặt:** thẻ CÀI ĐẶT tab Cá nhân, dòng "Điều khoản & chính sách" → `/chinh-sach` (Stitch `8b53d373…`).
+- **Không** lưu trạng thái đồng ý, không màn chặn, tài khoản cũ không bị hỏi (người dùng chốt).
+- Test `flutter test` **9627 / 11 skip**, analyze **20**. Hai ca cũ `register_otp_flow_test` phải tick trước khi bấm Đăng ký (thiếu là
+  TREO ở `await otpSent`, không đỏ). Ca 320 dp trang Đăng ký nạp font thật — Ahem báo tràn giả 162 px ở trang gốc.
+- Đo máy ảo đạt (spec mục 7 vế 6). Còn: hai màn Stitch báo `timeout` chưa xác nhận.
+
 ### 📦 Bản sao dữ liệu cá nhân — trang "Dữ liệu của tôi" (2026-11-16 phiên 49, `2a7a2afd..8cdfe74c`, mã xong, ✅ đo máy ảo + backend local ĐẠT)
 
 Đơn `client-app/CAN-LAM/BAN_SAO_DU_LIEU.md` (README mục 13 = đơn 52). Spec `docs/superpowers/specs/2026-11-16-ban-sao-du-lieu-ca-nhan-design.md`

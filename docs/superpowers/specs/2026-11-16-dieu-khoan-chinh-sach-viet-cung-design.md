@@ -67,4 +67,18 @@ về Đăng ký giữ nguyên chữ đã gõ, tick rồi bấm Đăng ký tới 
 sách → hai văn bản; Back. Đăng xuất để thử Đăng ký → phải đăng nhập lại `dat` (backend local).
 
 ## 7. Chỗ mã khác spec
-(điền khi thi công)
+Thi công 2026-11-16 (phiên 49, inline, `0f838a05..fe20fea4`):
+1. Tên tệp domain: `van_ban.dart` + `dieu_khoan_su_dung.dart` + `chinh_sach_bao_mat.dart` (spec ghi đúng); hai hằng là `final`
+   (không `const` — `DateTime` không hằng), danh sách mục `const`. Hai tệp nội dung **sinh bằng script** từ tệp văn bản đã duyệt và
+   đối chiếu từng từ (1.380 / 1.271 từ khớp).
+2. Ô tick đặt **trên** nút Đăng ký; câu cũ *"Bằng cách đăng ký…"* dưới nút bị xoá.
+3. Liên kết trong ô tick màu `AppColors.primary` (gần đen trong theme hiện tại) + gạch chân, không phải xanh.
+4. Stitch: chỉ màn "Cá nhân - Điều khoản & chính sách" có (`8b53d373e03540a288da1d4224ee0afb`, app khớp); hai màn "Đăng ký - Ô đồng ý
+   điều khoản" và "Văn bản pháp lý - Chính sách bảo mật" trả `timeout`, không gọi lại; `list_screens` dừng ở 170 màn (không thấy cả màn
+   `8b53d373` đã có) nên không kiểm được — cần người dùng nhìn Stitch.
+5. Test 320 dp trang đọc cuộn từng bước 200 px và đòi đếm được gạch đầu dòng (kéo 20.000 px một lần không dựng gạch nào — ca xanh cả
+   với bản sai). Test Đăng ký nạp font thật (`napFontThat`): với Ahem trang Đăng ký GỐC đã báo tràn 162 px ở 320 dp — tràn giả.
+6. Đo máy ảo `FlowMoney_16G` + backend local (2026-11-16): Cá nhân → dòng mới → danh sách → Điều khoản (khớp Stitch); đăng xuất →
+   Đăng ký: chưa tick bấm Đăng ký → dòng lỗi đỏ, backend không nhận gì; bấm "Chính sách bảo mật" → trang đọc, Back → form giữ nguyên;
+   tick → lỗi ẩn → bấm Đăng ký → `POST /auth/register/send-otp` tới backend (409 *Email đã được sử dụng* vì dùng email của tài khoản 10 —
+   không gửi OTP, không tạo tài khoản); đăng nhập lại `dat`, dữ liệu còn. Màn OTP không tới trên máy (ca test tự động phủ).
