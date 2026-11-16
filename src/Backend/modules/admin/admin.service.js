@@ -856,7 +856,7 @@ const adminService = {
       // (6 thành viên / 10 ví chung) nên không ghi `limit_value` của hai mã này. Các trường khác lưu như cũ.
       const fixedLimit = FIXED_LIMIT_FEATURES.includes(feature_id);
       const updated = await permissionRepository.updatePermission(account_type, feature_id, {
-        is_enabled: is_enabled !== undefined ? Boolean(is_enabled) : true,
+        is_enabled: fixedLimit ? undefined : is_enabled !== undefined ? Boolean(is_enabled) : true,
         limit_value: fixedLimit
           ? undefined
           : limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,

@@ -11,7 +11,7 @@ const NEVER_LOCK = [
 ];
 const HOUSEHOLD_READ_ONLY = ['household', 'household_members', 'household_wallets'];
 
-/** Hạn mức Backend viết cứng (gia đình: 6 thành viên, 10 ví chung): không cho sửa số. */
+/** Hạn mức Backend viết cứng (gia đình: 6 thành viên, 10 ví chung): khoá ô Truy cập, số và ∞ (Backend bỏ qua khi lưu). */
 export const FIXED_LIMITS = ['household_members', 'household_wallets'];
 
 export const downgradeBehavior = (feature) => {

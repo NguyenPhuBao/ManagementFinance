@@ -96,6 +96,18 @@ describe('Hiển thị', () => {
     expect(policy('transaction_management', 'Basic')).toBe('Không khóa');
   });
 
+  it('hạn mức gia đình cố định: khoá cả ô Truy cập, số và ∞; bấm không tạo thay đổi', async () => {
+    await renderPage();
+    const access = screen.getByRole('checkbox', { name: 'Truy cập Gia đình — số thành viên tối đa (Premium)' });
+    expect(access).toBeDisabled();
+    expect(access).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Truy cập Gia đình — số thành viên tối đa (Basic)' })).toBeDisabled();
+    expect(screen.getByRole('spinbutton', { name: 'Hạn mức Gia đình — số thành viên tối đa (Premium)' })).toBeDisabled();
+    fireEvent.click(access);
+    expect(saveButton()).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Truy cập Gia đình — tạo nhà (Basic)' })).toBeEnabled();
+  });
+
   it('tab Gói Premium chỉ hiện dòng Premium; thu gọn nhóm ẩn các dòng của nhóm', async () => {
     await renderPage();
     fireEvent.click(screen.getByRole('tab', { name: 'Gói Premium' }));
@@ -162,13 +174,13 @@ describe('Chỉnh sửa và lưu', () => {
     await waitFor(() => expect(adminApi.getPermissions).toHaveBeenCalledTimes(2));
   });
 
-  it('hạn mức gia đình là số cố định: ô số và ô không giới hạn bị khóa, ghi "Cố định"; quyền truy cập vẫn sửa được', async () => {
+  it('hạn mức gia đình là số cố định: ô số và ô không giới hạn bị khóa, ghi "Cố định"; quyền truy cập cũng khóa', async () => {
     await renderPage();
     expect(screen.getByRole('spinbutton', { name: 'Hạn mức Gia đình — số thành viên tối đa (Premium)' })).toBeDisabled();
     expect(screen.getByRole('spinbutton', { name: 'Hạn mức Gia đình — số thành viên tối đa (Premium)' })).toHaveValue(6);
     expect(screen.getByRole('checkbox', { name: 'Không giới hạn Gia đình — số thành viên tối đa (Premium)' })).toBeDisabled();
     expect(screen.getAllByText('Cố định').length).toBe(2);
-    expect(screen.getByRole('checkbox', { name: 'Truy cập Gia đình — số thành viên tối đa (Premium)' })).toBeEnabled();
+    expect(screen.getByRole('checkbox', { name: 'Truy cập Gia đình — số thành viên tối đa (Premium)' })).toBeDisabled();
   });
 
   it('đặt lại mặc định: nhập PIN, gửi PIN cùng lệnh đặt lại rồi tải lại', async () => {

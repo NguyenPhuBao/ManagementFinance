@@ -27,13 +27,17 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
             <Badge tone={plan === 'Premium' ? 'success' : 'neutral'}>{plan}</Badge>
           </td>
           <td className="px-4 py-2.5">
-            <label className="inline-flex cursor-pointer items-center gap-2 whitespace-nowrap">
+            <label
+              className={`inline-flex items-center gap-2 whitespace-nowrap ${fixed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+              title={fixed ? t('permissions.table.fixedHint') : undefined}
+            >
               <input
                 type="checkbox"
                 aria-label={t('permissions.aria.access', names)}
                 checked={Boolean(value.is_enabled)}
-                onChange={(e) => onPatch(plan, f.id, { is_enabled: e.target.checked })}
-                className="h-4 w-4 cursor-pointer accent-brand"
+                disabled={fixed}
+                onChange={(e) => !fixed && onPatch(plan, f.id, { is_enabled: e.target.checked })}
+                className="h-4 w-4 cursor-pointer accent-brand disabled:cursor-not-allowed"
               />
               <span className={value.is_enabled ? 'font-medium text-success' : 'text-ink-faint'}>
                 {value.is_enabled ? t('permissions.table.on') : t('permissions.table.off')}
