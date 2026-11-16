@@ -99,6 +99,9 @@ import '../../features/household/data/repositories/nha_repository_impl.dart';
 import '../../features/khoa_app/application/khoa_app_service.dart';
 import '../../features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import '../../features/khoa_app/data/khoa_app_store.dart';
+import '../../features/ban_sao_du_lieu/data/datasources/ban_sao_du_lieu_api.dart';
+import '../../features/ban_sao_du_lieu/data/repositories/ban_sao_du_lieu_repository.dart';
+import '../../features/ban_sao_du_lieu/data/repositories/ban_sao_du_lieu_repository_impl.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/datasources/luu_anh_qr.dart';
@@ -599,6 +602,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Ba trang Premium đọc / ghi đơn qua repository, không gọi thẳng API (spec G94 2026-10-18 mục 4.2).
   sl.registerLazySingleton<DonThanhToanRepository>(
       () => DonThanhToanRepositoryImpl(api: sl()));
+  // ── Features — Bản sao dữ liệu cá nhân (đơn client-app mục 52, spec 2026-11-16) ──
+  sl.registerLazySingleton<BanSaoDuLieuApi>(() => DioBanSaoDuLieuApi(sl<DioClient>().dio));
+  sl.registerLazySingleton<BanSaoDuLieuRepository>(() => BanSaoDuLieuRepositoryImpl(api: sl()));
   // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
   sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr(taiAnh: taiAnhBangDioTran));
   sl.registerLazySingleton<GoiStore>(
