@@ -142,6 +142,18 @@ Future<String?> _veNhaNeuKhongSuaDanhMucDuoc() async {
   return duocLamViecNha(ViecNha.suaDanhMuc, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
 }
 
+/// Bộ chọn danh mục của NHÀ — dùng chung cho `/nha/khoan/category` và `/add/nha-category` (spec 2026-11-16). Lấy id nhà MỘT
+/// lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
+Widget _chonDanhMucNha(GoRouterState state) {
+  final idNha = sl<NhaRepository>().hienTai.nha?.id;
+  if (idNha == null) return const NhaMinhPage();
+  return ChooseCategoryPage(
+    classify: state.extra as String? ?? 'chi',
+    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
+    duongQuanLy: '/nha/danh-muc',
+  );
+}
+
 class AppRouter {
   /// Tạo GoRouter với:
   /// - [initialLocation]: route ban đầu (dựa trên token check trong main.dart)
@@ -314,6 +326,13 @@ class AppRouter {
                   classify: state.extra as String? ?? 'chi',
                 ),
               ),
+              // Bộ chọn danh mục của NHÀ khi form `/add` đang ở chế độ nhà (spec 2026-11-16) — con của `/add` để `push` không
+              // dựng form `/nha/khoan` phía dưới.
+              GoRoute(
+                path: 'nha-category',
+                redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+                builder: (_, state) => _chonDanhMucNha(state),
+              ),
             ],
           ),
 
@@ -425,16 +444,7 @@ class AppRouter {
               GoRoute(
                 path: 'category',
                 redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
-                builder: (_, state) {
-                  // Lấy id nhà MỘT lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
-                  final idNha = sl<NhaRepository>().hienTai.nha?.id;
-                  if (idNha == null) return const NhaMinhPage();
-                  return ChooseCategoryPage(
-                    classify: state.extra as String? ?? 'chi',
-                    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
-                    duongQuanLy: '/nha/danh-muc',
-                  );
-                },
+                builder: (_, state) => _chonDanhMucNha(state),
               ),
             ],
           ),

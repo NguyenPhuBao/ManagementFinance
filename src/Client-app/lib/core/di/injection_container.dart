@@ -56,6 +56,7 @@ import '../../features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart';
 import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/cap_gop_quy_nguon.dart';
+import '../../features/transaction/data/vi_chung_cho_form_nguon.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
@@ -87,6 +88,7 @@ import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/application/doc_cap_gop_quy.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
+import '../../features/household/application/nhom_vi_chung_cho_form.dart';
 import '../../features/household/application/thao_tac_khoan_nha.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
@@ -674,6 +676,12 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
           if (!await sl<GopQuyService>().xoa(maCap)) throw const CacheException('Khoản này không còn trên máy.');
         },
       ));
+  // Ví chung chọn được ở form Thêm giao dịch thường (spec 2026-11-16). Hàm nạp ở household/application, nối ở đây.
+  sl.registerLazySingleton<ViChungChoFormNguon>(() => ViChungChoFormNguon(() => napNhomViChung(
+        nha: sl<NhaRepository>(),
+        viChung: (id) => sl<DuLieuNhaRepository>().viChungChoForm(id),
+        nguon: (id) => sl<ThemGiaoDichNguonNha>(param1: ThamSoNguonNha(idNha: id)),
+      )));
   // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
   // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.
   sl.registerLazySingleton<GopQuyConflictResolver>(() => GopQuyConflictResolver(
