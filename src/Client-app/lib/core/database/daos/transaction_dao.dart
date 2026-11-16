@@ -223,6 +223,32 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Danh sách Trang chủ / Sổ (spec 2026-11-16 mục 3): khoản riêng của tôi + khoản của NHÀ do tôi ghi (`idaccount` = người
+  /// ghi). Bỏ nửa NHÀ của cặp góp / rút — nửa riêng cùng mã đã là dòng của lần góp. CHỈ cho DANH SÁCH: mọi tổng / thống
+  /// kê đọc [watchAll] / [watchKhoang] (chỉ cá nhân), và `summarizeTransactions` bỏ hàng có `idhousehold`.
+  Stream<List<Transaction>> watchAllKemNha(int idaccount) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              (t.idhousehold.isNull() | (t.idhousehold.isNotNull() & t.fundPairId.isNull())) &
+              t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
+
+  /// Như [watchAllKemNha] trong khoảng `[from, to)` — biên `to` MỞ như [watchKhoang].
+  Stream<List<Transaction>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              (t.idhousehold.isNull() | (t.idhousehold.isNotNull() & t.fundPairId.isNull())) &
+              t.deletedAt.isNull() &
+              t.date.isBiggerOrEqualValue(from) &
+              t.date.isSmallerThanValue(to))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
+
   /// Mọi khoản sống của nhà, kể cả do người khác ghi. Lọc theo NHÀ, không theo tài khoản (Family 01: `idaccount` là người ghi).
   /// Có [walletId] thì gồm cả khoản chuyển ĐẾN ví ấy.
   Stream<List<Transaction>> watchTheoNha(int idhousehold, {String? walletId}) {
