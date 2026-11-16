@@ -1,7 +1,8 @@
 /// Tên máy gửi kèm mọi request tới backend qua header `x-device-name` (2026-10-26, mục v4 `Event-Notification-to-ClientApp.md`
-/// mà người dùng chọn làm). Backend ghi lịch sử thiết bị + IP che mờ (`modules/auth/device-history.service.js` — gọi từ
-/// `middleware/auth.js:122`, đăng nhập / đăng ký và `/auth/refresh`); thiếu header thì nó lấy `user-agent` — với Dio là
-/// `Dart/…`. Hôm nay chưa màn admin nào ĐỌC bảng ấy (`getDeviceHistory` không có chỗ gọi ngoài test).
+/// mà người dùng chọn làm). Backend ghi lịch sử thiết bị (`modules/auth/device-history.service.js` — đăng nhập / đăng ký và
+/// `/auth/refresh`); thiếu header thì nó lấy `user-agent` — với Dio là `Dart/…`. Từ 2026-11-13 backend lưu IP đã che
+/// (`113.161.xx.xx`) và IP đầy đủ dạng mã hoá (chỉ admin xem, phải nhập PIN, mỗi lần xem ghi nhật ký, tự xoá sau 365 ngày),
+/// IP lấy từ kết nối. App chỉ gửi `x-device-name`, KHÔNG gửi IP, không gọi dịch vụ ngoài để lấy IP (đơn client-app mục 14).
 ///
 /// ⚠️ Tên ĐỔI là backend thêm một dòng lịch sử mới — nên mọi đường gọi backend của một máy gửi CÙNG một tên: Dio chung
 /// (`DioClient`), Dio làm mới token (`AuthInterceptor`), engine app lẫn engine nền (kênh đăng ký ở cả `MainActivity` và
