@@ -636,7 +636,9 @@ Người dùng mở lại chốt mã cho việc này (*"đừng bắt user vào 
   đã là khoản chi riêng). Bấm dòng nhà ở Sổ: được sửa → `/nha/khoan`, không → sheet chỉ xem (`cauKhoa`); xoá (sheet lẫn vuốt) đi
   đường của nhà sau kiểm vai, không bao giờ `DeleteTransactionEvent`.
 - Quét 37: hai hàm `*KemNha` qua được nhờ vế `idhousehold.isNull() | …` — ghi rõ ở docstring quét là chỗ CỐ Ý mở.
-- `flutter test` **9573 / 11 skip** (mốc trước đợt trên nhánh này: 9520 / 11), `flutter analyze` 20 issue / 0 error.
+- `flutter test` **9576 / 11 skip** (đo sau `fc32773e`; mốc trước đợt trên nhánh này: 9520 / 11), `flutter analyze` 20 issue / 0 error.
+- Chốt thêm sau lượt soát (`fc32773e`): ở chế độ nhà `dienKetQua` bỏ qua (câu nói về muộn là ví / danh mục RIÊNG), trang huỷ micro
+  khi vào nhà.
 - Giao diện dựng theo mô tả gửi Stitch (hai lượt `generate_screen_from_text` báo timeout, chưa thấy màn) — người dùng chọn làm trước,
   chỉnh sau khi màn hiện. **Chưa đo trên Realme** (cần tài khoản trong nhà có ví chung, backend Render).
 
