@@ -25,7 +25,7 @@ vi.mock('../api/admin.api', () => ({
     verifySecurityAction: vi.fn(),
     getUserDevices: vi.fn(),
     revealDeviceIp: vi.fn(),
-    getUserPolicy: vi.fn(),
+    getUserPolicy: vi.fn(), // đã bỏ khỏi admin.api; giữ trong mock để chắc hộp chi tiết không gọi
     getUserDataExports: vi.fn(),
   },
 }));
@@ -62,42 +62,23 @@ beforeEach(() => {
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
   adminApi.getUserDevices.mockReset().mockResolvedValue({ data: DEVICES.map((d) => ({ ...d })) });
   adminApi.revealDeviceIp.mockReset().mockResolvedValue({ data: { ip: '113.161.45.12' } });
-  adminApi.getUserPolicy.mockReset().mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 2, accepted_at: '2026-11-13T02:00:00Z' }] } });
   adminApi.getUserDataExports.mockReset().mockResolvedValue({ data: [] });
 });
 
-describe('Chính sách bảo mật trong hộp chi tiết', () => {
+describe('Hộp chi tiết không hiện chính sách', () => {
   const open = async () => {
     await renderPage();
     fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
     return screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
   };
 
-  it('nhiều chính sách đang dùng: từng chính sách hiện Đã đồng ý / Chưa đồng ý theo đúng phiên bản đang dùng', async () => {
-    adminApi.getUserPolicy.mockResolvedValue({
-      data: {
-        currentVersion: 5,
-        activePolicies: [
-          { version: 5, policyId: 1, docVersion: 2, title: 'Điều khoản' },
-          { version: 3, policyId: 2, docVersion: 1, title: 'Bảo mật' },
-        ],
-        // Đã đồng ý Điều khoản v2 (mã 5) và Bảo mật bản cũ (mã 2), chưa đồng ý Bảo mật v1 đang dùng (mã 3)
-        acceptances: [
-          { policy_version: 5, title: 'Điều khoản', doc_version: 2, accepted_at: '2026-11-13T02:00:00Z' },
-          { policy_version: 2, title: 'Bảo mật cũ', doc_version: 1, accepted_at: '2026-11-01T02:00:00Z' },
-        ],
-      },
-    });
+  // 2026-11-16: chính sách viết cứng phía Client-app, Admin-web không quản lý → bỏ dòng Chính sách bảo mật
+  it('không còn dòng Chính sách bảo mật và không gọi API chính sách', async () => {
     const dialog = await open();
-    expect(adminApi.getUserPolicy).toHaveBeenCalledWith(1);
-    expect(await within(dialog).findByText(/Điều khoản v2: Đã đồng ý/)).toHaveAttribute('data-tone', 'success');
-    expect(within(dialog).getByText('Bảo mật v1: Chưa đồng ý')).toHaveAttribute('data-tone', 'warning');
-  });
-
-  it('không có chính sách đang dùng: hiện Chưa có chính sách', async () => {
-    adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: null, activePolicies: [], acceptances: [] } });
-    const dialog = await open();
-    expect(await within(dialog).findByText('Chưa có chính sách')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Bản sao dữ liệu')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Chính sách bảo mật')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/Đã đồng ý|Chưa đồng ý|Chưa có chính sách/)).not.toBeInTheDocument();
+    expect(adminApi.getUserPolicy).not.toHaveBeenCalled();
   });
 });
 

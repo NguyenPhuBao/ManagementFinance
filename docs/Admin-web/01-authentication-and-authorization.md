@@ -139,7 +139,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
      |---|---|---|---|
      | Bảo trì & Thông báo, băng cảnh báo AIOps, Sức khỏe máy chủ, AIOps | Lên lịch, bật khẩn cấp, kết thúc bảo trì | `POST /api/admin/system/maintenance` | `SCHEDULE_MAINTENANCE` / `EMERGENCY_MAINTENANCE` / `STOP_MAINTENANCE` |
      | Bảo trì & Thông báo | Hủy lịch | `DELETE /api/admin/system/maintenance/schedule[/:id]` | `CANCEL_MAINTENANCE` |
-     | Bảo trì & Thông báo → Chính sách | Thêm, ngừng, kích hoạt chính sách | `POST /api/admin/policies`, `PATCH /api/admin/policies/:id/status` | `PUBLISH_POLICY` / `CHANGE_POLICY_STATUS` |
+     | Bảo trì & Thông báo → Chính sách (tab đang ẩn từ 2026-11-16) | Thêm, ngừng, kích hoạt chính sách | `POST /api/admin/policies`, `PATCH /api/admin/policies/:id/status` | `PUBLISH_POLICY` / `CHANGE_POLICY_STATUS` |
      | Quản lý người dùng | Vô hiệu hóa (nhập lý do rồi PIN), kích hoạt | `PATCH /api/admin/updatestatus/:id` | `DEACTIVATE_USER` / `ACTIVATE_USER` |
      | Quản lý người dùng | Xóa | `DELETE /api/admin/deleteuser/:id`, `/api/admin/users/:id` | `DELETE_USER` |
      | Quản lý danh mục | Lưu thay đổi (PIN nhập một lần, gửi kèm từng lệnh thêm / sửa / khôi phục / xóa) | `addcategory`, `updatecategory/:id`, `restorecategory/:id`, `deletecategory/:id` | `SYNC_CATEGORIES` |

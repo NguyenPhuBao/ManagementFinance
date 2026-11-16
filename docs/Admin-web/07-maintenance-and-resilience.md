@@ -162,6 +162,7 @@ CSDL là nguồn sự thật của trạng thái bảo trì. Mã: `MaintenanceMa
    - Khi bảo trì theo lịch kích hoạt: Banner hiển thị tông cam `amber`, badge `[THEO LỊCH]`, tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"**.
    - Khi tắt bảo trì: Modal xác nhận cảnh báo hệ thống sắp mở lại kết nối cho toàn bộ người dùng Client-app.
    - **PIN bắt buộc, máy chủ kiểm (từ 2026-11-16):** lên lịch, bật khẩn cấp, kết thúc bảo trì (`POST /api/admin/system/maintenance`) và hủy lịch (`DELETE /api/admin/system/maintenance/schedule[/:id]`) đều phải gửi `pin` kèm lệnh; thiếu / sai PIN trả 400, khóa sau 5 lần sai trả 429. Áp dụng cho mọi nơi bật bảo trì: trang Bảo trì & Thông báo, băng cảnh báo quá tải (`AppLayout`), hộp giảm thiểu của AIOps, `ServerHealthPanel`. Thêm / ngừng / kích hoạt chính sách cũng bắt buộc PIN (`PUBLISH_POLICY`, `CHANGE_POLICY_STATUS`).
+   - **Tab Chính sách tạm ẩn (2026-11-16):** chính sách được viết cứng phía Client-app, Backend và Admin-web tạm không quản lý chính sách. Trang chỉ còn hai tab Bảo trì và Thông báo; `PolicyTab.jsx`, API `/api/admin/policies` và bảng CSDL giữ nguyên để bật lại bằng cờ `SHOW_POLICY_TAB` trong `BroadcastPage.jsx`.
 2. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Chỉ hiển thị khi $\le 1$ tiếng):**
    - Card/Banner cảnh báo tông cam viền amber nhấp nháy hiển thị số phút đếm ngược.
    - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.

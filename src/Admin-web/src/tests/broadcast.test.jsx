@@ -77,6 +77,9 @@ describe('Tab Bảo trì', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Bảo trì & Thông báo' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Bảo trì' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Thông báo' })).toBeInTheDocument();
+    // Chính sách tạm ẩn (2026-11-16: chính sách viết cứng phía Client-app); PolicyTab giữ lại để dùng sau
+    expect(screen.queryByRole('tab', { name: 'Chính sách' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
     expect(adminApi.getMaintenanceStatus).toHaveBeenCalled();
     expect(lastHistoryCall()).toEqual({ page: 1, limit: 5 });
     const row = screen.getByRole('row', { name: /Sự cố cơ sở dữ liệu/ });

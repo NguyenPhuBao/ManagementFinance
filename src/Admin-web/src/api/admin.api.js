@@ -16,7 +16,6 @@ const adminApi = {
   getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
   getUserDevices: (id) => axiosClient.get(`/admin/getuser/${id}/devices`),
   revealDeviceIp: (id, deviceId, credentials) => axiosClient.post(`/admin/getuser/${id}/devices/${deviceId}/reveal-ip`, credentials),
-  getUserPolicy: (id) => axiosClient.get(`/admin/getuser/${id}/policy`),
   getUserDataExports: (id) => axiosClient.get(`/admin/getuser/${id}/data-exports`),
   getDataIncidents: (params) => axiosClient.get('/admin/data-incidents', { params }),
   createDataIncident: (body) => axiosClient.post('/admin/data-incidents', body),

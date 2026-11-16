@@ -10,6 +10,9 @@ import BroadcastTab from './broadcast/BroadcastTab';
 import PolicyTab from './broadcast/PolicyTab';
 import { scheduledListOf } from './broadcast/maintenanceFormat';
 
+// Tạm ẩn tab Chính sách (2026-11-16): chính sách viết cứng phía Client-app. Giữ PolicyTab để bật lại sau.
+const SHOW_POLICY_TAB = false;
+
 const IDLE = { active: false, isEmergency: false, reason: '', activatedBy: null, activatedAt: null, scheduled: null, scheduledList: [] };
 const unwrap = (res) => res?.data || res;
 
@@ -120,7 +123,7 @@ const BroadcastPage = () => {
                 ),
               },
               { key: 'broadcast', label: t('broadcast.tabBroadcast') },
-              { key: 'policy', label: t('broadcast.tabPolicy') },
+              ...(SHOW_POLICY_TAB ? [{ key: 'policy', label: t('broadcast.tabPolicy') }] : []),
             ]}
           />
         }
@@ -162,7 +165,7 @@ const BroadcastPage = () => {
 
       {tab === 'maintenance' ? (
         <MaintenanceTab maintenance={maintenance} busy={busy} act={act} version={version} onRefresh={loadStatus} />
-      ) : tab === 'policy' ? (
+      ) : SHOW_POLICY_TAB && tab === 'policy' ? (
         <PolicyTab />
       ) : (
         <BroadcastTab />
