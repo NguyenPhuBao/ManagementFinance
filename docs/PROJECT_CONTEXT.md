@@ -619,6 +619,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
 
+### 📦 Bản sao dữ liệu cá nhân — trang "Dữ liệu của tôi" (2026-11-16 phiên 49, `2a7a2afd..8cdfe74c`, mã xong, CHƯA đo đường thật)
+
+Đơn `client-app/CAN-LAM/BAN_SAO_DU_LIEU.md` (README mục 13 = đơn 52). Spec `docs/superpowers/specs/2026-11-16-ban-sao-du-lieu-ca-nhan-design.md`
+(mục 8 = 7 chỗ mã khác spec). Thi công inline theo kế hoạch 8 task.
+
+- **Lối vào:** dòng thứ tư thẻ "BẢO MẬT & TÙY CHỌN" (dưới Khoá ứng dụng) → `/settings/du-lieu-cua-toi`. Basic + Premium đều dùng. Không
+  khôi phục / nhập ngược (người dùng chốt) — trang nói thẳng tệp chỉ để giữ / xem.
+- **Mảng `features/ban_sao_du_lieu/`:** `domain/trang_thai_ban_sao.dart` (năm trạng thái, chuỗi lạ → *Lỗi*; `chuChoYeuCauLai` làm tròn
+  LÊN theo phút) · `domain/loi_ban_sao.dart` (Dart thuần — cubit đặt lỗi trong datasource là đỏ quét 31) ·
+  `data/datasources/ban_sao_du_lieu_api.dart` (ba API qua `sl<DioClient>().dio`, `loiBanSaoTu` đọc 429 `Retry-After` / 410 / 409 / 404 /
+  mất mạng, tên tệp từ `Content-Disposition` chỉ nhận `[A-Za-z0-9._-]` + đúng đuôi) · `data/luu_tep_ban_sao.dart` (Tải về qua
+  `LuuTepPlatform` của Xuất báo cáo, không được thì tệp tạm + `SharePlus`) · repository · `DuLieuCuaToiCubit` (chặn `POST` khi đang tạo
+  và khi bấm đôi) · trang. Không SQLite, không đồng bộ.
+- **Socket:** `account.data_export_ready` → `RealtimeEvent.banSaoDuLieuSanSang` (im, không kéo đồng bộ, không đọc payload); trang đang mở
+  đọc lại `GET …/latest`; quay lại app (`AppLifecycleListener.onResume`) cũng đọc lại.
+- **Test:** `flutter test` **9610 / 11 skip** (+34), analyze **20** (= mức nền), đo 2026-11-16. Ca 320 dp thử bản sai (bỏ `Expanded`) thấy đỏ.
+- **Stitch:** `generate_screen_from_text` trả `timeout`, không gọi lại; `list_screens` vẫn 170 màn — chưa có màn để đối chiếu.
+- **Chưa đo:** máy ảo lượt đầu hỏng vì APK debug dựng KHÔNG `--dart-define=API_BASE_URL` → mặc định Render (bẫy PR #180) → tài khoản 10
+  (chỉ có ở `PersonFinance`) bị từ chối → app đăng xuất (SQLite giữ). Người dùng 2026-11-16: dữ liệu Render đã xoá hết, **chỉ kiểm thử
+  local**. Đường local cần: áp `database/50_data_export_request.sql` lên `PersonFinance`, `prisma generate` trong worktree (client đang
+  sinh chưa có bảng ấy), chạy backend worktree bằng `.env` của thư mục chính + ghi đè `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY`
+  / `STORAGE_DRIVER=local`, dựng APK với `--dart-define=API_BASE_URL=http://10.0.2.2:3000/api`, đăng nhập lại tài khoản 10.
+- Cùng phiên: hộp xác nhận đăng xuất thôi hứa *"đăng nhập offline"* → *"Đăng nhập lại cần có kết nối mạng."* (`5ef9bce1`, người dùng báo).
+
 ### 🏠 Ví chung chọn được ở form Thêm giao dịch thường + khoản nhà ở Trang chủ / Sổ (2026-11-16, `fa72e860..`, mã xong, CHƯA đo máy thật)
 
 Người dùng mở lại chốt mã cho việc này (*"đừng bắt user vào mục gia đình mới thanh toán được"*). Spec

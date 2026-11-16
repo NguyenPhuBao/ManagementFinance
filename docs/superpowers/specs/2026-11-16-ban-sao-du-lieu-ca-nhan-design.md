@@ -110,4 +110,18 @@ Khối mục 14 `PROJECT_CONTEXT.md`; hàng *Đụng vào bản sao dữ liệu*
 
 ## 8. Chỗ mã khác spec
 
-(điền khi thi công)
+Thi công 2026-11-16 (phiên 49, inline, commit `2a7a2afd..8cdfe74c`):
+
+1. **Lỗi tách hai nơi:** `LoaiLoiBanSao` / `LoiBanSao` ở `domain/loi_ban_sao.dart` (Dart thuần), không ở datasource như bảng mục 3 —
+   cubit đặt trong datasource thì đỏ quét 31 (trang không import datasource API). Phép đổi `DioException` → lỗi (`loiBanSaoTu`) vẫn ở
+   `data/datasources/ban_sao_du_lieu_api.dart`, tệp ấy `export` lại `loi_ban_sao.dart`. Khuôn `premium/domain/cau_loi_thanh_toan.dart`.
+2. **Model chỉ giữ trường app dùng:** `YeuCauBanSao { id, trangThai, expiresAt?, files, email? }` — bỏ `requestedAt` / `readyAt`
+   (không chỗ nào hiện). `files` chỉ nhận `json` / `csv`; `status` không phải chuỗi → *Lỗi*.
+3. **Đang tạo:** không có nút (spec ghi "nút khoá") — vòng xoay + câu là đủ; cubit vẫn chặn `POST` khi `dangTao`.
+4. **Sẵn sàng:** dòng đầu luôn là "Bản sao đã sẵn sàng" (tick xanh `AppColors.income`); "Tải được tới HH:mm dd/MM" chỉ hiện khi có
+   `expiresAt`.
+5. **409 / 404 khi tải:** ngoài đọc lại còn báo "Tệp chưa sẵn sàng" (lỗi); mất mạng khi tải / gửi có câu riêng.
+6. **Đọc lại khi quay về app:** `AppLifecycleListener.onResume`, không `TickerMode`.
+7. **Stitch:** `generate_screen_from_text` trả `timeout` (2026-11-16, không gọi lại); `list_screens` sau đó vẫn 170 màn, chưa thấy màn
+   mới. Trang dựng theo khung của kế hoạch + bảng màu màn Cài đặt (nền `#EDEDE9`, thẻ trắng bo 12, chữ phụ `#767872`). Màn Stitch
+   xuất hiện muộn thì đối chiếu lại.
