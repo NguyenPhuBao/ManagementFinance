@@ -2,20 +2,17 @@ import React, { useEffect, useId, useMemo, useState } from 'react';
 import aiopsApi from '../../../api/aiops.api';
 import { useLanguageSafe } from '../../../store/language.context';
 import { formatDateTime } from '../../../utils/format';
-import { Badge, Button, Card, ConfirmModal, DataTable, Modal, Pagination, SecurityConfirmModal, Spinner, Tabs } from '../../../components/ui';
+import { Badge, Button, Card, DataTable, Modal, Pagination, SecurityConfirmModal, Spinner, Tabs } from '../../../components/ui';
 import { VECTOR_TONE, formatMinutes, lockState, maskIp } from './aiopsFormat';
 
 const fieldClass =
   'w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
 const DURATIONS = [60, 240, 720, 1440];
 
-const ACTIONS = {
-  blockIp: { title: 'blockIpTitle', msg: 'blockIpMsg', confirm: 'blockIpConfirm' },
-  extendIp: { title: 'extendIpTitle', msg: 'extendIpMsg', confirm: 'extendIpConfirm' },
-  unblockIp: { title: 'unblockIpTitle', msg: 'unblockIpMsg', confirm: 'unblockConfirm' },
-  blockAccount: { title: 'blockAccountTitle', msg: 'blockAccountMsg', confirm: 'blockIpConfirm' },
-  banAccount: { title: 'banAccountTitle', msg: 'banAccountMsg', confirm: 'banAccountConfirm', danger: true },
-  unblockAccount: { title: 'unblockAccountTitle', msg: 'unblockAccountMsg', confirm: 'unblockConfirm' },
+// Dòng còn hiệu lực khoá (IP hoặc tài khoản); dòng đã mở vẫn giữ trong danh sách để theo dõi.
+const isActiveLock = (item) => {
+  const s = lockState(item);
+  return Boolean((s.ip && s.ip.kind !== 'unlocked') || (s.account && s.account.kind !== 'unlocked'));
 };
 
 const ForensicsModal = ({ target, onClose }) => {
@@ -90,28 +87,24 @@ const ManualQuarantineModal = ({ onClose, onSubmit }) => {
   const { t } = useLanguageSafe();
   const ids = useId();
   const [form, setForm] = useState({ targetType: 'ip', ipValue: '', accountValue: '', reason: t('aiopsPage.manual.defaultReason'), durationMinutes: 240 });
-  const [saving, setSaving] = useState(false);
   const set = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
-  const submit = async (e) => {
+  // Gửi qua hộp PIN chung; khoá xong thì đóng hộp này.
+  const submit = (e) => {
     e.preventDefault();
-    setSaving(true);
-    const ok = await onSubmit(form);
-    setSaving(false);
-    if (ok) onClose();
+    onSubmit(form, onClose);
   };
 
   return (
     <Modal
       open
       onClose={onClose}
-      closeDisabled={saving}
       title={t('aiopsPage.manual.title')}
       description={t('aiopsPage.manual.desc')}
       footer={
         <>
-          <Button onClick={onClose} disabled={saving}>{t('common.cancel', 'Hủy bỏ')}</Button>
-          <Button variant="danger" type="submit" form={`${ids}-form`} loading={saving}>{t('aiopsPage.manual.submit')}</Button>
+          <Button onClick={onClose}>{t('common.cancel', 'Hủy bỏ')}</Button>
+          <Button variant="danger" type="submit" form={`${ids}-form`}>{t('aiopsPage.manual.submit')}</Button>
         </>
       }
     >
@@ -156,12 +149,12 @@ const ManualQuarantineModal = ({ onClose, onSubmit }) => {
 const QuarantineSection = ({ ops }) => {
   const { t } = useLanguageSafe();
   const ids = useId();
-  const { quarantineList, actionLoading, quarantineActions } = ops;
+  const { quarantineList, quarantineActions } = ops;
+  const [lockFilter, setLockFilter] = useState('all');
   const [ipFilter, setIpFilter] = useState('');
   const [accountFilter, setAccountFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [pending, setPending] = useState(null);
   const [revealTarget, setRevealTarget] = useState(null);
   const [revealed, setRevealed] = useState({});
   const [forensics, setForensics] = useState(null);
@@ -173,27 +166,21 @@ const QuarantineSection = ({ ops }) => {
     return quarantineList.filter((item) => {
       const ip = String(item.maskedIp || item.hash || '').toLowerCase();
       const acc = String(item.username || item.idaccount || '').toLowerCase();
-      return (!ipQ || ip.includes(ipQ)) && (!accQ || acc.includes(accQ));
+      const active = isActiveLock(item);
+      const status = lockFilter === 'all' || (lockFilter === 'active' ? active : !active);
+      return status && (!ipQ || ip.includes(ipQ)) && (!accQ || acc.includes(accQ));
     });
-  }, [quarantineList, ipFilter, accountFilter]);
+  }, [quarantineList, ipFilter, accountFilter, lockFilter]);
   const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const ask = (kind, item, label) => setPending({ kind, item, label });
-  const runPending = async () => {
-    const { kind, item } = pending;
+  // Mỗi thao tác mở hộp PIN chung của trang (ops.quarantineActions).
+  const ask = (kind, item) => {
     const hash = item.ipHash || item.hash;
     const masked = maskIp(item.maskedIp);
-    const map = {
-      blockIp: () => quarantineActions.blockIp(hash, masked),
-      extendIp: () => quarantineActions.extendIp(hash, masked),
-      unblockIp: () => quarantineActions.unblockIp(hash, masked),
-      blockAccount: () => quarantineActions.blockAccount(item.username, item.idaccount),
-      banAccount: () => quarantineActions.banAccount(item.username, item.idaccount),
-      unblockAccount: () => quarantineActions.unblockAccount(item.username, item.idaccount),
-    };
-    const ok = await map[kind]();
-    if (ok) setPending(null);
+    if (kind.endsWith('Ip')) return quarantineActions[kind](hash, masked);
+    return quarantineActions[kind](item.username, item.idaccount);
   };
+  const released = (by, at) => (by ? (at ? t('aiopsPage.quarantine.releasedByAt', { by, time: formatDateTime(at) }) : t('aiopsPage.quarantine.releasedBy', { by })) : null);
 
   const columns = [
     {
@@ -201,6 +188,7 @@ const QuarantineSection = ({ ops }) => {
       title: 'IP',
       render: (item) => {
         const hash = item.ipHash || item.hash;
+        if (!hash) return <span className="text-ink-faint">--</span>;
         return <span className="font-mono text-ink">{revealed[hash] || maskIp(item.maskedIp)}</span>;
       },
     },
@@ -215,8 +203,10 @@ const QuarantineSection = ({ ops }) => {
         const s = lockState(item);
         return (
           <div className="flex flex-col text-sm tabular-nums">
-            <span>IP: {s.ip.kind === 'locked' ? formatMinutes(s.ip.minutes, t) : '--'}</span>
-            <span className="text-ink-muted">{t('aiopsPage.quarantine.accountShort')}: {s.account?.kind === 'locked' ? formatMinutes(s.account.minutes, t) : '--'}</span>
+            {s.ip && <span>IP: {s.ip.kind === 'locked' ? formatMinutes(s.ip.minutes, t) : '--'}</span>}
+            {s.ip?.kind === 'unlocked' && released(item.ipUnblockedBy, item.ipUnblockedAt) && <span className="text-xs text-ink-faint">{released(item.ipUnblockedBy, item.ipUnblockedAt)}</span>}
+            {s.account && <span className="text-ink-muted">{t('aiopsPage.quarantine.accountShort')}: {s.account.kind === 'locked' ? formatMinutes(s.account.minutes, t) : '--'}</span>}
+            {s.account?.kind === 'unlocked' && released(item.accountUnblockedBy, item.accountUnblockedAt) && <span className="text-xs text-ink-faint">{released(item.accountUnblockedBy, item.accountUnblockedAt)}</span>}
           </div>
         );
       },
@@ -226,14 +216,12 @@ const QuarantineSection = ({ ops }) => {
       title: t('aiopsPage.quarantine.colIpActions'),
       render: (item) => {
         const s = lockState(item);
-        const hash = item.ipHash || item.hash;
-        const busy = actionLoading === `ip:${hash}`;
-        if (s.ip.kind === 'permanent') return <Badge tone="danger">{t('aiopsPage.quarantine.ipBlocked')}</Badge>;
-        if (s.ip.kind === 'unlocked') return <Button size="sm" className="whitespace-nowrap" loading={busy} onClick={() => ask('blockIp', item, maskIp(item.maskedIp))}>{t('aiopsPage.quarantine.blockIp')}</Button>;
+        if (!s.ip) return <span className="text-ink-faint">--</span>;
+        if (s.ip.kind === 'unlocked') return <Button size="sm" className="whitespace-nowrap" onClick={() => ask('blockIp', item)}>{t('aiopsPage.quarantine.blockIp')}</Button>;
         return (
           <div className="flex flex-wrap gap-1.5">
-            <Button size="sm" className="whitespace-nowrap" loading={busy} onClick={() => ask('extendIp', item, maskIp(item.maskedIp))}>{t('aiopsPage.quarantine.extendIp')}</Button>
-            <Button size="sm" className="whitespace-nowrap" variant="ghost" disabled={busy} onClick={() => ask('unblockIp', item, maskIp(item.maskedIp))}>{t('aiopsPage.quarantine.unblockIp')}</Button>
+            <Button size="sm" className="whitespace-nowrap" onClick={() => ask('extendIp', item)}>{t('aiopsPage.quarantine.extendIp')}</Button>
+            <Button size="sm" className="whitespace-nowrap" variant="ghost" onClick={() => ask('unblockIp', item)}>{t('aiopsPage.quarantine.unblockIp')}</Button>
           </div>
         );
       },
@@ -244,13 +232,19 @@ const QuarantineSection = ({ ops }) => {
       render: (item) => {
         const s = lockState(item);
         if (!s.account) return <span className="text-ink-faint">--</span>;
-        const busy = actionLoading === `acc:${item.username || item.idaccount}`;
-        if (s.account.kind === 'permanent') return <Badge tone="danger">{t('aiopsPage.quarantine.banned')}</Badge>;
-        if (s.account.kind === 'unlocked') return <Button size="sm" className="whitespace-nowrap" loading={busy} onClick={() => ask('blockAccount', item, s.accountLabel)}>{t('aiopsPage.quarantine.blockAccount')}</Button>;
+        if (s.account.kind === 'permanent') {
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="danger">{t('aiopsPage.quarantine.banned')}</Badge>
+              <Button size="sm" className="whitespace-nowrap" variant="ghost" onClick={() => ask('unblockAccount', item)}>{t('aiopsPage.quarantine.unblockAccount')}</Button>
+            </div>
+          );
+        }
+        if (s.account.kind === 'unlocked') return <Button size="sm" className="whitespace-nowrap" onClick={() => ask('blockAccount', item)}>{t('aiopsPage.quarantine.blockAccount')}</Button>;
         return (
           <div className="flex flex-wrap gap-1.5">
-            <Button size="sm" className="whitespace-nowrap" variant="danger-ghost" loading={busy} onClick={() => ask('banAccount', item, s.accountLabel)}>{t('aiopsPage.quarantine.banAccount')}</Button>
-            <Button size="sm" className="whitespace-nowrap" variant="ghost" disabled={busy} onClick={() => ask('unblockAccount', item, s.accountLabel)}>{t('aiopsPage.quarantine.unblockAccount')}</Button>
+            <Button size="sm" className="whitespace-nowrap" variant="danger-ghost" onClick={() => ask('banAccount', item)}>{t('aiopsPage.quarantine.banAccount')}</Button>
+            <Button size="sm" className="whitespace-nowrap" variant="ghost" onClick={() => ask('unblockAccount', item)}>{t('aiopsPage.quarantine.unblockAccount')}</Button>
           </div>
         );
       },
@@ -263,7 +257,7 @@ const QuarantineSection = ({ ops }) => {
         const s = lockState(item);
         return (
           <div className="flex gap-1">
-            <Button size="sm" className="whitespace-nowrap" variant="ghost" icon="visibility" aria-label={t('aiopsPage.quarantine.reveal')} disabled={Boolean(revealed[hash])} onClick={() => setRevealTarget(hash)} />
+            {hash && <Button size="sm" className="whitespace-nowrap" variant="ghost" icon="visibility" aria-label={t('aiopsPage.quarantine.reveal')} disabled={Boolean(revealed[hash])} onClick={() => setRevealTarget(hash)} />}
             <Button size="sm" className="whitespace-nowrap" variant="ghost" icon="policy" aria-label={t('aiopsPage.forensics.title')} onClick={() => setForensics({ ipHash: hash, maskedIp: maskIp(item.maskedIp), username: s.account ? s.accountLabel : null })} />
           </div>
         );
@@ -271,8 +265,12 @@ const QuarantineSection = ({ ops }) => {
     },
   ];
 
-  const action = pending ? ACTIONS[pending.kind] : null;
   const filtering = ipFilter || accountFilter;
+  const lockTabs = [
+    { key: 'all', label: t('aiopsPage.quarantine.lockAll') },
+    { key: 'active', label: t('aiopsPage.quarantine.lockActive') },
+    { key: 'released', label: t('aiopsPage.quarantine.lockReleased') },
+  ];
 
   return (
     <Card
@@ -280,6 +278,7 @@ const QuarantineSection = ({ ops }) => {
       actions={<Button variant="danger" size="sm" icon="lock_clock" onClick={() => setManualOpen(true)}>{t('aiopsPage.manual.title')}</Button>}
     >
       <div className="flex flex-wrap items-end gap-3 border-b border-line px-5 py-4">
+        <Tabs ariaLabel={t('aiopsPage.quarantine.lockFilter')} items={lockTabs} value={lockFilter} onChange={(key) => { setLockFilter(key); setPage(1); }} />
         <div className="w-full sm:w-56">
           <label htmlFor={`${ids}-ip`} className="mb-1 block text-sm font-medium text-ink">{t('aiopsPage.quarantine.filterIp')}</label>
           <input id={`${ids}-ip`} value={ipFilter} onChange={(e) => { setIpFilter(e.target.value); setPage(1); }} className={`${fieldClass} h-9`} />
@@ -316,17 +315,6 @@ const QuarantineSection = ({ ops }) => {
           itemLabel={t('aiopsPage.quarantine.itemLabel')}
         />
       )}
-
-      <ConfirmModal
-        open={Boolean(pending)}
-        onCancel={() => setPending(null)}
-        onConfirm={runPending}
-        loading={Boolean(pending) && Boolean(actionLoading)}
-        confirmDanger={Boolean(action?.danger)}
-        title={action ? t(`aiopsPage.quarantine.${action.title}`, { target: pending.label }) : ''}
-        message={action ? t(`aiopsPage.quarantine.${action.msg}`) : ''}
-        confirmText={action ? t(`aiopsPage.quarantine.${action.confirm}`) : ''}
-      />
 
       {revealTarget && (
         <SecurityConfirmModal

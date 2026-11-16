@@ -138,14 +138,15 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
       assert.ok(jsonPayload.message.includes('phong tỏa'));
     });
 
-    it('3.2. Tuyệt đối KHÔNG chặn Admin kể cả khi phát sinh từ cùng IP bị cách ly', () => {
+    // Đổi nghiệp vụ 2026-11-16 (mục 2.5 kế hoạch sửa trang AIOps): IP bị khoá thì chặn cả admin.
+    it('3.2. Admin đi từ IP đang bị cách ly cũng bị chặn', () => {
       const quarantine = new AIOpsQuarantine({ defaultTtlMinutes: 15 });
       quarantine.quarantine('198.51.100.42', 'Attack source');
 
       const mw = quarantine.createMiddleware();
       let nextCalled = false;
 
-      // Request có cờ req.isAdmin = true từ admin-priority middleware
+      // Request có cờ req.isAdmin = true từ admin-priority middleware vẫn không được miễn
       const mockAdminReq = { ip: '198.51.100.42', headers: {}, isAdmin: true };
       const mockRes = {
         status: () => mockRes,
@@ -154,7 +155,7 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
 
       mw(mockAdminReq, mockRes, () => { nextCalled = true; });
 
-      assert.strictEqual(nextCalled, true, 'Admin request bắt buộc phải được thông suốt (Bypass Quarantine)');
+      assert.strictEqual(nextCalled, false, 'IP đang khoá thì chặn cả admin');
     });
 
     it('3.3. Tuân thủ Zero Raw IP: getQuarantinedList trả về IP đã che mờ (Masked)', () => {

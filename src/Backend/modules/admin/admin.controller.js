@@ -204,7 +204,7 @@ const adminController = {
       const data = withoutPin(req.body);
       const action = data.status === 'Inactive' ? 'DEACTIVATE_USER' : data.status === 'Active' ? 'ACTIVATE_USER' : 'CHANGE_USER_STATUS';
       await requirePin(req, action, `user#${iduser}`);
-      const result = await adminService.updateStatus(iduser, data);
+      const result = await adminService.updateStatus(iduser, data, req.user);
       logger.info('User status updated', { iduser, ...result });
       req.auditActionName = result.newStatus === 'Active' ? 'Mở khóa tài khoản' : 'Khóa tài khoản';
       return ResponseHandler.success(res, result, 'Cập nhật trạng thái thành công');

@@ -36,10 +36,10 @@ test('AIOps Account Status Sync & Database Protection (2-Tier Testing Matrix)', 
     const hasInactiveCondition = andConditions.some((c) => c.status === 'Inactive');
     assert.ok(hasInactiveCondition, 'Bắt buộc chỉ mở khóa tài khoản đang có trạng thái Inactive');
 
-    // Tầng 2: Kiểm tra lọc theo lý do AIOps/Sentinel
-    const reasonCondition = andConditions.find((c) => c.reason_inactive?.startsWith);
-    assert.ok(reasonCondition, 'Bắt buộc lọc theo đúng một dấu cố định của khoá tự động');
-    assert.strictEqual(reasonCondition.reason_inactive.startsWith, '[AIOPS_AUTO_QUARANTINE]');
+    // Tầng 2: chỉ mở khoá có thời hạn của AIOps (tự khoá hoặc admin tạm khoá), không mở khoá vĩnh viễn (2026-11-16)
+    const reasonCondition = andConditions.find((c) => Array.isArray(c.OR) && c.OR.some((o) => o.reason_inactive?.startsWith));
+    assert.ok(reasonCondition, 'Bắt buộc lọc theo dấu của khoá có thời hạn');
+    assert.deepStrictEqual(reasonCondition.OR.map((o) => o.reason_inactive.startsWith), ['[AIOPS_AUTO_QUARANTINE]', '[AIOPS_ADMIN_TEMP]']);
   });
 
   await t.test('Tier 2: Khi AIOps cách ly hoặc tạm khóa tài khoản, TUYỆT ĐỐI không ghi đè tài khoản PendingDelete', async () => {

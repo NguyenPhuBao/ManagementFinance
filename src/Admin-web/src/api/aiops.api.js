@@ -34,6 +34,9 @@ async function callAIOps(method, path, data = null) {
   }
 }
 
+// Mọi lệnh ghi AIOps gửi kèm PIN quản trị trong body (máy chủ kiểm): credentials = { pin }.
+const withPin = (payload, credentials) => ({ ...(payload || {}), ...(credentials || {}) });
+
 const aiopsApi = {
   getStatus: () => callAIOps('get', '/admin/aiops/status'),
   getHistory: (params = {}) => {
@@ -45,11 +48,11 @@ const aiopsApi = {
     return callAIOps('get', `/admin/aiops/history${queryString ? `?${queryString}` : ''}`);
   },
   getVectorConfig: () => callAIOps('get', '/admin/aiops/vectors'),
-  toggleVector: (vector, enabled) => callAIOps('post', '/admin/aiops/vectors/toggle', { vector, enabled }),
-  calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
+  toggleVector: (vector, enabled, credentials) => callAIOps('post', '/admin/aiops/vectors/toggle', withPin({ vector, enabled }, credentials)),
+  calibrate: (data = {}, credentials) => callAIOps('post', '/admin/aiops/calibrate', withPin(data, credentials)),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   revealQuarantineIp: (hash, credentials) => axiosClient.post(`/admin/aiops/quarantine/${hash}/reveal-ip`, credentials),
-  setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
+  setScale: (concurrency, credentials) => callAIOps('post', '/admin/aiops/scale', withPin({ concurrency }, credentials)),
   getIncidents: (params = {}) => {
     const qs = new URLSearchParams();
     if (params.page) qs.append('page', params.page);
@@ -60,13 +63,14 @@ const aiopsApi = {
     const queryString = qs.toString();
     return callAIOps('get', `/admin/aiops/incidents${queryString ? `?${queryString}` : ''}`);
   },
-  quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
-  temporaryBlockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-ip', payload),
-  unblockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-ip', payload),
-  permanentBanIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/permanent-ip', payload),
-  temporaryBlockAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-account', payload),
-  unblockAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-account', payload),
-  permanentBanAccount: (payload) => callAIOps('post', '/admin/aiops/quarantine/permanent-account', payload),
+  quarantineActor: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine', withPin(payload, credentials)),
+  temporaryBlockIp: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/temporary-ip', withPin(payload, credentials)),
+  unblockIp: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/unblock-ip', withPin(payload, credentials)),
+  // "Khóa thêm 4 giờ": IP chỉ có tạm khoá.
+  extendIp: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/extend-ip', withPin(payload, credentials)),
+  temporaryBlockAccount: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/temporary-account', withPin(payload, credentials)),
+  unblockAccount: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/unblock-account', withPin(payload, credentials)),
+  permanentBanAccount: (payload, credentials) => callAIOps('post', '/admin/aiops/quarantine/permanent-account', withPin(payload, credentials)),
   getForensics: (params = {}) => {
     const qs = new URLSearchParams();
     if (params.ipHash) qs.append('ipHash', params.ipHash);

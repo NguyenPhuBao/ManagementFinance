@@ -97,25 +97,23 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.ok(jsonBody.message.includes('phong tỏa'));
   });
 
-  await t.test('6. Admin requests (req.isAdmin = true) are NEVER blocked even if originating from same IP', () => {
+  // Đổi nghiệp vụ 2026-11-16 (mục 2.5 kế hoạch sửa trang AIOps): IP bị khoá thì chặn cả admin.
+  await t.test('6. Admin đã xác thực (req.isAdmin = true) đi từ IP đang khoá vẫn bị chặn 403', () => {
     const q = new AIOpsQuarantine();
     const mw = q.createMiddleware();
-    const ip = '127.0.0.1';
-
+    const ip = '118.69.12.34';
     q.quarantine(ip, 'Test quarantine');
+    const req = { ip, headers: {}, method: 'GET', url: '/api/admin/system/health', isAdmin: true };
 
-    const req = {
-      ip,
-      headers: {},
-      method: 'GET',
-      url: '/api/admin/system/health',
-      isAdmin: true, // Fast-lane admin
-    };
-
+    let statusCode = null;
+    let jsonBody = null;
+    const res = { status: (code) => { statusCode = code; return { json: (body) => { jsonBody = body; } }; } };
     let nextCalled = false;
-    mw(req, {}, () => { nextCalled = true; });
+    mw(req, res, () => { nextCalled = true; });
 
-    assert.strictEqual(nextCalled, true, 'Admin request must bypass quarantine 100%');
+    assert.strictEqual(nextCalled, false, 'Admin không được đi qua IP đang khoá');
+    assert.strictEqual(statusCode, 403);
+    assert.strictEqual(jsonBody.code, 'AIOPS_QUARANTINED');
   });
 
   await t.test('7. Emits Socket.io admin.security_blocked event upon quarantining an IP', () => {
@@ -225,25 +223,21 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.strictEqual(jsonBody.code, 'AIOPS_QUARANTINED');
   });
 
-  await t.test('11. Requests with server-verified req.isAdmin = true ARE ALLOWED to pass quarantine', () => {
+  await t.test('11. Đăng nhập với token admin hợp lệ (req.isAdmin = true) từ IP đang khoá vẫn bị chặn', () => {
     const q = new AIOpsQuarantine();
     const mw = q.createMiddleware();
     const ip = '14.161.22.33';
-
     q.quarantine(ip, 'Quarantined IP');
+    const req = { ip, headers: {}, method: 'POST', originalUrl: '/api/auth/login', isAdmin: true };
 
-    const req = {
-      ip,
-      headers: {},
-      method: 'POST',
-      originalUrl: '/api/auth/login',
-      isAdmin: true, // Verified by server
-    };
-
+    let statusCode = null;
+    let jsonBody = null;
+    const res = { status: (code) => { statusCode = code; return { json: (body) => { jsonBody = body; } }; } };
     let nextCalled = false;
-    mw(req, {}, () => { nextCalled = true; });
+    mw(req, res, () => { nextCalled = true; });
 
-    assert.strictEqual(nextCalled, true, 'Server-verified admin must pass quarantine');
+    assert.strictEqual(nextCalled, false);
+    assert.strictEqual(statusCode, 403);
   });
 
   await t.test('12. Trusted IPs configured via process.env.ADMIN_TRUSTED_IPS are protected from quarantine', () => {
@@ -263,57 +257,27 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     }
   });
 
-  await t.test('13. registerAdminSession dynamically protects active Admin IP from quarantine', () => {
+  await t.test('13. Không còn cơ chế phiên admin tự miễn khoá IP', () => {
     const q = new AIOpsQuarantine();
-    const dynamicAdminIp = '118.69.123.45';
-
-    // Ban đầu chưa đăng nhập thì chưa được bảo vệ
-    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), false);
-
-    // Admin đăng nhập thành công -> Đăng ký bảo vệ động
-    const ok = q.registerAdminSession(dynamicAdminIp, { userId: 10, username: 'boss_admin', ttlMs: 60000 });
-    assert.strictEqual(ok, true);
-
-    // Bây giờ IP này đã thuộc vùng an toàn
-    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), true);
-    const activeList = q.getActiveAdminIps();
-    assert.strictEqual(activeList.length, 1);
-    assert.strictEqual(activeList[0].ip, dynamicAdminIp);
-    assert.strictEqual(activeList[0].username, 'boss_admin');
-
-    // Thử phong tỏa IP này -> Bị chặn đứng từ chối
-    const blockRes = q.quarantine(dynamicAdminIp, 'Malicious probe test');
-    assert.strictEqual(blockRes, null, 'Must reject quarantining active admin IP');
-    assert.strictEqual(q.isQuarantined(dynamicAdminIp).quarantined, false);
+    assert.strictEqual(typeof q.registerAdminSession, 'undefined');
+    assert.strictEqual(typeof q.unregisterAdminSession, 'undefined');
+    assert.strictEqual(typeof q.getActiveAdminIps, 'undefined');
   });
 
-  await t.test('14. unregisterAdminSession releases dynamic IP protection upon logout', () => {
-    const q = new AIOpsQuarantine();
-    const dynamicAdminIp = '115.75.200.10';
-
-    q.registerAdminSession(dynamicAdminIp, { userId: 10, username: 'boss_admin' });
-    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), true);
-
-    // Admin đăng xuất -> Hủy đăng ký bảo vệ động
-    const unregOk = q.unregisterAdminSession(dynamicAdminIp);
-    assert.strictEqual(unregOk, true);
-    assert.strictEqual(q.isProtectedIp(dynamicAdminIp), false, 'IP should no longer be protected after logout');
-    assert.strictEqual(q.getActiveAdminIps().length, 0);
-  });
-
-  await t.test('15. registerAdminSession auto-unquarantines if the IP was previously quarantined', () => {
+  await t.test('14. IP từng có admin dùng vẫn khoá được (khoá tự động lẫn khoá tay)', () => {
     const q = new AIOpsQuarantine();
     const officeIp = '14.241.11.22';
-
-    // IP này lỡ bị phong tỏa trước đó
-    q.quarantine(officeIp, 'Brute force probe from coffee wifi');
+    assert.strictEqual(q.isProtectedIp(officeIp), false);
+    assert.ok(q.quarantine(officeIp, 'Brute force probe from coffee wifi'));
     assert.strictEqual(q.isQuarantined(officeIp).quarantined, true);
+  });
 
-    // Admin đăng nhập thành công từ IP này -> Tự động giải phóng phong tỏa ngay lập tức
-    q.registerAdminSession(officeIp, { userId: 1, username: 'admin' });
-
-    assert.strictEqual(q.isQuarantined(officeIp).quarantined, false, 'IP must be immediately unquarantined');
-    assert.strictEqual(q.isProtectedIp(officeIp), true);
+  await t.test('15. Admin đăng nhập thành công không gỡ khoá IP đang có', async () => {
+    const authService = require('../../modules/auth/auth.service');
+    const src = require('fs').readFileSync(require.resolve('../../modules/auth/auth.service'), 'utf8')
+      + require('fs').readFileSync(require.resolve('../../modules/auth/auth.controller'), 'utf8');
+    assert.ok(authService);
+    assert.strictEqual(/registerAdminSession|unregisterAdminSession/.test(src), false, 'đăng nhập / đăng xuất không còn đụng tới khoá IP');
   });
 
   await t.test('16. [43.A3] getQuarantinedList chỉ mở khóa tài khoản AIOps cách ly, không can thiệp tài khoản Admin khóa tay', async () => {

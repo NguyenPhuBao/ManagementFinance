@@ -2,6 +2,7 @@ const { lyDoChoNguoiDung } = require('../modules/aiops/aiops.reason');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const ResponseHandler = require('../core/response-handler');
+const rootAdmin = require('../modules/auth/root-admin');
 const { prisma } = require('../config/db');
 const logger = require('../core/logger');
 
@@ -106,6 +107,12 @@ async function authenticate(req, res, next) {
       return ResponseHandler.unauthorized(res, 'Token expired');
     }
     return ResponseHandler.unauthorized(res, 'Invalid token');
+  }
+
+  // Phiên tài khoản quản trị gốc bị cắt khi khoá thứ hai trong biến môi trường đã đổi.
+  if (!rootAdmin.isRootSessionValid(decoded)) {
+    const err = rootAdmin.revokedError();
+    return ResponseHandler.unauthorized(res, err.message, { code: err.code });
   }
 
   const accountInfo = await getAccountValidity(decoded.idaccount);

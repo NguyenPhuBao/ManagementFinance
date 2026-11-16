@@ -1,6 +1,9 @@
 # Sửa trang AIOps — thiết kế và kế hoạch (Chủ dự án duyệt 2026-11-16)
 
 Nguồn: khảo sát trang AIOps 2026-11-16 và quyết định của Chủ dự án trong phiên cùng ngày.
+
+> **Trạng thái 2026-11-16:** Phần 1 đã commit (`72385774`). Phần 2 và 3 đã làm, test xanh, **chưa commit**; migration 56 mới áp trên CSDL thử cục bộ, chưa áp Supabase. Kiểm tra trên trình duyệt làm một đợt sau cùng.
+> Lệch so với kế hoạch: (1) mỗi tài khoản giữ **một** dòng trong `aiops_account_quarantine` (khoá lại thì dòng đó trở lại trạng thái khoá) thay vì thêm dòng mới, vì mã dòng đã gắn với bảng liên kết điều tra; (2) không có `UNBLOCKED` trong mã, tên trạng thái thống nhất sẵn là `UNLOCKED`; (3) danh sách khoá phân trang ở Admin-web (máy chủ trả tối đa 500 dòng gần nhất mỗi bảng); (4) sửa thêm lỗi mã dòng gộp nhầm tên trùng 16 ký tự đầu và thiếu import `logger` trong `admin.service.js`.
 Phạm vi: `src/Backend`, `src/Admin-web`, `src/Backend/database/`. **Không** sửa Client-app. **Không** commit / push khi Chủ dự án chưa yêu cầu. **Không** áp migration lên Supabase khi chưa được xác nhận đích danh; không tạo dữ liệu thử trên Supabase.
 Quy trình mỗi bước: viết test → chạy thấy **ĐỎ** → mã tối thiểu cho **XANH** → chạy cả bộ (`npm run test:unit` ở Backend, `npm test` + `npm run lint` ở Admin-web).
 Làm theo thứ tự Phần 1 → 2 → 3. Thấy kế hoạch sai hoặc thiếu thì **dừng và báo**, không tự đổi.

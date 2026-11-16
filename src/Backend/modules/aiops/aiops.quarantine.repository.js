@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { pool } = require('../../config/db');
 const logger = require('../../core/logger');
 const { encrypt } = require('../../utils/crypto.util');
@@ -220,7 +221,8 @@ class AIOpsQuarantineRepository {
         bannedBy,
       ]);
 
-      // 2. Upsert aiops_account_quarantine
+      // 2. Upsert aiops_account_quarantine (mã dòng theo đúng tên, không gộp nhầm tên trùng tiền tố)
+      const dbAccId = await this._accountRowId(cleanUsername);
       const accSql = `
         INSERT INTO "aiops_account_quarantine" (
           "id", "idaccount", "username", "status", "reason",
@@ -237,7 +239,7 @@ class AIOpsQuarantineRepository {
         RETURNING *;
       `;
       await this.pool.query(accSql, [
-        accId,
+        dbAccId,
         idaccount ? Number(idaccount) : null,
         cleanUsername,
         accountStatus,
@@ -257,7 +259,7 @@ class AIOpsQuarantineRepository {
       `;
       await this.pool.query(linkSql, [
         ipId,
-        accId,
+        dbAccId,
         ipHash,
         cleanUsername,
         reason,
@@ -729,6 +731,101 @@ class AIOpsQuarantineRepository {
         }
       }
       return count;
+    }
+  }
+
+  /**
+   * Mã dòng aiops_account_quarantine của một tài khoản: dòng đã có (theo tên, không phân biệt hoa thường) thì dùng lại;
+   * chưa có thì tạo mã từ băm SHA-256 của cả tên. Mã cũ `acc_<32 ký tự hex đầu>` chỉ phân biệt 16 ký tự đầu của tên,
+   * nên hai tên trùng 16 ký tự đầu từng bị gộp vào một dòng.
+   */
+  async _accountRowId(cleanUsername) {
+    const res = await this.pool.query(
+      'SELECT "id" FROM "aiops_account_quarantine" WHERE LOWER("username") = LOWER($1) ORDER BY "updated_at" DESC LIMIT 1;',
+      [cleanUsername]
+    );
+    if (res.rows?.[0]?.id) return res.rows[0].id;
+    return `acc_${crypto.createHash('sha256').update(cleanUsername.toLowerCase()).digest('hex').slice(0, 40)}`;
+  }
+
+  /**
+   * Admin khoá tài khoản (TEMPORARY / PERMANENT): ghi dòng theo dõi kể cả khi tài khoản chưa từng có dòng
+   * (khoá thủ công một tài khoản chưa dính sự cố). Mỗi tài khoản một dòng (`acc_<hex tên>`, cùng khoá với
+   * recordQuarantinePair); khoá lại sau khi đã mở thì dòng đó trở lại trạng thái khoá.
+   */
+  async upsertAccountLock({ username, idaccount = null, status, reason, bannedBy = null, expiresAt = null }) {
+    const cleanUsername = String(username || '').trim();
+    if (!cleanUsername || !['TEMPORARY', 'PERMANENT'].includes(status)) return 0;
+    const now = new Date();
+    const exp = status === 'PERMANENT' ? null : expiresAt;
+    const by = bannedBy || 'AIOps Sentinel';
+
+    const saveFallback = () => {
+      const accId = `acc_${crypto.createHash('sha256').update(cleanUsername.toLowerCase()).digest('hex').slice(0, 40)}`;
+      const key = cleanUsername.toLowerCase();
+      const rec = this._fallbackAccounts.get(key);
+      if (rec) {
+        Object.assign(rec, { status, reason, expires_at: exp, banned_by: by, banned_at: now, updated_at: now });
+        if (idaccount) rec.idaccount = Number(idaccount);
+      } else {
+        this._fallbackAccounts.set(key, {
+          id: accId, idaccount: idaccount ? Number(idaccount) : null, username: cleanUsername, status, reason,
+          violation_vector: null, threat_score_at_ban: null, hits: 1, banned_at: now, expires_at: exp,
+          unblocked_at: null, banned_by: by, unblocked_by: null, unblock_reason: null, created_at: now, updated_at: now,
+        });
+      }
+      return 1;
+    };
+
+    if (!this.pool || typeof this.pool.query !== 'function') return saveFallback();
+    try {
+      const accId = await this._accountRowId(cleanUsername);
+      const sql = `
+        INSERT INTO "aiops_account_quarantine" (
+          "id", "idaccount", "username", "status", "reason", "hits", "banned_at", "expires_at", "banned_by", "created_at", "updated_at"
+        ) VALUES ($1, $2, $3, $4, $5, 1, $6, $7, $8, $6, $6)
+        ON CONFLICT ("id") DO UPDATE SET
+          "status" = EXCLUDED."status",
+          "reason" = EXCLUDED."reason",
+          "expires_at" = EXCLUDED."expires_at",
+          "banned_by" = EXCLUDED."banned_by",
+          "banned_at" = EXCLUDED."banned_at",
+          "idaccount" = COALESCE(EXCLUDED."idaccount", "aiops_account_quarantine"."idaccount"),
+          "updated_at" = EXCLUDED."updated_at";
+      `;
+      const res = await this.pool.query(sql, [accId, idaccount ? Number(idaccount) : null, cleanUsername, status, reason, now, exp, by]);
+      return res.rowCount || 0;
+    } catch (err) {
+      logger.warn('[AIOps Quarantine Repo] Lỗi DB khi ghi khoá tài khoản, fallback sang bộ nhớ', { error: err.message });
+      return saveFallback();
+    }
+  }
+
+  /**
+   * Toàn bộ dòng theo dõi khoá (mọi trạng thái, kể cả đã mở) để dựng danh sách trên Admin-web.
+   * Liên kết chỉ lấy lần gần nhất cho mỗi cặp (IP, tài khoản).
+   */
+  async listQuarantineRows({ limit = 500 } = {}) {
+    const lim = Math.min(2000, Math.max(1, parseInt(limit, 10) || 500));
+    if (!this.pool || typeof this.pool.query !== 'function') {
+      const latest = new Map();
+      for (const l of this._fallbackLinks) latest.set(`${l.ip_hash}:::${String(l.username).toLowerCase()}`, l);
+      return { ips: [...this._fallbackIps.values()], accounts: [...this._fallbackAccounts.values()], links: [...latest.values()] };
+    }
+    try {
+      const [ipRes, accRes, linkRes] = await Promise.all([
+        this.pool.query(`SELECT * FROM "aiops_ip_quarantine" ORDER BY "updated_at" DESC LIMIT $1;`, [lim]),
+        this.pool.query(`SELECT * FROM "aiops_account_quarantine" ORDER BY "updated_at" DESC LIMIT $1;`, [lim]),
+        this.pool.query(
+          `SELECT DISTINCT ON ("ip_hash", LOWER("username")) * FROM "aiops_quarantine_incident_link"
+           ORDER BY "ip_hash", LOWER("username"), "detected_at" DESC LIMIT $1;`,
+          [lim * 2]
+        ),
+      ]);
+      return { ips: ipRes.rows || [], accounts: accRes.rows || [], links: linkRes.rows || [] };
+    } catch (err) {
+      logger.error('[AIOps Quarantine Repo] Lỗi đọc danh sách khoá từ DB', { error: err.message });
+      return null;
     }
   }
 

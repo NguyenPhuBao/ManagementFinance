@@ -36,7 +36,7 @@ vi.mock('../api/aiops.api', () => ({
     quarantineActor: vi.fn(),
     getForensics: vi.fn(),
     temporaryBlockIp: vi.fn(),
-    permanentBanIp: vi.fn(),
+    extendIp: vi.fn(),
     unblockIp: vi.fn(),
     temporaryBlockAccount: vi.fn(),
     permanentBanAccount: vi.fn(),
@@ -95,6 +95,15 @@ const renderPage = async () => {
   await waitFor(() => expect(aiopsApi.getStatus).toHaveBeenCalled());
 };
 const card = (title) => screen.getByRole('heading', { level: 2, name: title }).closest('section');
+const PIN = { pin: '246810' };
+// Mọi thao tác ghi trên trang AIOps qua hộp nhập PIN (mục 2.3 kế hoạch sửa trang AIOps).
+const confirmWithPin = async (dialogName, buttonName) => {
+  const dialog = await screen.findByRole('dialog', { name: dialogName });
+  expect(within(dialog).getByRole('button', { name: buttonName })).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: buttonName }));
+  return dialog;
+};
 
 beforeEach(() => {
   Object.keys(handlers).forEach((k) => delete handlers[k]);
@@ -175,21 +184,25 @@ describe('AIOps — Tầng 1: hiển thị', () => {
 });
 
 describe('AIOps — Tầng 2: tác động thật', () => {
-  it('chọn mức quy mô và nhập số tùy ý gọi setScale đúng giá trị; số ngoài 100–50.000 không gọi', async () => {
+  it('chọn mức quy mô và nhập số tùy ý: qua PIN rồi gọi setScale đúng giá trị; số ngoài 100–50.000 không mở PIN', async () => {
     await renderPage();
     const scale = card('Quy mô người dùng');
     fireEvent.click(within(scale).getByRole('button', { name: '5.000' }));
-    await waitFor(() => expect(aiopsApi.setScale).toHaveBeenCalledWith(5000));
+    expect(aiopsApi.setScale).not.toHaveBeenCalled();
+    await confirmWithPin('Đổi quy mô người dùng?', 'Áp dụng');
+    await waitFor(() => expect(aiopsApi.setScale).toHaveBeenCalledWith(5000, PIN));
     await waitFor(() => expect(within(scale).getByRole('button', { name: '5.000' })).toHaveAttribute('aria-pressed', 'true'));
 
     const input = within(scale).getByLabelText('Số người dùng đồng thời');
     fireEvent.change(input, { target: { value: '2500' } });
     fireEvent.click(within(scale).getByRole('button', { name: 'Áp dụng' }));
-    await waitFor(() => expect(aiopsApi.setScale).toHaveBeenLastCalledWith(2500));
+    await confirmWithPin('Đổi quy mô người dùng?', 'Áp dụng');
+    await waitFor(() => expect(aiopsApi.setScale).toHaveBeenLastCalledWith(2500, PIN));
 
     aiopsApi.setScale.mockClear();
     fireEvent.change(input, { target: { value: '50' } });
     fireEvent.click(within(scale).getByRole('button', { name: 'Áp dụng' }));
+    expect(screen.queryByRole('dialog', { name: 'Đổi quy mô người dùng?' })).not.toBeInTheDocument();
     expect(aiopsApi.setScale).not.toHaveBeenCalled();
   });
 
@@ -239,6 +252,8 @@ describe('AIOps — Tầng 2: tác động thật', () => {
     expect(within(dialog).getByLabelText('Lưu lượng đột biến (yêu cầu/giây)')).toHaveAttribute('placeholder', '500');
     fireEvent.change(within(dialog).getByLabelText('CPU (%)'), { target: { value: '90' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hiệu chuẩn' }));
+    expect(aiopsApi.calibrate).not.toHaveBeenCalled();
+    await confirmWithPin('Xác nhận hiệu chuẩn ngưỡng', 'Hiệu chuẩn');
     await waitFor(() => expect(aiopsApi.calibrate).toHaveBeenCalledWith({
       targetConcurrency: 1000,
       customThresholds: {
@@ -249,7 +264,7 @@ describe('AIOps — Tầng 2: tác động thật', () => {
         resourceMemoryPercent: 85,
         eventLoopLagMs: 100,
       },
-    }));
+    }, PIN));
   });
 
   it('bảo trì khẩn cấp: nhập lý do, rồi bắt buộc PIN; gửi lý do kèm PIN, bật chế độ khẩn cấp', async () => {
@@ -385,20 +400,19 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     withData();
     aiopsApi.toggleVector.mockReset().mockResolvedValue({ data: { vectorConfig: { auth: false, traffic: true, exploit: true, resource: false } } });
     aiopsApi.quarantineActor.mockReset().mockResolvedValue({ data: { hash: 'h-203', maskedIp: '203.0.xxx.xxx' } });
-    ['temporaryBlockIp', 'permanentBanIp', 'unblockIp', 'temporaryBlockAccount', 'permanentBanAccount', 'unblockAccount'].forEach((k) => aiopsApi[k].mockReset().mockResolvedValue({}));
+    ['temporaryBlockIp', 'extendIp', 'unblockIp', 'temporaryBlockAccount', 'permanentBanAccount', 'unblockAccount'].forEach((k) => aiopsApi[k].mockReset().mockResolvedValue({}));
     aiopsApi.revealQuarantineIp.mockReset().mockResolvedValue({ data: { data: { ip: '203.0.113.9' } } });
     aiopsApi.getForensics.mockReset().mockResolvedValue({ data: { incidents: [{ id: 77, incident_code: 'INC-77', detected_at: '2026-11-13T04:00:00Z', ip_hash: 'h-1abcdef0123', username: 'an', reason: 'Dò mật khẩu' }], total: 1 } });
   });
 
-  it('tắt phòng vệ một nhóm: hỏi xác nhận rồi gọi toggleVector', async () => {
+  it('tắt phòng vệ một nhóm: hỏi PIN rồi gọi toggleVector kèm PIN', async () => {
     await renderPage();
     const vectors = card('Nhóm rủi ro');
     const sw = await within(vectors).findByRole('switch', { name: 'Phòng vệ nhóm Xác thực' });
     fireEvent.click(sw);
-    const dialog = await screen.findByRole('dialog', { name: 'Tắt phòng vệ nhóm Xác thực?' });
     expect(aiopsApi.toggleVector).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Tắt' }));
-    await waitFor(() => expect(aiopsApi.toggleVector).toHaveBeenCalledWith('auth', false));
+    await confirmWithPin('Tắt phòng vệ nhóm Xác thực?', 'Tắt');
+    await waitFor(() => expect(aiopsApi.toggleVector).toHaveBeenCalledWith('auth', false, PIN));
     await waitFor(() => expect(sw).toHaveAttribute('aria-checked', 'false'));
   });
 
@@ -419,36 +433,55 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     const incidents = card('Sự cố');
     await waitFor(() => expect(rowOf(incidents, 'Dò mật khẩu liên tục')).toBeTruthy());
     fireEvent.click(within(rowOf(incidents, 'Dò mật khẩu liên tục')).getByRole('button', { name: 'Chặn' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Chặn nguồn 203.0.xxx.xxx?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Chặn' }));
+    await confirmWithPin('Chặn nguồn 203.0.xxx.xxx?', 'Chặn');
     await waitFor(() => expect(aiopsApi.quarantineActor).toHaveBeenCalledWith({
       hash: 'h-203', ip: null, maskedIp: '203.0.xxx.xxx', vector: 'auth', reason: 'Admin quarantine (AUTH_BRUTE)', durationMinutes: 240,
-    }));
+    }, PIN));
   });
 
-  it('thao tác IP / tài khoản hỏi xác nhận bằng hộp thoại (không dùng window.confirm) rồi gọi đúng API', async () => {
+  it('thao tác IP / tài khoản: hộp PIN (không dùng window.confirm), gọi đúng API kèm PIN', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm');
     await renderPage();
     const q = card('Nguồn bị chặn');
     await waitFor(() => expect(rowOf(q, '198.51.xxx.xxx')).toBeTruthy());
-
-    fireEvent.click(within(rowOf(q, '198.51.xxx.xxx')).getByRole('button', { name: 'Tạm khóa IP' }));
-    let dialog = await screen.findByRole('dialog', { name: 'Tạm khóa IP 198.51.xxx.xxx?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
-    await waitFor(() => expect(aiopsApi.temporaryBlockIp).toHaveBeenCalledWith({ ipHash: 'h-2' }));
-
-    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Mở khóa IP' }));
-    dialog = await screen.findByRole('dialog', { name: 'Mở khóa IP 203.0.xxx.xxx?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Mở khóa' }));
-    await waitFor(() => expect(aiopsApi.unblockIp).toHaveBeenCalledWith({ ipHash: 'h-1' }));
-
-    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Khóa vĩnh viễn' }));
-    dialog = await screen.findByRole('dialog', { name: 'Khóa vĩnh viễn tài khoản an?' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Khóa vĩnh viễn' }));
-    await waitFor(() => expect(aiopsApi.permanentBanAccount).toHaveBeenCalledWith({ username: 'an', idaccount: 5 }));
-
+    const steps = [
+      ['198.51.xxx.xxx', 'Tạm khóa IP', 'Tạm khóa IP 198.51.xxx.xxx?', 'Tạm khóa', 'temporaryBlockIp', { ipHash: 'h-2' }],
+      ['203.0.xxx.xxx', 'Khóa thêm 4 giờ', 'Khóa thêm 4 giờ cho IP 203.0.xxx.xxx?', 'Khóa thêm', 'extendIp', { ipHash: 'h-1' }],
+      ['203.0.xxx.xxx', 'Mở khóa IP', 'Mở khóa IP 203.0.xxx.xxx?', 'Mở khóa', 'unblockIp', { ipHash: 'h-1' }],
+      ['203.0.xxx.xxx', 'Khóa vĩnh viễn', 'Khóa vĩnh viễn tài khoản an?', 'Khóa vĩnh viễn', 'permanentBanAccount', { username: 'an', idaccount: 5 }],
+      ['203.0.xxx.xxx', 'Mở khóa tài khoản', 'Mở khóa tài khoản an?', 'Mở khóa', 'unblockAccount', { username: 'an', idaccount: 5 }],
+    ];
+    for (const [row, button, dialogName, confirm, api, payload] of steps) {
+      aiopsApi.getQuarantineList.mockResolvedValue({ data: QUARANTINE() });
+      await waitFor(() => expect(within(rowOf(q, row)).getByRole('button', { name: button })).toBeInTheDocument());
+      fireEvent.click(within(rowOf(q, row)).getByRole('button', { name: button }));
+      expect(aiopsApi[api]).not.toHaveBeenCalled();
+      await confirmWithPin(dialogName, confirm);
+      await waitFor(() => expect(aiopsApi[api]).toHaveBeenCalledWith(payload, PIN));
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument());
+    }
     expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it('khoá tài khoản quản trị gốc: máy chủ trả ROOT_ACCOUNT_PROTECTED thì hộp PIN báo rõ', async () => {
+    aiopsApi.permanentBanAccount.mockRejectedValue({ response: { status: 403, data: { code: 'ROOT_ACCOUNT_PROTECTED', message: 'x' } } });
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy());
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Khóa vĩnh viễn' }));
+    const dialog = await confirmWithPin('Khóa vĩnh viễn tài khoản an?', 'Khóa vĩnh viễn');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không thể khóa tài khoản quản trị gốc.');
+  });
+
+  it('tự khoá chính mình: máy chủ trả CANNOT_LOCK_SELF thì hộp PIN báo rõ, không đóng', async () => {
+    aiopsApi.permanentBanAccount.mockRejectedValue({ response: { status: 403, data: { code: 'CANNOT_LOCK_SELF', message: 'x' } } });
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy());
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Khóa vĩnh viễn' }));
+    const dialog = await confirmWithPin('Khóa vĩnh viễn tài khoản an?', 'Khóa vĩnh viễn');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Không thể tự khóa tài khoản của chính mình.');
   });
 
   it('xem IP đầy đủ phải nhập PIN; IP hiện ngay trong dòng', async () => {
@@ -483,7 +516,9 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     fireEvent.change(within(dialog).getByLabelText('Địa chỉ IP'), { target: { value: '198.51.100.7' } });
     fireEvent.change(within(dialog).getByLabelText('Thời hạn'), { target: { value: '60' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
-    await waitFor(() => expect(aiopsApi.quarantineActor).toHaveBeenCalledWith(expect.objectContaining({ ip: '198.51.100.7', durationMinutes: 60 })));
+    expect(aiopsApi.quarantineActor).not.toHaveBeenCalled();
+    await confirmWithPin('Xác nhận tạm khóa thủ công', 'Tạm khóa');
+    await waitFor(() => expect(aiopsApi.quarantineActor).toHaveBeenCalledWith(expect.objectContaining({ ip: '198.51.100.7', durationMinutes: 60 }), PIN));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tạm khóa thủ công' })).not.toBeInTheDocument());
 
     fireEvent.click(within(card('Nguồn bị chặn')).getByRole('button', { name: 'Tạm khóa thủ công' }));
@@ -491,7 +526,9 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     fireEvent.click(within(dialog).getByRole('tab', { name: 'Tài khoản' }));
     fireEvent.change(within(dialog).getByLabelText('Tên đăng nhập hoặc mã tài khoản'), { target: { value: 'binh' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
-    await waitFor(() => expect(aiopsApi.temporaryBlockAccount).toHaveBeenCalledWith({ username: 'binh', durationMinutes: 240 }));
+    await confirmWithPin('Xác nhận tạm khóa thủ công', 'Tạm khóa');
+    await waitFor(() => expect(aiopsApi.temporaryBlockAccount).toHaveBeenCalledWith({ username: 'binh', durationMinutes: 240 }, PIN));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tạm khóa thủ công' })).not.toBeInTheDocument());
   });
 
   it('sự kiện realtime thêm nguồn bị chặn và sự cố mới vào bảng', async () => {
@@ -611,6 +648,48 @@ describe('AIOps — 1.2 nút Làm mới', () => {
     alertSpy.success.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
     await waitFor(() => expect(alertSpy.success).toHaveBeenCalledWith('Đã làm mới dữ liệu.'));
+  });
+});
+
+describe('AIOps — 2.2 danh sách khoá giữ lịch sử', () => {
+  const LIST = () => [
+    ...QUARANTINE(),
+    {
+      id: 'none:::binh', hash: null, ipHash: null, maskedIp: null, username: 'binh', idaccount: 11, vector: 'auth',
+      ipStatus: null, accountStatus: 'unlocked', reason: 'Quản trị viên tạm khóa tài khoản 4 giờ', bannedAt: '2026-11-13T02:00:00Z',
+      accountUnblockedBy: 'admin.b', accountUnblockedAt: '2026-11-13T03:00:00Z', hits: 1,
+    },
+  ];
+  beforeEach(() => {
+    withData();
+    aiopsApi.getQuarantineList.mockResolvedValue({ data: LIST() });
+  });
+
+  it('dòng chỉ có tài khoản: cột IP để trống, không có nút IP; dòng đã mở ghi người mở', async () => {
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, 'binh')).toBeTruthy());
+    const r = rowOf(q, 'binh');
+    expect(within(r).queryByRole('button', { name: 'Tạm khóa IP' })).not.toBeInTheDocument();
+    expect(within(r).queryByRole('button', { name: 'Xem IP đầy đủ' })).not.toBeInTheDocument();
+    expect(within(r).getByRole('button', { name: 'Tạm khóa tài khoản' })).toBeInTheDocument();
+    expect(r).toHaveTextContent('Đã mở bởi admin.b');
+  });
+
+  it('lọc trạng thái: Đang khóa ẩn dòng đã mở; Đã mở chỉ còn dòng đã mở; Tất cả hiện đủ', async () => {
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, 'binh')).toBeTruthy());
+    const tabs = within(q).getByRole('tablist', { name: 'Lọc theo trạng thái khóa' });
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Đang khóa' }));
+    expect(rowOf(q, 'binh')).toBeUndefined();
+    expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy();
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Đã mở' }));
+    expect(rowOf(q, 'binh')).toBeTruthy();
+    expect(rowOf(q, '203.0.xxx.xxx')).toBeUndefined();
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Tất cả' }));
+    expect(rowOf(q, 'binh')).toBeTruthy();
+    expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy();
   });
 });
 

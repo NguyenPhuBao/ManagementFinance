@@ -15,6 +15,9 @@ const LoginPage = () => {
   const { t } = useLanguageSafe();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  // Tài khoản quản trị gốc: máy chủ đòi thêm khoá thứ hai thì mới hiện ô này (Phần 3, 2026-11-16).
+  const [needRootKey, setNeedRootKey] = useState(false);
+  const [rootKey, setRootKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,10 +30,16 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      await login({ username, password });
+      await login(needRootKey ? { username, password, rootKey } : { username, password });
       if (resetLockState) resetLockState();
       navigate('/dashboard');
     } catch (err) {
+      const code = err.response?.data?.code;
+      if (code === 'ROOT_KEY_REQUIRED' || code === 'ROOT_KEY_INVALID') {
+        setNeedRootKey(true);
+        setError(t(code === 'ROOT_KEY_REQUIRED' ? 'auth.login.rootKeyRequired' : 'auth.login.rootKeyInvalid'));
+        return;
+      }
       setError(
         err.response?.status === 401
           ? t('auth.login.invalidCredentials')
@@ -77,6 +86,20 @@ const LoginPage = () => {
             required
           />
         </div>
+        {needRootKey && (
+          <Field id="login-root-key" label={t('auth.login.rootKeyLabel')}>
+            <PasswordInput
+              id="login-root-key"
+              name="rootKey"
+              autoComplete="off"
+              value={rootKey}
+              onChange={(e) => setRootKey(e.target.value)}
+              disabled={loading}
+              required
+              autoFocus
+            />
+          </Field>
+        )}
         <Button type="submit" variant="primary" loading={loading} className="mt-2 w-full">
           {t('auth.login.submitBtn')}
         </Button>

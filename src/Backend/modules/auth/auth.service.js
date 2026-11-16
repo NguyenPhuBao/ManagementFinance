@@ -11,6 +11,7 @@ const { encrypt, decrypt } = require("../../utils/crypto.util");
 const { maskIp } = require("../../utils/masking.util");
 const { trackDeviceAccess } = require("./device-history.service");
 const { getClientIp } = require('../../utils/ip-protection.util');
+const rootAdmin = require('./root-admin');
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -83,6 +84,22 @@ function getDeviceInfo(req) {
     user_agent: userAgent,
     device_name: (userAgent || "").substring(0, 100),
   };
+}
+
+// Mỗi lần tài khoản quản trị gốc đăng nhập: ghi log và gửi email cảnh báo (không chặn đăng nhập nếu gửi lỗi).
+function notifyRootLogin(account, req) {
+  const ip = maskIp(getClientIp(req) || '');
+  const time = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+  logger.warn('Root admin logged in', { idaccount: account.idaccount, ip });
+  const to = process.env.ADMIN_ALERT_EMAIL || (config.mail && config.mail.from);
+  if (!to || typeof emailService.sendMail !== 'function') return;
+  Promise.resolve(
+    emailService.sendMail({
+      to,
+      subject: '[FlowMoney] Tài khoản quản trị gốc vừa đăng nhập',
+      text: `Tài khoản quản trị gốc (${account.username}) đăng nhập lúc ${time} từ IP ${ip || 'không rõ'}.\nNếu không phải bạn, đổi ngay ROOT_ADMIN_SECOND_KEY trên máy chủ rồi khởi động lại để cắt mọi phiên.`,
+    })
+  ).catch((err) => logger.error('Không gửi được email cảnh báo đăng nhập tài khoản gốc', { error: err.message }));
 }
 
 async function saveRefreshToken(token, payload, req) {
@@ -346,6 +363,10 @@ const authService = {
 
     const account = matchedAccount;
 
+    // Tài khoản quản trị gốc: bước 2 là khoá ROOT_ADMIN_SECOND_KEY trong biến môi trường (Phần 3, 2026-11-16).
+    const isRoot = rootAdmin.isRootAccount(account);
+    if (isRoot) rootAdmin.assertSecondFactor(req.body?.rootKey);
+
     if (account.status === 'PendingDelete') {
       const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
       if (isExpired) {
@@ -408,10 +429,13 @@ const authService = {
       status: account.status || 'Active',
       countdown: account.countdown ?? null,
       is_first_login: Boolean(account.is_first_login),
+      ...(isRoot ? rootAdmin.rootClaims() : {}),
     };
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
     await saveRefreshToken(refreshToken, payload, req);
+
+    if (isRoot) notifyRootLogin(account, req);
 
     // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
     await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
@@ -420,21 +444,7 @@ const authService = {
 
     const clientIp = getClientIp(req);
 
-    // Tự động đăng ký bảo vệ IP động & gỡ phong tỏa khi đăng nhập thành công với quyền Quản trị viên (Dynamic Admin Session Protection)
-    if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {
-      try {
-        const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
-        if (clientIp && defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.registerAdminSession === 'function') {
-          defaultAIOpsQuarantine.registerAdminSession(clientIp, {
-            userId: account.idaccount,
-            username: account.username,
-            ttlMs: 24 * 60 * 60 * 1000,
-          });
-        } else if (clientIp && defaultAIOpsQuarantine) {
-          defaultAIOpsQuarantine.unquarantine(clientIp);
-        }
-      } catch (_) {}
-    }
+    // Đăng nhập admin không gỡ và không miễn khoá IP (mục 2.5 kế hoạch sửa trang AIOps, 2026-11-16).
 
     try {
       const { emitUserLoggedIn } = require('../../core/socket');
@@ -514,6 +524,12 @@ const authService = {
     } catch (err) {
       await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
       throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
+    }
+
+    // Phiên tài khoản gốc hết hiệu lực khi khoá thứ hai trong biến môi trường đã đổi.
+    if (!rootAdmin.isRootSessionValid(payload)) {
+      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
+      throw rootAdmin.revokedError();
     }
 
     // Kiểm tra tính hợp lệ của tài khoản (xóa mềm, inactive, quá hạn 30 ngày)

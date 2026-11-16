@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLanguageSafe } from '../../store/language.context';
-import { Button, PageHeader } from '../../components/ui';
+import { Button, PageHeader, SecurityConfirmModal } from '../../components/ui';
 import useAIOps from './aiops/useAIOps';
 import ScaleSection from './aiops/ScaleSection';
 import SignalsSection from './aiops/SignalsSection';
@@ -53,6 +53,17 @@ const AIOpsPage = () => {
 
       <CalibrateModal ops={ops} />
       <MitigationModal ops={ops} />
+      {ops.pinRequest && (
+        <SecurityConfirmModal
+          isOpen
+          onClose={ops.closePinRequest}
+          onVerify={ops.pinRequest.run}
+          title={ops.pinRequest.title}
+          description={ops.pinRequest.description}
+          confirmText={ops.pinRequest.confirmText}
+          dangerLevel={ops.pinRequest.danger ? 'critical' : 'primary'}
+        />
+      )}
     </div>
   );
 };
