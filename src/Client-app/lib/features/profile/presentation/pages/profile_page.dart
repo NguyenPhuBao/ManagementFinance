@@ -76,6 +76,12 @@ class ProfilePage extends StatelessWidget {
                     title: 'Cài đặt thông báo',
                     onTap: () => context.push('/settings/notifications'),
                   ),
+                  // Điều khoản sử dụng + Chính sách bảo mật viết cứng (spec 2026-11-16) — route mở cho cả hai phía.
+                  _ProfileItem(
+                    icon: Icons.policy_outlined,
+                    title: 'Điều khoản & chính sách',
+                    onTap: () => context.push('/chinh-sach'),
+                  ),
                 ],
               ),
             ),

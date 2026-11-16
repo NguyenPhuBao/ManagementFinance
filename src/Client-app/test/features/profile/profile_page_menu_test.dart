@@ -13,6 +13,7 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 class _RepoGia implements AuthRepository {
   @override
@@ -126,5 +127,25 @@ void main() {
     // báo" chứ không "Thông báo" từ 2026-09-19 (D7) — tên cũ lẫn với TRUNG
     // TÂM thông báo, thứ vào bằng chuông ở Trang chủ.
     expect(find.text('Cài đặt thông báo'), findsOneWidget);
+  });
+
+  testWidgets('thẻ CÀI ĐẶT có "Điều khoản & chính sách"; bấm → /chinh-sach (spec điều khoản viết cứng 2026-11-16)',
+      (tester) async {
+    final bloc = AuthBloc(authRepository: _RepoGia());
+    addTearDown(bloc.close);
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (_, __) => const ProfilePage()),
+      GoRoute(path: '/chinh-sach', builder: (_, __) => const Scaffold(body: Text('trang chính sách'))),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(BlocProvider<AuthBloc>.value(
+      value: bloc,
+      child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+    ));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Điều khoản & chính sách'));
+    await tester.tap(find.text('Điều khoản & chính sách'));
+    await tester.pumpAndSettle();
+    expect(find.text('trang chính sách'), findsOneWidget);
   });
 }
