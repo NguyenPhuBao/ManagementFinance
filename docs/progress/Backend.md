@@ -761,4 +761,4 @@ Kế hoạch: `docs/superpowers/specs/2026-11-16-aiops-sua-loi-design.md`. Đặ
 - Bỏ miễn khoá IP cho admin (cả `req.isAdmin` lẫn phiên admin 24 giờ); chỉ tài khoản quản trị gốc đi qua lớp chặn IP.
 - Tài khoản quản trị gốc: `modules/auth/root-admin.js`, migration `56_root_admin_guard.sql` (trigger), `scripts/seed_root_admin.js`, đăng nhập hai bước, cắt phiên khi đổi `ROOT_ADMIN_SECOND_KEY`, email cảnh báo.
 - `admin.service.js` thiếu import `logger` (lỗi tiềm ẩn ở nhánh `catch`), đã thêm.
-- Migration 56 mới áp trên CSDL thử cục bộ; **chưa áp Supabase** (chờ Chủ dự án xác nhận). Client-app không phải đổi gì.
+- Migration 56 đã áp Supabase 2026-11-16 (Chủ dự án xác nhận; tài khoản `admin` Active, vai quản trị trước khi áp; `db:verify-indexes` đạt). Client-app không phải đổi gì.
