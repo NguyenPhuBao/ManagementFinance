@@ -236,11 +236,12 @@ class FakeCategoryRepository implements CategoryManagementRepository {
 /// Ghi lại những gì trang gửi xuống, để test kiểm được entity đã dựng ra
 /// (loại, danh mục, ví đích) thay vì chỉ kiểm giao diện.
 class FakeTransactionRepository implements TransactionRepository {
+  // Danh sách kèm khoản nhà (spec 2026-11-16): bản giả không có khoản nhà — trả đúng như hai hàm chỉ-riêng.
   @override
-  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount) => throw UnimplementedError();
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount) => watchAll(idaccount);
   @override
   Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) =>
-      throw UnimplementedError();
+      watchKhoang(idaccount, from, to);
   @override
   Future<List<TransactionEntity>> getAll(int idaccount) => throw UnimplementedError();
   @override

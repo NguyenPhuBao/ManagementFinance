@@ -26,6 +26,7 @@ class TransactionDetailSheet extends StatelessWidget {
     required this.onDelete,
     this.hoaDonDaXoa = false,
     this.anThaoTac = false,
+    this.cauKhoa,
   });
 
   final TransactionEntity transaction;
@@ -40,11 +41,15 @@ class TransactionDetailSheet extends StatelessWidget {
   /// Đợt 1B Task 9 — nửa riêng của khoản góp, rút trong nhà chỉ xem: không Sửa, không Xoá (server từ chối nửa nhà).
   final bool anThaoTac;
 
+  /// Câu thay hai nút Sửa / Xoá (khoản của nhà mà tôi không được sửa / xoá — spec 2026-11-16). `null` = theo luật cũ.
+  final String? cauKhoa;
+
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
     final content = buildTransactionRowContent(tx, lookup);
     final lyDo = lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: hoaDonDaXoa)) ??
+        cauKhoa ??
         (anThaoTac ? 'Nhà đang ở chế độ chỉ xem.' : null);
     final isTransfer = tx.type == 'transfer';
     final category = lookup.category(tx.categoryId);
