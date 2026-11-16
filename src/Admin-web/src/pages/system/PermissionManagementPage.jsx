@@ -6,7 +6,6 @@ import { useLanguageSafe } from '../../store/language.context';
 import { Button, Card, EmptyState, PageHeader, SecurityConfirmModal, Spinner } from '../../components/ui';
 import PermissionFilterToolbar from './components/PermissionFilterToolbar';
 import PermissionMatrixTable from './components/PermissionMatrixTable';
-import PermissionScopeDrawer from './components/PermissionScopeDrawer';
 import { PLANS, groupLabel, isChanged } from './components/permissionFormat';
 
 const EMPTY = { Basic: {}, Premium: {} };
@@ -26,7 +25,6 @@ const PermissionManagementPage = () => {
   const [selectedGroup, setSelectedGroup] = useState('ALL');
   const [viewMode, setViewMode] = useState('ALL');
   const [onlyDirty, setOnlyDirty] = useState(false);
-  const [scopeTarget, setScopeTarget] = useState(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -71,8 +69,6 @@ const PermissionManagementPage = () => {
               feature_id: f.id,
               is_enabled: d.is_enabled,
               limit_value: d.limit_value,
-              scope_config: d.scope_config,
-              downgrade_policy: d.downgrade_policy,
             };
           })
       ),
@@ -184,19 +180,10 @@ const PermissionManagementPage = () => {
             draft={draft}
             original={original}
             onPatch={patch}
-            onOpenScope={(feature, plan) => setScopeTarget({ feature, plan })}
             onUndo={undo}
           />
         ))
       )}
-
-      <PermissionScopeDrawer
-        feature={scopeTarget?.feature || null}
-        plan={scopeTarget?.plan}
-        initialScope={scopeTarget ? draft[scopeTarget.plan]?.[scopeTarget.feature.id]?.scope_config : undefined}
-        onApply={(scope) => patch(scopeTarget.plan, scopeTarget.feature.id, { scope_config: scope })}
-        onClose={() => setScopeTarget(null)}
-      />
 
       <SecurityConfirmModal
         isOpen={confirmSave}

@@ -4,7 +4,7 @@ import { useLanguageSafe } from '../../../store/language.context';
 import { formatDateTime } from '../../../utils/format';
 import { Button, Card, Icon, SecurityConfirmModal } from '../../../components/ui';
 import MaintenanceHistory from './MaintenanceHistory';
-import { HOUR, MAX_LEAD_DAYS, MIN_LEAD_HOURS, scheduledListOf, toLocalInput } from './maintenanceFormat';
+import { HOUR, MAX_LEAD_DAYS, MAX_SESSION_DAYS, MIN_LEAD_HOURS, scheduledListOf, toLocalInput } from './maintenanceFormat';
 
 const fieldClass =
   'h-10 w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -59,6 +59,10 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
     }
     if (end && new Date(end).getTime() <= startMs) {
       setFormError(t('broadcast.schedule.errorEndBeforeStart'));
+      return;
+    }
+    if (end && new Date(end).getTime() - startMs > MAX_SESSION_DAYS * 24 * HOUR) {
+      setFormError(t('broadcast.schedule.errorMaxSession'));
       return;
     }
     setConfirmSchedule(true);
@@ -181,6 +185,7 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
                   id={`${ids}-end`}
                   type="datetime-local"
                   min={start || toLocalInput(now + MIN_LEAD_HOURS * HOUR)}
+                  max={start ? toLocalInput(new Date(start).getTime() + MAX_SESSION_DAYS * 24 * HOUR) : undefined}
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
                   className={fieldClass}
