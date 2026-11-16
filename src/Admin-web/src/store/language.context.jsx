@@ -85,14 +85,6 @@ export const LanguageProvider = ({ children }) => {
   );
 };
 
-export const useLanguage = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
-};
-
 // Hook an toàn sử dụng trong unit tests hoặc khi component render ngoài provider
 export const useLanguageSafe = () => {
   const context = useContext(LanguageContext);

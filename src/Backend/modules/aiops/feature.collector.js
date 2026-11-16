@@ -1,5 +1,5 @@
 const os = require('os');
-const crypto = require('crypto');
+const { ipLookupHash } = require('../../utils/ip-protection.util');
 const jwt = require('jsonwebtoken');
 let config;
 try {
@@ -22,7 +22,6 @@ class FeatureCollector {
     this._malformedRequests = 0;
     this._ipHashes = new Set();
     this._ipStats = new Map();
-    this._salt = crypto.randomBytes(8).toString('hex');
     this.targetConcurrency = options.targetConcurrency || 1000;
     this._startupTime = Date.now();
   }
@@ -61,8 +60,7 @@ class FeatureCollector {
    * Tạo chuỗi băm 16 ký tự an toàn từ IP client để đếm số lượng IP duy nhất mà không lưu PII
    */
   _hashIp(ip) {
-    if (!ip) return '0000000000000000';
-    return crypto.createHash('sha256').update(`${this._salt}:${ip}`).digest('hex').substring(0, 16);
+    return ipLookupHash(ip);
   }
 
   /**

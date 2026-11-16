@@ -1,5 +1,5 @@
-const crypto = require('crypto');
 const logger = require('../../core/logger');
+const { ipLookupHash } = require('../../utils/ip-protection.util');
 const { defaultAIOpsQuarantineRepository } = require('./aiops.quarantine.repository');
 const { AIOPS_AUTO_REASON_PREFIX, lyDoChoNguoiDung } = require('./aiops.reason');
 
@@ -23,10 +23,8 @@ function maskIp(rawIp) {
   return '192.168.xxx.xxx';
 }
 
-function hashIp(rawIp, salt = 'aiops-quarantine-salt') {
-  if (!rawIp) return '0000000000000000';
-  const clean = rawIp.replace(/^::ffff:/, '').trim();
-  return crypto.createHash('sha256').update(`${salt}:${clean}`).digest('hex').substring(0, 16);
+function hashIp(rawIp) {
+  return ipLookupHash(rawIp);
 }
 
 function normalizeIp(rawIp) {
@@ -1091,6 +1089,20 @@ class AIOpsQuarantine {
   /**
    * Lấy danh sách các cặp (IP, Tài khoản) đang bị quản lý cách ly
    */
+  async revealFullIp(ipHash) {
+    if (!ipHash) return null;
+    for (const record of this._pairs.values()) {
+      if (record.ipHash === ipHash && record.ip) return record.ip;
+    }
+    const legacy = this._byHash.get(ipHash);
+    if (legacy && legacy.ip) return legacy.ip;
+    if (this.repository && typeof this.repository.getIpByHash === 'function') {
+      const row = await this.repository.getIpByHash(ipHash);
+      if (row && row.raw_ip) return row.raw_ip;
+    }
+    return null;
+  }
+
   getQuarantinedList() {
     const now = Date.now();
     const resultList = [];

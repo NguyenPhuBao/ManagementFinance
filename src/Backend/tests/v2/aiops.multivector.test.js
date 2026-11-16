@@ -263,7 +263,6 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
 
     it('4.2. Repository lưu trữ tích lũy và chuyển trạng thái ACTIVE -> MITIGATED', async () => {
       const repo = new AIOpsIncidentRepository({ pool: null }); // Test với memory fallback
-      await repo.clearIncidents();
 
       const item1 = await repo.upsertIncident({
         id: 'inc_test_1',
@@ -291,7 +290,6 @@ describe('AIOps Sentinel Multi-Vector & Quarantine Suite v2', () => {
 
     it('4.3. Phân trang Server-side chính xác cho danh sách sự cố', async () => {
       const repo = new AIOpsIncidentRepository({ pool: null });
-      await repo.clearIncidents();
 
       // Thêm 5 sự cố
       for (let i = 1; i <= 5; i++) {

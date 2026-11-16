@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuthContext } from '../store/auth.context';
 import { useSettingsSafe } from '../store/settings.context';
 import { STORAGE_KEYS } from '../utils/constants';
-import Loading from '../components/common/Loading';
+import Loading from '../components/ui/Loading';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuthContext();

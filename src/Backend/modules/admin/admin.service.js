@@ -1,4 +1,34 @@
 const adminRepository = require('./admin.repository');
+
+const PIN_MAX_FAILURES = 5;
+const PIN_WINDOW_MS = 15 * 60 * 1000;
+const pinAttempts = new Map();
+
+function pinLockedUntil(idaccount) {
+  const rec = pinAttempts.get(idaccount);
+  if (!rec) return 0;
+  if (rec.lockedUntil && rec.lockedUntil > Date.now()) return rec.lockedUntil;
+  if (rec.lockedUntil || Date.now() - rec.firstAt > PIN_WINDOW_MS) pinAttempts.delete(idaccount);
+  return 0;
+}
+
+// PIN hệ thống chỉ dùng cho quản trị viên chưa có pin_hash riêng.
+// Production bắt buộc đặt ADMIN_SECURITY_PIN; thiếu thì không PIN nào khớp (không rơi về mặc định).
+function systemPinMatches(input) {
+  const configured = (process.env.ADMIN_SECURITY_PIN || '').trim();
+  const systemPin = configured || (process.env.NODE_ENV === 'production' ? '' : '123456');
+  if (!systemPin) return false;
+  return String(input || '').trim() === systemPin;
+}
+
+function recordPinFailure(idaccount) {
+  const now = Date.now();
+  const rec = pinAttempts.get(idaccount);
+  const next = rec && now - rec.firstAt <= PIN_WINDOW_MS ? { ...rec, count: rec.count + 1 } : { count: 1, firstAt: now, lockedUntil: 0 };
+  if (next.count >= PIN_MAX_FAILURES) next.lockedUntil = now + PIN_WINDOW_MS;
+  pinAttempts.set(idaccount, next);
+  return next;
+}
 const permissionRepository = require('../payment/permission.repository');
 const os = require('os');
 const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
@@ -11,12 +41,6 @@ function normalizeCategoryName(name) {
   if (!name || typeof name !== 'string') return '';
   return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
-
-/**
- * Thời điểm server khởi động — ghi nhận 1 lần khi module được load.
- * Bền vững trong suốt vòng đời process (dev lẫn production).
- */
-const SERVER_START_TIME = new Date();
 
 /**
  * Chuyển số giây thành chuỗi mô tả thân thiện.
@@ -33,75 +57,40 @@ function formatUptimeDuration(totalSeconds) {
   if (days > 0) parts.push(`${days} ngày`);
   if (hours > 0) parts.push(`${hours} giờ`);
   if (minutes > 0) parts.push(`${minutes} phút`);
-  if (parts.length === 0) parts.push('Vừa khởi động');
+  if (parts.length === 0) parts.push('dưới 1 phút');
   return parts.join(' ');
 }
 
 /**
- * Tính % uptime theo chuẩn SLA 30 ngày (Chuẩn SLA Công nghiệp được PO phê duyệt):
- * - Khấu trừ toàn bộ thời gian hệ thống bảo trì (cả Khẩn cấp EMERGENCY lẫn Theo lịch SCHEDULED).
-/**
- * Tính toán tỷ lệ Uptime hệ thống thực tế theo chỉ đạo PO:
- * - Tổng thời gian: Tính từ lúc máy chủ bắt đầu chạy (SERVER_START_TIME) đến thời điểm hiện tại.
- * - Thời gian chạy thực tế = Tổng thời gian - Thời gian bảo trì.
- * - Tỷ lệ % Uptime = (Thời gian chạy thực tế / Tổng thời gian) * 100.
- * - Tự động cập nhật lại liên tục kể cả khi đang trong phiên bảo trì.
- * @param {number} uptimeSeconds - Số giây tiến trình process nodejs hoặc tổng thời gian
- * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, totalSeconds: number, rawUptimeSeconds: number, downtimeSeconds: number, emergencyDowntimeSec: number, startedAt: string }>}
+ * Thông tin thời gian chạy cho health và luồng metrics (kế hoạch 2026-11-15, Q3, Q9).
+ * - Chạy liên tục = Bây giờ − Lúc tiến trình khởi động (process.uptime()), KHÔNG trừ bảo trì.
+ * - availability: độ khả dụng tháng hiện tại (bền vững qua khởi động lại), lưu đệm 60 giây.
+ * - Khoá cũ giữ tạm với nghĩa mới, gỡ ở đợt sau: uptimeSeconds / totalSeconds / rawUptimeSeconds / uptimeFormatted
+ *   = chạy liên tục; uptimePercent = availability.percent; downtimeSeconds = bảo trì + gián đoạn trong tháng.
  */
-async function calcUptimePercent(uptimeSeconds = 0) {
-  // Tổng thời gian từ lúc bắt đầu chạy
-  const totalElapsedSec = typeof uptimeSeconds === 'number' && uptimeSeconds > 0
-    ? Math.floor(uptimeSeconds)
-    : Math.max(1, Math.floor((Date.now() - SERVER_START_TIME.getTime()) / 1000));
-
-  let totalDowntimeSec = 0;
-
-  try {
-    const { defaultMaintenanceRepository } = require('./maintenance.repository');
-    if (defaultMaintenanceRepository) {
-      const sinceDate = SERVER_START_TIME;
-      if (typeof defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds === 'function') {
-        totalDowntimeSec = await defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds(sinceDate);
-      } else if (typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
-        totalDowntimeSec = await defaultMaintenanceRepository.getEmergencyDowntimeSeconds(sinceDate);
-      }
-    }
-  } catch (_) {}
-
-  // Nếu hiện tại hệ thống đang trong phiên bảo trì chưa kết thúc (active = true), cộng thêm thời gian đang diễn ra
-  try {
-    if (defaultMaintenanceManager && typeof defaultMaintenanceManager.isMaintenanceActive === 'function' && defaultMaintenanceManager.isMaintenanceActive()) {
-      if (defaultMaintenanceManager.activatedAt) {
-        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(defaultMaintenanceManager.activatedAt).getTime()) / 1000));
-        totalDowntimeSec += ongoingSec;
-      }
-    } else if (defaultMaintenanceManager && defaultMaintenanceManager.getStatus) {
-      const status = defaultMaintenanceManager.getStatus();
-      if (status && status.active && status.activatedAt) {
-        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(status.activatedAt).getTime()) / 1000));
-        totalDowntimeSec += ongoingSec;
-      }
-    }
-  } catch (_) {}
-
-  // Khấu trừ an toàn: Downtime không được vượt quá Tổng thời gian
-  const safeDowntime = Math.max(0, Math.min(totalDowntimeSec, totalElapsedSec));
-  // Thời gian chạy thực tế của hệ thống
-  const runningSec = Math.max(0, totalElapsedSec - safeDowntime);
-
-  // Tỷ lệ % Uptime thực tế = (Thời gian chạy thực tế / Tổng thời gian) * 100
-  const rawPercent = totalElapsedSec > 0 ? (runningSec / totalElapsedSec) * 100 : 100;
-  const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(2));
+async function buildUptimeInfo() {
+  const runningSeconds = Math.floor(process.uptime());
+  const runningFormatted = formatUptimeDuration(runningSeconds);
+  const startedAt = new Date(Date.now() - runningSeconds * 1000).toISOString();
+  const status = defaultMaintenanceManager.getStatus();
+  const { getCurrentMonthAvailability } = require('./availability.service');
+  const availability = await getCurrentMonthAvailability({ maintenanceKey: `${status.active}|${status.activatedAt || ''}` });
+  let version = null;
+  try { version = require('../../core/resilience/server-session').getDefaultServerSession().getInfo().version; } catch (_) {}
 
   return {
-    uptimePercent: percent,
-    uptimeSeconds: runningSec,
-    totalSeconds: totalElapsedSec,
-    rawUptimeSeconds: totalElapsedSec,
-    downtimeSeconds: safeDowntime,
-    emergencyDowntimeSec: safeDowntime,
-    startedAt: SERVER_START_TIME.toISOString(),
+    runningSeconds,
+    runningFormatted,
+    startedAt,
+    version,
+    availability,
+    uptimeSeconds: runningSeconds,
+    totalSeconds: runningSeconds,
+    rawUptimeSeconds: runningSeconds,
+    uptimeFormatted: runningFormatted,
+    totalFormatted: runningFormatted,
+    uptimePercent: availability.percent,
+    downtimeSeconds: availability.downtimeSeconds,
   };
 }
 
@@ -182,6 +171,15 @@ const adminService = {
       created_at: u.create_at,
       updated_at: u.account ? (u.account.update_at || u.update_at) : u.update_at,
     }));
+  },
+
+  _resetPinAttempts() {
+    pinAttempts.clear();
+  },
+
+  async resolveAccountId(iduser) {
+    const u = await adminRepository.getUserById(iduser);
+    return u?.account?.idaccount ?? null;
   },
 
   async getUserDetail(iduser) {
@@ -759,12 +757,7 @@ const adminService = {
     const maintStatus = defaultMaintenanceManager.getStatus();
     const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
 
-    const rawUptimeSeconds = Math.floor(process.uptime());
-    const uptimeResult = await calcUptimePercent(rawUptimeSeconds);
-    const uptimeSeconds = uptimeResult.uptimeSeconds;
-    const totalSeconds = uptimeResult.totalSeconds;
-    const uptimePercent = uptimeResult.uptimePercent;
-    const downtimeSeconds = uptimeResult.downtimeSeconds;
+    const uptime = await buildUptimeInfo();
 
     return {
       environment,
@@ -793,16 +786,7 @@ const adminService = {
         activatedAt: maintStatus.activatedAt,
       },
       loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
-      uptime: {
-        uptimeSeconds,
-        totalSeconds,
-        rawUptimeSeconds,
-        uptimeFormatted: formatUptimeDuration(uptimeSeconds),
-        totalFormatted: formatUptimeDuration(totalSeconds),
-        startedAt: SERVER_START_TIME.toISOString(),
-        uptimePercent,
-        downtimeSeconds,
-      },
+      uptime,
       timestamp: new Date().toISOString(),
     };
   },
@@ -950,39 +934,59 @@ const adminService = {
   },
 
   /**
-   * Xác thực mã PIN hoặc mật khẩu quản trị viên cho các hành động chí mạng (Re-authentication)
+   * Xác thực thao tác nhạy cảm CHỈ bằng mã PIN quản trị. Mật khẩu không được chấp nhận (trường `password`
+   * gửi lên bị bỏ qua): lộ mật khẩu đăng nhập vẫn không đủ để thay đổi hệ thống.
    */
-  async verifySecurityAction({ pin, password, action, targetId } = {}, currentUser = null) {
-    if (!pin && !password) {
-      const err = new Error('Vui lòng cung cấp mã PIN bảo mật hoặc mật khẩu quản trị viên');
+  async verifySecurityAction({ pin, action, targetId } = {}, currentUser = null) {
+    if (!pin || typeof pin !== 'string' || !pin.trim()) {
+      const err = new Error('Vui lòng nhập mã PIN bảo mật quản trị viên');
       err.statusCode = 400;
+      throw err;
+    }
+
+    const actorId = currentUser?.idaccount || 0;
+    const lockedUntil = pinLockedUntil(actorId);
+    if (lockedUntil) {
+      const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
+      const err = new Error(`Nhập sai mã PIN quá nhiều lần. Thử lại sau ${minutes} phút.`);
+      err.statusCode = 429;
       throw err;
     }
 
     const bcrypt = require('bcryptjs');
     let isPinValid = false;
-    let isPasswordValid = false;
     const account = currentUser?.idaccount ? await adminRepository.getAccountById(currentUser.idaccount) : null;
 
-    if (pin && typeof pin === 'string') {
-      const trimmedPin = pin.trim();
-      if (account?.pin_hash) {
-        isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
-      } else {
-        const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-        isPinValid = trimmedPin === systemPin.trim();
+    const trimmedPin = pin.trim();
+    if (account?.pin_hash) {
+      isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
+    } else {
+      isPinValid = systemPinMatches(trimmedPin);
+    }
+
+    if (!isPinValid) {
+      const rec = recordPinFailure(actorId);
+      if (rec.lockedUntil) {
+        try {
+          const { prisma } = require('../../config/db');
+          await prisma.auditlog.create({
+            data: {
+              idaccount: actorId || 1,
+              request: 'POST /api/admin/verify-security-action',
+              action: `[SECURITY] Khóa xác thực PIN 15 phút sau ${rec.count} lần sai (${action || 'CRITICAL_ACTION'})`,
+              req_status: 'Rejected',
+              reason: 'Vượt giới hạn nhập sai mã PIN',
+              time_req: new Date(),
+              time_res: new Date(),
+            },
+          });
+        } catch (_) {}
       }
-    }
-
-    if (!isPinValid && password && account?.password) {
-      isPasswordValid = await bcrypt.compare(password, account.password);
-    }
-
-    if (!isPinValid && !isPasswordValid) {
-      const err = new Error('Mã PIN hoặc mật khẩu quản trị viên không chính xác!');
+      const err = new Error('Mã PIN quản trị viên không chính xác!');
       err.statusCode = 400;
       throw err;
     }
+    pinAttempts.delete(actorId);
 
     // Ghi nhận Audit Log xác thực an toàn với đầy đủ Request (API) và Action (Nghiệp vụ)
     try {
@@ -993,7 +997,7 @@ const adminService = {
           request: 'POST /api/admin/verify-security-action',
           action: `[SECURITY] Xác thực hành động chí mạng: ${action || 'CRITICAL_ACTION'} (Mục tiêu: ${targetId || 'N/A'})`,
           req_status: 'Pass',
-          reason: `Phương thức: ${isPinValid ? 'Mã PIN cá nhân' : 'Mật khẩu'}`,
+          reason: account?.pin_hash ? 'Phương thức: Mã PIN cá nhân' : 'Phương thức: Mã PIN hệ thống',
           time_req: new Date(),
           time_res: new Date(),
         },
@@ -1154,8 +1158,7 @@ const adminService = {
     if (account.pin_hash) {
       isOldPinValid = await bcrypt.compare(oldPin ? oldPin.trim() : '', account.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isOldPinValid = (oldPin ? oldPin.trim() : '') === systemPin.trim();
+      isOldPinValid = systemPinMatches(oldPin);
     }
 
     if (!isOldPinValid) {
@@ -1253,8 +1256,7 @@ const adminService = {
     if (account.pin_hash) {
       isPinValid = await bcrypt.compare(securityPin, account.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isPinValid = securityPin === systemPin.trim();
+      isPinValid = systemPinMatches(securityPin);
     }
 
     if (!isPinValid) {
@@ -1352,8 +1354,7 @@ const adminService = {
     if (creatorAccount.pin_hash) {
       isPinValid = await bcrypt.compare(pin.trim(), creatorAccount.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isPinValid = pin.trim() === systemPin.trim();
+      isPinValid = systemPinMatches(pin);
     }
 
     if (!isPinValid) {
@@ -1631,6 +1632,6 @@ function resolveFilterContext(params) {
 }
 
 adminService.formatUptimeDuration = formatUptimeDuration;
-adminService.calcUptimePercent = calcUptimePercent;
+adminService.buildUptimeInfo = buildUptimeInfo;
 
 module.exports = adminService;

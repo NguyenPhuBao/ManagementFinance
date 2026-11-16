@@ -3,7 +3,10 @@
  * Model paths, confidence thresholds, hyperparameters.
  */
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+
 module.exports = {
+  DEFAULT_GEMINI_MODEL,
   classify: {
     modelPath: `${__dirname}/features/classify/pipeline/model.v1.bin`,
     labelsPath: `${__dirname}/features/classify/pipeline/labels.json`,
@@ -19,7 +22,7 @@ module.exports = {
   //   giới hạn token / độ dài / hạn mức: features/chatbot/limits/chatbot.limits.js (AI_*)
   llm: {
     defaultProvider: 'gemini',
-    defaultModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    defaultModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
     maxTokens: { classify: 512, ocr: 2048 },
     temperature: { classify: 0.1, ocr: 0.1 },
   },

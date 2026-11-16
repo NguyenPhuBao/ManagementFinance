@@ -7,7 +7,6 @@ const adminApi = {
   getUserToTime: (params) => axiosClient.get('/admin/getusertotime', { params: typeof params === 'object' ? params : { period: params } }),
 
   // Dashboard (các API khác sẽ bổ sung sau)
-  getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),
   getRecentActivities: (params) => axiosClient.get('/auth/recent-activities', { params }),
   getLoginStats: (params) => axiosClient.get('/admin/login-stats', { params }),
   getRequestStats: (params) => axiosClient.get('/admin/request-stats', { params }),
@@ -15,6 +14,18 @@ const adminApi = {
   // Users
   getUsers: () => axiosClient.get('/admin/getuser'),
   getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
+  getUserDevices: (id) => axiosClient.get(`/admin/getuser/${id}/devices`),
+  revealDeviceIp: (id, deviceId, credentials) => axiosClient.post(`/admin/getuser/${id}/devices/${deviceId}/reveal-ip`, credentials),
+  getUserPolicy: (id) => axiosClient.get(`/admin/getuser/${id}/policy`),
+  getUserDataExports: (id) => axiosClient.get(`/admin/getuser/${id}/data-exports`),
+  getDataIncidents: (params) => axiosClient.get('/admin/data-incidents', { params }),
+  createDataIncident: (body) => axiosClient.post('/admin/data-incidents', body),
+  updateDataIncident: (id, body) => axiosClient.patch(`/admin/data-incidents/${id}`, body),
+  dataIncidentAction: (id, action, body) => axiosClient.post(`/admin/data-incidents/${id}/${action}`, body),
+  getPolicies: () => axiosClient.get('/admin/policies'),
+  publishPolicy: (data) => axiosClient.post('/admin/policies', data),
+  /** Ngừng / kích hoạt một phiên bản chính sách: { status: 'ACTIVE' | 'INACTIVE', pin } */
+  setPolicyStatus: (version, data) => axiosClient.patch(`/admin/policies/${version}/status`, data),
   updateUserStatus: (id, data) => axiosClient.patch(`/admin/updatestatus/${id}`, data),
   deleteUser: (id) => axiosClient.delete(`/admin/deleteuser/${id}`),
 
@@ -24,10 +35,11 @@ const adminApi = {
   updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
   restoreCategory: (id) => axiosClient.patch(`/admin/restorecategory/${id}`),
-  syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
   // System Health & Maintenance
   getSystemHealth: () => axiosClient.get('/admin/system/health'),
+  // Độ khả dụng theo kỳ: { period: 'month'|'quarter'|'year', year, month?, quarter? }
+  getAvailability: (params) => axiosClient.get('/admin/system/availability', { params }),
   getMaintenanceStatus: () => axiosClient.get('/admin/system/maintenance'),
   setMaintenanceStatus: (data) => axiosClient.post('/admin/system/maintenance', data),
   cancelScheduledMaintenance: (id) => (id ? axiosClient.delete(`/admin/system/maintenance/schedule/${id}`) : axiosClient.delete('/admin/system/maintenance/schedule')),

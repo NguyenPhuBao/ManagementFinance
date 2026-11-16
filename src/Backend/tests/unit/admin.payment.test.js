@@ -292,33 +292,22 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     }
   });
 
-  await t.test('7. Tầng 2: paymentRepository.createSampleOrder sinh đơn mẫu, mã QR chuẩn VietQR và transaction', async () => {
-    const origFindUnique = prisma.account.findUnique;
-    const origFindFirst = prisma.account.findFirst;
-    const origCreateOrder = prisma.payment_order.create;
-    const origCreateTx = prisma.payment_transaction.create;
-
-    prisma.account.findFirst = async () => ({ idaccount: 15, username: 'testuser' });
+  await t.test('7. Tầng 2: đơn mẫu luôn 2.000 đ, PENDING, gắn admin tạo, không sinh giao dịch giả (migration 53)', async () => {
+    const origTransaction = prisma.$transaction;
     let createdOrderData = null;
-    let createdTxData = null;
-
-    prisma.payment_order.create = async ({ data, include }) => {
-      createdOrderData = data;
-      return {
-        ...data,
-        amount: { toNumber: () => Number(data.amount) },
-        account: {
-          idaccount: data.idaccount,
-          username: 'testuser',
-          User: { fullname: 'Nguyen Test' },
+    let createdTx = false;
+    const tx = {
+      $executeRaw: async () => 1,
+      payment_order: {
+        count: async () => 0,
+        create: async ({ data }) => {
+          createdOrderData = data;
+          return { ...data, amount: { toNumber: () => Number(data.amount) }, account: { idaccount: data.idaccount, username: 'admin' } };
         },
-      };
+      },
+      payment_transaction: { create: async () => { createdTx = true; } },
     };
-
-    prisma.payment_transaction.create = async ({ data }) => {
-      createdTxData = data;
-      return data;
-    };
+    prisma.$transaction = async (fn) => fn(tx);
 
     const payosClient = require('../../modules/payment/payos.client');
     payosClient.setPayOSClientMock({
@@ -335,38 +324,37 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     });
 
     try {
-      const sample = await paymentRepository.createSampleOrder({
-        simulateWebhook: true,
-        packageType: 'PREMIUM_1_MONTH',
-        amount: 49000,
-      });
+      assert.strictEqual(paymentRepository.createSampleOrder, undefined, 'không còn hàm nhận số tiền / trạng thái từ người gọi');
+      const sample = await paymentRepository.createSampleOrderLocked({ idaccount: 15 });
 
       assert.ok(sample);
-      assert.strictEqual(sample.status, 'PAID');
-      assert.strictEqual(sample.amount, 49000);
-      assert.strictEqual(sample.qr_url, null); // Theo yêu cầu bảo vệ CSDL: Đơn đã thanh toán (PAID) phải xóa QR tránh chuyển khoản trùng
-      assert.ok(createdTxData);
-      assert.strictEqual(createdTxData.bank_code, 'MBBANK');
-      assert.strictEqual(createdTxData.signature_verified, true);
+      assert.strictEqual(sample.status, 'PENDING');
+      assert.strictEqual(Number(createdOrderData.amount), 2000);
+      assert.strictEqual(createdOrderData.idaccount, 15);
+      assert.strictEqual(createdOrderData.is_template, true);
+      assert.strictEqual(createdTx, false, 'không sinh giao dịch giả');
+      assert.ok(sample.qr_url);
     } finally {
-      prisma.account.findUnique = origFindUnique;
-      prisma.account.findFirst = origFindFirst;
-      prisma.payment_order.create = origCreateOrder;
-      prisma.payment_transaction.create = origCreateTx;
+      prisma.$transaction = origTransaction;
       payosClient.setPayOSClientMock(null);
     }
   });
 
-  await t.test('8. Tầng 1: paymentController.createSampleOrder trả về HTTP 201', async () => {
+  await t.test('8. Tầng 1: paymentController.createSampleOrder (có PIN) trả về HTTP 201, gắn admin từ JWT', async () => {
     const origSample = paymentService.createSampleOrder;
-    paymentService.createSampleOrder = async () => ({
-      id: 'sample-1',
-      order_code: 998811,
-      status: 'PAID',
-      qr_url: 'https://img.vietqr.io/image/970422-0987654321-compact2.png',
-    });
+    const adminService = require('../../modules/admin/admin.service');
+    const origVerify = adminService.verifySecurityAction;
+    adminService.verifySecurityAction = async ({ pin }) => {
+      if (pin !== '246810') throw Object.assign(new Error('Mã PIN quản trị viên không chính xác!'), { statusCode: 400 });
+      return { verified: true };
+    };
+    let calledWith = null;
+    paymentService.createSampleOrder = async (admin) => {
+      calledWith = admin;
+      return { id: 'sample-1', order_code: 998811, status: 'PENDING', qr_url: 'https://img.vietqr.io/image/970422-0987654321-compact2.png' };
+    };
 
-    const req = { body: { simulateWebhook: true } };
+    const req = { body: { pin: '246810', idaccount: 999, amount: 1e9 }, user: { idaccount: 7 } };
     let statusCode = null;
     let jsonBody = null;
     const res = {
@@ -388,8 +376,10 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.strictEqual(statusCode, 201);
       assert.strictEqual(jsonBody.success, true);
       assert.strictEqual(jsonBody.data.order_code, 998811);
+      assert.deepStrictEqual(calledWith, { idaccount: 7 }, 'đơn gắn admin từ JWT, bỏ qua idaccount / amount trong body');
     } finally {
       paymentService.createSampleOrder = origSample;
+      adminService.verifySecurityAction = origVerify;
     }
   });
 
@@ -427,43 +417,6 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       );
     } finally {
       payosClient.setPayOSClientMock(null);
-    }
-  });
-
-  await t.test('10. Tầng 1: paymentController.getPayosQr trả về HTTP 200 kèm thông tin PayOS', async () => {
-    const origGetPayosQr = paymentService.getOrCreatePayosQr;
-    paymentService.getOrCreatePayosQr = async () => ({
-      orderCode: 123456,
-      amount: 49000,
-      accountNumber: '2512070399999',
-      accountName: 'NGUYEN PHU BAO',
-      checkoutUrl: 'https://pay.payos.vn/web/123456',
-      qrUrl: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
-    });
-
-    const req = { query: { amount: '49000' } };
-    let statusCode = null;
-    let jsonBody = null;
-    const res = {
-      status(code) {
-        statusCode = code;
-        return this;
-      },
-      json(data) {
-        jsonBody = data;
-        return this;
-      },
-    };
-
-    try {
-      await paymentController.getPayosQr(req, res, (err) => {
-        if (err) throw err;
-      });
-      assert.strictEqual(statusCode, 200);
-      assert.strictEqual(jsonBody.success, true);
-      assert.strictEqual(jsonBody.data.accountNumber, '2512070399999');
-    } finally {
-      paymentService.getOrCreatePayosQr = origGetPayosQr;
     }
   });
 
@@ -551,9 +504,15 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     }
   });
 
-  await t.test('15. Tầng 1 & 2: processRefund tiếp nhận file upload minh chứng và lưu đường dẫn /assets/Refunds', async () => {
+  await t.test('15. Tầng 1 & 2: processRefund tiếp nhận file upload minh chứng và lưu vào kho lưu trữ (bucket refund-proofs)', async () => {
     const origProcessOrderRefund = paymentService.processOrderRefund;
+    const storageMod = require('../../core/storage');
+    const tmpDir = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'fm-refund15-'));
+    storageMod.setStorageForTest(storageMod.createStorage({ env: { STORAGE_LOCAL_DIR: tmpDir } }));
     let capturedData = null;
+    const adminService = require('../../modules/admin/admin.service');
+    const origVerify = adminService.verifySecurityAction;
+    adminService.verifySecurityAction = async () => ({ verified: true });
     try {
       paymentService.processOrderRefund = async (orderId, data) => {
         capturedData = { orderId, ...data };
@@ -562,8 +521,9 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
 
       const req = {
         params: { id: 'ord-ref-999' },
-        body: { refundedAmount: 20000, refundReason: 'Chuyển thiếu tiền' },
-        file: { filename: 'refund-proof-123.png' },
+        body: { pin: '246810', refundedAmount: 20000, refundReason: 'Chuyển thiếu tiền', bankReference: 'FT-HOAN-999', refundedAt: new Date().toISOString() },
+        user: { idaccount: 1 },
+        file: { buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]), originalname: 'refund-proof-123.png', mimetype: 'image/png' },
       };
       let statusCode = null;
       let jsonBody = null;
@@ -585,9 +545,13 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.strictEqual(statusCode, 200);
       assert.strictEqual(jsonBody.success, true);
       assert.strictEqual(capturedData.orderId, 'ord-ref-999');
-      assert.strictEqual(capturedData.refundProof, '/assets/Refunds/refund-proof-123.png');
+      assert.match(capturedData.refundProof, /^local:\/\/refund-proofs\/ord-ref-999\/[a-f0-9-]+\.png$/);
+      assert.strictEqual(capturedData.bankReference, 'FT-HOAN-999');
     } finally {
+      adminService.verifySecurityAction = origVerify;
       paymentService.processOrderRefund = origProcessOrderRefund;
+      storageMod.setStorageForTest(null);
+      require('fs').rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
@@ -699,32 +663,30 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     assert.strictEqual(sanitized.checkout_url, null);
   });
 
-  await t.test('19. Tầng 2: getPaymentSummaryStats mặc định LUÔN áp dụng where.is_template = false loại trừ đơn mẫu', async () => {
+  await t.test('19. Tầng 2: getPaymentSummaryStats tách đơn người dùng / thử nghiệm; khoá cũ là số liệu đơn người dùng', async () => {
     const origCount = prisma.payment_order.count;
     const origAggregate = prisma.payment_order.aggregate;
-    let capturedWhereCount = null;
-    let capturedWhereAggregate = null;
 
+    // Đơn người dùng: 5 đơn, 4 đã trả, 196.000 đ; đơn thử nghiệm: 2 đơn, 1 đã trả, 2.000 đ
+    // Chờ hoàn: user 2, thử nghiệm 1; đã hoàn: user 3, thử nghiệm 0
+    const BY_STATUS = { false: { PAID: 4, REFUND_PENDING: 2, REFUNDED: 3 }, true: { PAID: 1, REFUND_PENDING: 1, REFUNDED: 0 } };
     prisma.payment_order.count = async ({ where }) => {
-      capturedWhereCount = where;
-      return 5;
+      if (!where.status) return where.is_template ? 2 : 5;
+      return BY_STATUS[Boolean(where.is_template)][where.status] || 0;
     };
-
-    prisma.payment_order.aggregate = async ({ where }) => {
-      capturedWhereAggregate = where;
-      return {
-        _sum: { amount: { toNumber: () => 245000 } },
-      };
-    };
+    prisma.payment_order.aggregate = async ({ where }) => ({
+      _sum: { amount: { toNumber: () => (where.is_template ? 2000 : 196000) } },
+    });
 
     try {
-      // Gọi getPaymentSummaryStats mà không truyền options gì cả
       const stats = await paymentRepository.getPaymentSummaryStats();
-
-      // Xác minh System Impact: Query bắt buộc phải gán where.is_template = false
-      assert.strictEqual(capturedWhereCount.is_template, false, 'Prisma count where phải lọc is_template = false');
-      assert.strictEqual(capturedWhereAggregate.is_template, false, 'Prisma aggregate where phải lọc is_template = false');
-      assert.strictEqual(stats.totalRevenue, 245000);
+      assert.deepStrictEqual(stats.revenue, { total: 198000, user: 196000, template: 2000 });
+      assert.deepStrictEqual(stats.orders, { total: 7, user: 5, template: 2 });
+      assert.deepStrictEqual(stats.paid, { total: 5, user: 4, template: 1 });
+      assert.deepStrictEqual(stats.refundPending, { total: 3, user: 2, template: 1 });
+      assert.deepStrictEqual(stats.refunded, { total: 3, user: 3, template: 0 });
+      assert.strictEqual(stats.successRate, 80, 'tỷ lệ thành công chỉ tính đơn người dùng');
+      assert.strictEqual(stats.totalRevenue, 196000);
     } finally {
       prisma.payment_order.count = origCount;
       prisma.payment_order.aggregate = origAggregate;
@@ -847,6 +809,16 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       paymentRepository.activatePremiumSubscription = origActivate;
       payosClient.verifyWebhookData = origVerify;
     }
+  });
+
+  await t.test('22. Đã gỡ API ẩn đơn mẫu hàng loạt (DELETE /admin/payments/sample): Admin-web ẩn đơn mẫu bằng bộ lọc excludeTemplate', async () => {
+    const router = require('../../api/admin.routes');
+    const deleteSample = router.stack.filter((l) => l.route && l.route.path === '/payments/sample' && l.route.methods.delete);
+    assert.strictEqual(deleteSample.length, 0, 'không còn route DELETE /payments/sample');
+    assert.strictEqual(paymentController.deleteSampleOrders, undefined);
+    assert.strictEqual(paymentService.hideSampleOrders, undefined);
+    assert.strictEqual(paymentRepository.hideSampleOrders, undefined);
+    assert.strictEqual(paymentRepository.deleteSampleOrders, undefined);
   });
 });
 

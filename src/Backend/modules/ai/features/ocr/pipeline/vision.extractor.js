@@ -100,7 +100,7 @@ Schema JSON yêu cầu:
 }`;
 
     try {
-      const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+      const modelName = process.env.GEMINI_MODEL || require('../../../config').DEFAULT_GEMINI_MODEL;
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const payload = {
         contents: [

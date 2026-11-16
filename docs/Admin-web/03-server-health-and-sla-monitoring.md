@@ -13,7 +13,7 @@
 **Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime Hệ Thống** là bảng chỉ số hạ tầng thời gian thực cung cấp cho quản trị viên cái nhìn trực diện về trạng thái vận hành của máy chủ Node.js và CSDL PostgreSQL. 
 
 Điểm nổi bật của chức năng này:
-1. **Công thức tính tỷ lệ hoạt động thực tế (Uptime Percentage):** Tỷ lệ thời gian hệ thống chạy được trên tổng thời gian từ lúc bắt đầu chạy, trừ đi toàn bộ thời gian hệ thống tạm dừng do bảo trì (Scheduled/Emergency Maintenance). Số liệu được tính lại liên tục mỗi phút kể cả khi đang bảo trì.
+1. **Độ khả dụng theo kỳ và Chạy liên tục (mục 3.1):** độ khả dụng tính theo tháng / quý / năm, không mất khi máy chủ khởi động lại, trừ bảo trì và gián đoạn ngoài dự kiến; "Chạy liên tục" đếm từ lần khởi động gần nhất, không trừ bảo trì.
 2. **Loại bỏ dòng chữ cũ:** Không còn sử dụng dòng chữ cố định "Chuẩn SLA 30 ngày (Không gián đoạn)".
 3. **Đồng bộ nguồn dữ liệu duy nhất:** Cả Card Uptime tại Dashboard và UptimeWidget trong Tab Sức khỏe hệ thống đều sử dụng chung một nguồn dữ liệu `uptimeData` được phân phát từ Backend.
 4. **Giám sát phần cứng chính xác theo môi trường (Hardware Metric Calibration):** Tự động phân biệt giữa môi trường Cloud Container (cgroup_v2 quota) và Host vật lý, tính toán CPU delta ticks thay vì cumulative ticks, tránh hiện tượng RAM 0/100 MB ảo.
@@ -26,7 +26,7 @@
 ```mermaid
 graph TD
     subgraph "Tiến Trình Node.js & Phần Cứng (OS Level)"
-        A1[process.uptime & SERVER_START_TIME]
+        A1[process.uptime: Chạy liên tục + server_session: phiên chạy, nhịp 60s]
         A2[os.cpus: Tính toán chênh lệch Delta Ticks giữa 2 mẫu]
         A3[cgroup_v2 vs os.totalmem: Quota Container Cloud vs Host RAM]
         A4[EventLoopMonitor: Micro-timer đo độ trễ Event Loop lag ms]
@@ -65,23 +65,18 @@ graph TD
 
 ## 📐 3. CÁC CHỈ SỐ, CÔNG THỨC & CÁCH TÍNH TOÁN
 
-### 3.1. Công thức tính Uptime Hệ Thống Thực Tế (Quy chuẩn PO phê duyệt)
-Thời gian uptime là tỷ lệ thời gian hệ thống chạy được trên tổng thời gian từ lúc bắt đầu chạy, trừ đi toàn bộ thời gian gián đoạn do bảo trì:
+### 3.1. Độ Khả Dụng & Chạy Liên Tục
+Panel Sức khỏe máy chủ dùng chung số liệu với thẻ "Độ khả dụng" của dashboard. Công thức, nguồn số liệu phiên chạy (`server_session`) và hộp chọn kỳ: xem `02-dashboard-and-analytics.md` mục 3.5 và mục 6.
 
-$$T_{\text{tổng}} = \text{now} - \text{SERVER\_START\_TIME}$$
-$$T_{\text{bảo trì}} = \sum \text{Downtime các phiên bảo trì trong quá khứ} + \text{Downtime phiên đang chạy (nếu có)}$$
-$$T_{\text{chạy}} = \max(0, T_{\text{tổng}} - T_{\text{bảo trì}})$$
-$$\text{Uptime Percentage (\%)} = \left(\frac{T_{\text{chạy}}}{T_{\text{tổng}}}\right) \times 100$$
-
-- **Ví dụ minh họa chuẩn:**
-  1. Hệ thống chạy được 2 tiếng $\implies T_{\text{tổng}} = 2\text{h}, T_{\text{chạy}} = 2\text{h} \implies \text{Uptime} = 100\%$.
-  2. Hệ thống bật bảo trì 1 tiếng $\implies T_{\text{tổng}} = 3\text{h}, T_{\text{chạy}} = 2\text{h}, T_{\text{bảo trì}} = 1\text{h} \implies \text{Uptime} = 66.67\%$ (nếu xét toàn bộ) hoặc cập nhật động liên tục theo từng phút.
-  3. Hệ thống chạy thêm được 2 tiếng $\implies T_{\text{tổng}} = 5\text{h}, T_{\text{chạy}} = 4\text{h}, T_{\text{bảo trì}} = 1\text{h} \implies \text{Uptime} = 80\%$.
-- **Cơ chế tính toán lại trong lúc bảo trì:** 
-  - Kể cả khi hệ thống đang ở trạng thái bảo trì, $T_{\text{tổng}}$ vẫn tăng dần và thời gian bảo trì của phiên hiện tại tăng tương ứng, dẫn tới tỷ lệ Uptime tự động giảm xuống theo thời gian thực để người quản trị luôn thấy số liệu thực tế liên tục.
+- **Độ khả dụng (tháng):** % độ khả dụng tháng hiện tại theo giờ Việt Nam, tính từ CSDL nên không mất khi máy chủ khởi động lại; trừ bảo trì và gián đoạn ngoài dự kiến, không trừ khoảng tắt có chủ đích (deploy, Render cho ngủ). Chưa có số liệu ⇒ `--`.
+- **Chạy liên tục** $= \text{bây giờ} - \text{lúc tiến trình khởi động}$ (`process.uptime()`), không trừ bảo trì, về 0 mỗi lần khởi động.
+- **Khởi động lúc:** thời điểm tiến trình bắt đầu chạy.
+- **Phiên bản:** 12 ký tự đầu của `RENDER_GIT_COMMIT`; chỉ hiện khi máy chủ có biến này.
+- `GET /api/admin/system/health` (khối `uptime`) và `admin.metrics_stream` mang `runningSeconds`, `runningFormatted`, `startedAt`, `version`, `availability`. Độ khả dụng tháng được lưu đệm 60 giây và tính lại ngay khi trạng thái bảo trì đổi, nên luồng 3 giây không truy vấn CSDL mỗi lần.
+- Các khoá `uptimeSeconds`, `totalSeconds`, `uptimeFormatted` mang giá trị chạy liên tục; `uptimePercent` là độ khả dụng tháng hiện tại (có thể `null`); `downtimeSeconds` là bảo trì + gián đoạn trong tháng. Nhóm khoá này giữ lại cho tương thích và sẽ gỡ.
 
 ### 3.2. Định Dạng Chuỗi Thời Gian Hoạt Động (`formatUptimeDuration`)
-Chuyển đổi số giây thực tế `process.uptime()` thành định dạng tiếng Việt tự nhiên:
+Chuyển đổi số giây thực tế `process.uptime()` thành định dạng tiếng Việt tự nhiên (dưới 1 phút ghi `dưới 1 phút`):
 - Số ngày: $\lfloor \text{seconds} / 86400 \rfloor$
 - Số giờ: $\lfloor (\text{seconds} \pmod{86400}) / 3600 \rfloor$
 - Số phút: $\lfloor (\text{seconds} \pmod{3600}) / 60 \rfloor$
@@ -170,9 +165,12 @@ Khối bảo trì tự động đổi diện mạo dựa trên cờ `isEmergency
 ### REST API Endpoints
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
-| `GET` | `/api/admin/system/health` | Lấy chi tiết thông số phần cứng, uptime SLA, và DB pool | Admin |
-| `GET` | `/api/admin/maintenance/status` | Lấy trạng thái bảo trì độc lập hiện tại | Public / Admin |
-| `POST` | `/api/admin/maintenance/toggle` | Bật/tắt bảo trì khẩn cấp (yêu cầu mã PIN) | Super Admin / Admin |
+| `GET` | `/api/admin/system/health` | Lấy chi tiết thông số phần cứng, chạy liên tục, độ khả dụng tháng hiện tại, và DB pool | Admin |
+| `GET` | `/api/admin/system/availability` | Độ khả dụng theo kỳ (`period` = `month` \| `quarter` \| `year`, `year`, `month` / `quarter`) | Admin |
+| `GET` | `/api/admin/system/maintenance` | Trạng thái bảo trì hiện tại và lịch đã hẹn | Admin |
+| `POST` | `/api/admin/system/maintenance` | Bật / tắt bảo trì khẩn cấp hoặc hẹn lịch bảo trì | Admin |
+| `DELETE` | `/api/admin/system/maintenance/schedule[/:id]` | Hủy lịch bảo trì đã hẹn | Admin |
+| `GET` | `/api/admin/system/maintenance/history` | Lịch sử bảo trì | Admin |
 
 ### Socket.io Events
 - **Nhận từ Server (`admin_room`):**

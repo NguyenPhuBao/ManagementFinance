@@ -69,6 +69,8 @@ router.use('/sync', require('./sync.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/payment', require('./payment.routes'));
 router.use('/households', require('./households.routes'));
+router.use('/policy', require('./policy.routes'));
+router.use('/account', require('./account.routes'));
 
 module.exports = router;
 

@@ -34,8 +34,8 @@ async function testPayOSConnection() {
       orderCode: testOrderCode,
       amount: 2000,
       description: `Test ket noi PayOS ${testOrderCode}`,
-      returnUrl: process.env.PAYOS_RETURN_URL || 'https://managementfinance-admin.vercel.app/payment/success',
-      cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://managementfinance-admin.vercel.app/payment/cancel',
+      returnUrl: process.env.PAYOS_RETURN_URL || 'https://management-finance-gamma.vercel.app/payment/success',
+      cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://management-finance-gamma.vercel.app/payment/cancel',
     });
 
     console.log('\n🎉 KẾT NỐI TỚI PAYOS THÀNH CÔNG 100%!');

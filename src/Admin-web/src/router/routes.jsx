@@ -3,15 +3,14 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import CategoryPage from '../pages/categories/CategoryPage';
 import UserListPage from '../pages/users/UserListPage';
-import UserDetailPage from '../pages/users/UserDetailPage';
 import AuditLogPage from '../pages/system/AuditLogPage';
 import BroadcastPage from '../pages/system/BroadcastPage';
 import AIOpsPage from '../pages/system/AIOpsPage';
 import PermissionManagementPage from '../pages/system/PermissionManagementPage';
 import PaymentHistoryPage from '../pages/payments/PaymentHistoryPage';
+import PaymentResultPage from '../pages/payment/PaymentResultPage';
 
 const routes = [
-  // Public routes
   {
     path: '/login',
     element: <LoginPage />,
@@ -22,7 +21,16 @@ const routes = [
     element: <ForgotPasswordPage />,
     public: true,
   },
-  // Protected routes (wrapped in AppLayout)
+  {
+    path: '/payment/success',
+    element: <PaymentResultPage outcome="success" />,
+    public: true,
+  },
+  {
+    path: '/payment/cancel',
+    element: <PaymentResultPage outcome="cancel" />,
+    public: true,
+  },
   {
     path: '/dashboard',
     element: <DashboardPage />,
@@ -34,10 +42,6 @@ const routes = [
   {
     path: '/users',
     element: <UserListPage />,
-  },
-  {
-    path: '/users/:id',
-    element: <UserDetailPage />,
   },
   {
     path: '/permissions',

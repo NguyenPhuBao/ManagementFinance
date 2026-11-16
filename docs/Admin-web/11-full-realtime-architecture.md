@@ -81,6 +81,14 @@ graph TD
    ```
 3. Các sự kiện quản trị nhạy cảm (`admin.*`) **chỉ được phát tới `admin_room`**, tuyệt đối không phát ra ngoài phòng công cộng.
 
+### 2.2. Kết nối lại khi token hết hạn hoặc mạng đứt (2026-11-15, `src/Admin-web/src/store/socket.context.jsx`)
+Token truy cập của admin chỉ sống 15 phút, nên một trang để yên lâu rồi bị đứt kết nối (Render khởi động lại, mạng chập chờn) sẽ bắt tay lại bằng token đã hết hạn. Máy chủ từ chối ở bước bắt tay thì socket.io **không tự thử lại**, nên trước bản này trang kẹt ở "Mất kết nối" tới khi tải lại.
+- `auth` là **hàm**: socket.io gọi lại mỗi lần (kết nối lại) nên luôn gửi token mới nhất trong `localStorage`.
+- `connect_error` mang `Authentication error`: token trong trình duyệt đã đổi (API vừa làm mới) ⇒ `connect()` ngay; còn `Token expired` ⇒ gọi `refreshAccessToken()` (dùng chung với interceptor 401 của `axios-client.js`, gọi đồng thời chỉ một yêu cầu `/auth/refresh`) rồi `connect()`. Chỉ làm mới một lần cho tới khi nối được; không làm mới khi màn hình đang khoá.
+- Không giới hạn số lần thử lại (chờ 2 s, tăng dần tới 10 s); trình duyệt báo có mạng (`online`) hoặc quay lại tab ⇒ nối lại ngay.
+- Huy hiệu trạng thái nghe `reconnect_attempt` / `reconnect_failed` trên bộ quản lý kết nối `socket.io` (socket.io v3+ không phát hai sự kiện này trên socket).
+- Test: `src/Admin-web/src/tests/realtime.test.jsx`.
+
 ---
 
 ## 📑 3. BẢNG TRA CỨU TOÀN BỘ 13 SỰ KIỆN REAL-TIME CỦA HỆ THỐNG
@@ -93,8 +101,8 @@ graph TD
 | **`audit_activity`** | `admin_room` | `{ id, idaccount, user, action, status, reason, time_req, time_res, ip }` | `DashboardPage`, `AuditLogPage` | Chèn request mới nhất lên đầu bảng hoạt động khi ở Trang 1 và không lọc; hiện badge đếm log mới nếu đang lọc. |
 | **`admin.maintenance_changed`** | `admin_room` | `{ active, isEmergency, reason, activatedBy, activatedAt, scheduled }` | `BroadcastPage`, `ServerHealthPanel` | Đồng bộ trạng thái công tắc bảo trì (Thường/Khẩn cấp), khóa công tắc tại Dashboard, cập nhật thẻ lịch hẹn bảo trì. |
 | **`system.maintenance_changed`** | `broadcast` | `{ active, isEmergency, reason, activatedAt }` | Toàn bộ Client-app & Admin-web | Hiển thị màn hình khóa bảo trì toàn phần trên mobile hoặc Global Banner trên Admin-web. |
-| **`system_broadcast`** | `broadcast` | `{ title, message, level, timestamp }` | Toàn bộ Client-app | Kích hoạt SnackBar (Info), Top Banner (Warning) hoặc Pop-up chặn (Critical) trên ứng dụng Flutter. |
-| **`force_logout`** | P2P Socket ID | `{ code, reason, timestamp }` | Client-app cụ thể | Cưỡng chế xóa token và đẩy thiết bị người dùng bị khóa/xóa về màn hình Đăng nhập. |
+| **`system.broadcast`** | `broadcast` | `{ title, message, level, timestamp }` | Toàn bộ Client-app | Kích hoạt SnackBar (Info), Top Banner (Warning) hoặc Pop-up chặn (Critical) trên ứng dụng Flutter. |
+| **`account.force_logout`** | P2P Socket ID | `{ code, reason, timestamp }` | Client-app cụ thể | Cưỡng chế xóa token và đẩy thiết bị người dùng bị khóa/xóa về màn hình Đăng nhập. |
 | **`admin.security_alert`** | `admin_room` | `{ threatScore, status, anomalies, timestamp }` | `Header`, `AppLayout`, `AIOpsPage` | Rung chuông Header (+1 badge), hiện Banner đỏ nếu Threat Score $\ge 85$, nhảy kim đồng hồ AIOps. |
 | **`admin.security_blocked`** | `admin_room` | `{ hash, maskedIp, reason, bannedAt, expiresAt }` | `AppLayout`, `AIOpsPage` | Hiện thông báo Toast góc màn hình và nạp ngay IP vi phạm vào Bảng Nguồn theo dõi đặc biệt. |
 | **`admin.quarantine_updated`** | `admin_room` | `{ type, ip, username, status, expiresAt }` | `AIOpsPage` | Tự động cập nhật bảng phong tỏa khi có IP hoặc Tài khoản được mở khóa hoặc hết hạn tự động (Auto-expire). |

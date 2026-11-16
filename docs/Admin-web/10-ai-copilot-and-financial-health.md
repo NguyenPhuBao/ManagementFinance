@@ -4,6 +4,7 @@
 > **Phiên bản:** `v2.6 (23/10/2026)`  
 > **Trạng thái trên Admin-web:** ⚠️ **ĐÃ LOẠI BỎ KHỎI GIAO DIỆN ADMIN-WEB THEO QUYẾT ĐỊNH CỦA PO**  
 > **Phạm vi bảo lưu:** Giữ nguyên 100% mã nguồn và dịch vụ Backend để phục vụ ứng dụng di động (`src/Client-app`).  
+> **Đối chiếu mã 2026-11-14:** trang Copilot đã gỡ khỏi Admin-web (2026-11-08); `GET /api/ai/chatbot/snapshot` đã gỡ (2026-11-07), snapshot chỉ còn tính nội bộ để đưa vào ngữ cảnh chatbot. Sơ đồ và mô tả bên dưới là thiết kế cũ, giữ để tham khảo; API hiện có xem `docs/AI/ChatbotAI.md`.  
 > **Module liên quan:**  
 > - Frontend: Đã gỡ khỏi `src/Admin-web/src/components/layout/Sidebar.jsx` và `src/Admin-web/src/router/routes.jsx`  
 > - Backend: `src/Backend/modules/ai/features/chatbot/`, `financial.snapshot.service.js`, `rag/lexical.search.js`, `chatbot.controller.js`  
@@ -149,7 +150,7 @@ $$\text{Emergency Fund Months} = \frac{\text{Tổng Tiền Mặt \& Tiết Kiệ
   - Nhờ xử lý SSE Streaming, kết nối giữa máy chủ và client được duy trì mượt mà, không gây nghẽn hàng đợi request như kiểu polling truyền thống.
 - **Đến Mobile App (Client-app):**
   - **Phân định Kiến trúc AI:** Client-app sử dụng mô hình **Edge AI SLM (Google Gemma 4 E2B)** chạy 100% On-Device (ngoại tuyến qua `flutter_gemma` và LiteRT), tuyệt đối không gửi nhật ký giao dịch tài chính người dùng lên máy chủ (tuân thủ nguyên tắc Tối thiểu hóa dữ liệu - Data Minimization của Nghị định 13/2023/NĐ-CP).
-  - Ngược lại, Admin-web sử dụng **Cloud AI Copilot** thông qua Backend REST & SSE endpoint (`/api/ai/chatbot/chat/stream`, `/api/ai/chatbot/snapshot`), kết hợp LangChain RAG và PostgreSQL.
+  - Admin-web không còn chatbot (gỡ 2026-11-08). Chatbot đám mây của Backend dùng `/api/ai/chatbot/chat/stream`, `/api/ai/chatbot/chat`, `/api/ai/chatbot/reset`; `/api/ai/chatbot/snapshot` đã gỡ 2026-11-07.
   - Bộ công thức chuẩn hóa tính điểm Sức khỏe Tài chính (Financial Health Score - FHS) và quy tắc ngân sách 50/30/20 được định nghĩa thống nhất tại tầng tính toán nghiệp vụ (`financialHealth.calculator.js`), đảm bảo tính nhất quán về mặt phân tích tài chính giữa các nền tảng.
 
 ---

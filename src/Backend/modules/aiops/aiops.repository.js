@@ -443,19 +443,6 @@ class AIOpsIncidentRepository {
     };
   }
 
-  /**
-   * Xóa toàn bộ sự cố khi Admin yêu cầu
-   */
-  async clearIncidents() {
-    try {
-      if (this.pool && typeof this.pool.query === 'function') {
-        await this.pool.query('DELETE FROM "aiops_incident"');
-      }
-    } catch (_) {}
-    this._inMemoryFallback = [];
-    return true;
-  }
-
   _mapRow(row) {
     if (!row) return null;
     const actorRole = row.actor_role || (row.user_id ? 'User' : (row.actor_type === 'SYSTEM_INTERNAL' ? 'System' : 'Guest'));

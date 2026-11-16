@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import AppSidebar from './Sidebar';
 import AppHeader from './Header';
 import LockScreenModal from './LockScreenModal';
@@ -9,45 +9,74 @@ import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
 import { useLanguageSafe } from '../../store/language.context';
 import { useSettingsSafe } from '../../store/settings.context';
+import { useAlertSafe } from '../../store/alert.context';
+import { Button, ConfirmModal, Icon } from '../ui';
+
+const SIDEBAR_KEY = 'admin_sidebar_collapsed';
+
+const isCriticalThreat = (data) => Boolean(data) && (data.recommendedAction === 'EMERGENCY_MAINTENANCE' || data.vectorScores?.resource >= 85);
+
+const Toast = ({ tone, icon, title, onClose, closeLabel, children }) => (
+  <div
+    role="status"
+    className={`fixed bottom-6 z-50 flex max-w-sm items-start gap-3 rounded-xl border border-line bg-card p-4 shadow-xl ${
+      tone === 'danger' ? 'right-6' : 'left-6'
+    }`}
+  >
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${tone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success'}`}>
+      <Icon name={icon} size="sm" />
+    </span>
+    <div className="min-w-0 flex-1 text-sm">
+      <p className="m-0 font-semibold text-ink">{title}</p>
+      <div className="mt-0.5 text-ink-muted">{children}</div>
+    </div>
+    <Button variant="ghost" size="sm" icon="close" aria-label={closeLabel} onClick={onClose} />
+  </div>
+);
 
 const AppLayout = () => {
   const { t } = useLanguageSafe();
   const settingsCtx = useSettingsSafe();
+  const notify = useAlertSafe();
+  const socket = useSocket();
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+      return localStorage.getItem(SIDEBAR_KEY) === 'true';
     } catch (_) {
       return false;
     }
   });
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [threatAlert, setThreatAlert] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [mitigating, setMitigating] = useState(false);
   const [mitigatedSuccess, setMitigatedSuccess] = useState(false);
   const [maintenanceState, setMaintenanceState] = useState(null);
   const [restoredToast, setRestoredToast] = useState(false);
-
-  const navigate = useNavigate();
-  const socket = useSocket();
+  const [blockedToast, setBlockedToast] = useState(null);
 
   const toggleSidebar = () => {
-    setSidebarCollapsed(prev => {
+    if (window.matchMedia?.('(max-width: 767px)').matches) {
+      setMobileOpen((prev) => !prev);
+      return;
+    }
+    setSidebarCollapsed((prev) => {
       const next = !prev;
       try {
-        localStorage.setItem('admin_sidebar_collapsed', String(next));
+        localStorage.setItem(SIDEBAR_KEY, String(next));
       } catch (_) {}
       return next;
     });
   };
 
-  // Kiểm tra trạng thái AIOps ban đầu và định kỳ
-  // CHỈ hiện Báo động đỏ toàn hệ thống khi HẠ TẦNG gặp nguy cơ sập dây chuyền (EMERGENCY_MAINTENANCE / Resource >= 85)
   const checkThreatStatus = async () => {
     if (settingsCtx?.isLocked) return;
     try {
       const res = await aiopsApi.getStatus();
       const data = res?.data || res;
-      if (data && (data.recommendedAction === 'EMERGENCY_MAINTENANCE' || data.vectorScores?.resource >= 85)) {
+      if (isCriticalThreat(data)) {
         setThreatAlert(data);
       } else {
         setThreatAlert(null);
@@ -58,25 +87,22 @@ const AppLayout = () => {
 
   useEffect(() => {
     checkThreatStatus();
-    adminApi.getMaintenanceStatus().then((res) => {
-      const data = res?.data || res;
-      if (data && data.active) {
-        setMaintenanceState(data);
-      }
-    }).catch(() => {});
-
+    adminApi
+      .getMaintenanceStatus()
+      .then((res) => {
+        const data = res?.data || res;
+        if (data?.active) setMaintenanceState(data);
+      })
+      .catch(() => {});
     const interval = setInterval(checkThreatStatus, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const [blockedToast, setBlockedToast] = useState(null);
-
-  // Lắng nghe sự kiện Socket.io thời gian thực
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) return undefined;
 
-    const handleSocketAlert = (data) => {
-      if (data && (data.recommendedAction === 'EMERGENCY_MAINTENANCE' || data.vectorScores?.resource >= 85)) {
+    const handleSecurityAlert = (data) => {
+      if (isCriticalThreat(data)) {
         setThreatAlert(data);
         setDismissed(false);
       } else if (data && data.threatScore < 70) {
@@ -90,211 +116,144 @@ const AppLayout = () => {
     };
 
     const handleMaintenanceChanged = (data) => {
-      if (data) {
-        if (data.active) {
-          setMaintenanceState(data);
-          setRestoredToast(false);
-        } else {
-          setMaintenanceState(null);
-          setRestoredToast(true);
-          setTimeout(() => setRestoredToast(false), 7000);
-        }
+      if (!data) return;
+      if (data.active) {
+        setMaintenanceState(data);
+        setRestoredToast(false);
+      } else {
+        setMaintenanceState(null);
+        setRestoredToast(true);
+        setTimeout(() => setRestoredToast(false), 7000);
       }
     };
 
-    socket.on('admin.security_alert', handleSocketAlert);
+    socket.on('admin.security_alert', handleSecurityAlert);
     socket.on('admin.security_blocked', handleSecurityBlocked);
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
     return () => {
-      socket.off('admin.security_alert', handleSocketAlert);
+      socket.off('admin.security_alert', handleSecurityAlert);
       socket.off('admin.security_blocked', handleSecurityBlocked);
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);
 
-  // Xử lý 1-click bảo trì khẩn cấp từ Banner
   const handleQuickMitigation = async () => {
-    if (!window.confirm(t('appLayout.confirmEmergency', 'Bật BẢO TRÌ KHẨN CẤP ngay lập tức để ngắt kết nối khách và bảo vệ hệ thống?'))) return;
     try {
       setMitigating(true);
       await adminApi.setMaintenanceStatus({
         active: true,
-        reason: t('appLayout.emergencyReason', 'Phòng vệ khẩn cấp AIOps Sentinel do phát hiện sập dây chuyền hạ tầng'),
+        reason: t('appLayout.emergencyReason'),
         isEmergency: true,
       });
+      setConfirmOpen(false);
       setMitigatedSuccess(true);
       setTimeout(() => setDismissed(true), 3000);
     } catch (err) {
-      alert(t('appLayout.activateFailed', 'Kích hoạt bảo trì thất bại: ') + (err.response?.data?.message || err.message));
+      const message = err.response?.data?.message || err.message;
+      setConfirmOpen(false);
+      if (notify) notify.error(message, t('appLayout.activateFailed'));
+      else window.alert(`${t('appLayout.activateFailed')}: ${message}`);
     } finally {
       setMitigating(false);
     }
   };
 
-  const isAlertVisible = threatAlert && (threatAlert.recommendedAction === 'EMERGENCY_MAINTENANCE' || threatAlert.vectorScores?.resource >= 85) && !dismissed;
+  const isAlertVisible = isCriticalThreat(threatAlert) && !dismissed;
   const isMaintenanceVisible = Boolean(maintenanceState?.active) && !isAlertVisible;
+  const score = threatAlert?.vectorScores?.resource ?? threatAlert?.threatScore;
 
   return (
-    <div className="min-h-screen relative">
-      {/* ─── GLOBAL MAINTENANCE MODE BANNER ─── */}
-      {isMaintenanceVisible && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 border-b-2 border-amber-800 text-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-[20px] text-amber-200">
-              engineering
-            </span>
-            <div>
-              <span className="font-extrabold uppercase tracking-wide mr-1.5">
-                {t('appLayout.maintenanceBannerTitle', 'HỆ THỐNG ĐANG BẢO TRÌ:')}
-              </span>
+    <div className="min-h-screen bg-canvas text-ink">
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileOpen}
+        onToggle={toggleSidebar}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
+
+      <div className={`flex min-h-screen min-w-0 flex-col transition-[padding] duration-200 ${sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-60'}`}>
+        <AppHeader onMenuToggle={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+
+        {isAlertVisible && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-danger-soft px-4 py-3 md:px-6">
+            <div className="flex min-w-0 items-center gap-2.5 text-sm text-danger">
+              <Icon name="crisis_alert" />
+              <span className="font-semibold">{t('appLayout.threatTitle')}</span>
               <span>
-                {maintenanceState.reason || t('appLayout.maintenanceDefaultReason', 'Đang thực hiện bảo trì kỹ thuật')}
+                {t('appLayout.threatScore', { score })}
+                {threatAlert.anomalies?.length > 0 && ` · ${threatAlert.anomalies[0].code}`}
               </span>
-              {maintenanceState.activatedBy && (
-                <span className="opacity-90 ml-1">
-                  ({t('appLayout.activatedBy', 'bởi')} <b>{maintenanceState.activatedBy}</b>)
-                </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {mitigatedSuccess ? (
+                <span className="text-sm font-semibold text-danger">{t('appLayout.emergencyLocked')}</span>
+              ) : (
+                <Button variant="danger" size="sm" icon="lock" onClick={() => setConfirmOpen(true)}>
+                  {t('appLayout.emergencyLockBtn')}
+                </Button>
               )}
+              <Link to="/aiops" className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-danger hover:bg-card">
+                {t('appLayout.viewAnalysis')}
+              </Link>
+              <Button variant="danger-ghost" size="sm" icon="close" aria-label={t('appLayout.dismiss')} onClick={() => setDismissed(true)} />
             </div>
           </div>
+        )}
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => navigate('/broadcast')}
-              className="bg-white text-amber-800 hover:bg-amber-50 px-3 py-1 rounded-lg font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[15px]">construction</span>
-              <span>{t('appLayout.manageMaintenanceBtn', 'Quản trị bảo trì')}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── GLOBAL AIOPS CRITICAL THREAT BANNER (Chỉ kích hoạt khi HẠ TẦNG quá tải nghiêm trọng) ─── */}
-      {isAlertVisible && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 border-b-2 border-red-800 text-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-[20px] animate-pulse text-amber-300">
-              crisis_alert
-            </span>
-            <div>
-              <span className="font-extrabold uppercase tracking-wide mr-1.5">
-                {t('appLayout.threatBannerTitle', '🚨 BÁO ĐỘNG ĐỎ HẠ TẦNG AIOPS SENTINEL:')}
-              </span>
+        {isMaintenanceVisible && (
+          <section
+            aria-label={t('appLayout.maintenanceTitle')}
+            className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-warning-soft px-4 py-3 md:px-6"
+          >
+            <div className="flex min-w-0 items-center gap-2.5 text-sm text-warning">
+              <Icon name="engineering" />
+              <span className="font-semibold">{t('appLayout.maintenanceTitle')}</span>
               <span>
-                {t('appLayout.threatBannerDesc', 'Phát hiện nguy cơ sập dây chuyền tài nguyên máy chủ! Điểm tài nguyên:')}{' '}
-                <b>{(threatAlert.vectorScores?.resource ?? threatAlert.threatScore)}/100</b>
-                {threatAlert.anomalies?.length > 0 && ` (${threatAlert.anomalies[0].code})`}
+                {maintenanceState.reason || t('appLayout.maintenanceDefaultReason')}
+                {maintenanceState.activatedBy && ` (${t('appLayout.activatedBy', { name: maintenanceState.activatedBy })})`}
               </span>
             </div>
+            <Link to="/broadcast" className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-warning hover:bg-card">
+              {t('appLayout.manageMaintenance')}
+            </Link>
+          </section>
+        )}
+
+        <main className="w-full flex-1 px-4 py-6 md:px-6">
+          <div className="mx-auto w-full min-w-0 max-w-screen-2xl">
+            <Outlet />
           </div>
+        </main>
+      </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {mitigatedSuccess ? (
-              <span className="bg-white/20 text-white px-3 py-1 rounded-lg font-bold">
-                {t('appLayout.emergencyLocked', '✓ ĐÃ KHÓA BẢO TRÌ KHẨN CẤP')}
-              </span>
-            ) : (
-              <button
-                onClick={handleQuickMitigation}
-                disabled={mitigating}
-                className="bg-white text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[15px]">lock</span>
-                <span>{mitigating ? t('appLayout.locking', 'Đang khóa...') : t('appLayout.emergencyLockBtn', '1-Click Khóa Bảo Trì')}</span>
-              </button>
-            )}
+      <ConfirmModal
+        open={confirmOpen}
+        title={t('appLayout.confirmEmergencyTitle')}
+        message={t('appLayout.confirmEmergency')}
+        confirmText={t('appLayout.confirmEmergencyBtn')}
+        confirmDanger
+        loading={mitigating}
+        onConfirm={handleQuickMitigation}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
-            <button
-              onClick={() => navigate('/aiops')}
-              className="bg-red-700 hover:bg-red-800 text-white px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1 border border-red-500"
-            >
-              <span className="material-symbols-outlined text-[15px]">troubleshoot</span>
-              <span>{t('appLayout.viewAnalysisBtn', 'Xem Phân Tích')}</span>
-            </button>
-
-            <button
-              onClick={() => setDismissed(true)}
-              className="text-white/80 hover:text-white p-1 cursor-pointer"
-              title={t('appLayout.dismissTooltip', 'Tạm ẩn cảnh báo')}
-            >
-              <span className="material-symbols-outlined text-[16px]">close</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <AppSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      <AppHeader onMenuToggle={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
-      
-      {/* Main Content Canvas */}
-      <main className={`${isAlertVisible || isMaintenanceVisible ? 'pt-[130px]' : 'pt-[88px]'} ${
-        sidebarCollapsed ? 'md:pl-[92px]' : 'md:pl-[276px]'
-      } px-3 sm:px-4 md:px-6 pb-page-padding min-h-screen transition-all duration-300 w-full`}>
-        <div className="w-full max-w-[1720px] mx-auto min-w-0">
-          <Outlet />
-        </div>
-      </main>
-
-      {/* ─── REALTIME MAINTENANCE RESTORED TOAST ─── */}
       {restoredToast && (
-        <div className="fixed bottom-6 left-6 z-50 bg-emerald-950 text-white rounded-2xl p-4 shadow-2xl border border-emerald-500/80 flex items-start gap-3 max-w-md animate-in slide-in-from-bottom-5 duration-200">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600/30 text-emerald-400 flex items-center justify-center flex-shrink-0 border border-emerald-500/40">
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-          </div>
-          <div className="flex-1 text-xs">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-emerald-400 uppercase tracking-wider">
-                {t('appLayout.restoredToastTitle', 'Hệ Thống Đã Kết Thúc Bảo Trì')}
-              </span>
-              <button onClick={() => setRestoredToast(false)} className="text-slate-400 hover:text-white cursor-pointer">
-                <span className="material-symbols-outlined text-[14px]">close</span>
-              </button>
-            </div>
-            <p className="text-emerald-100 font-medium">
-              {t('appLayout.restoredToastDesc', 'Hệ thống đã hoàn tất bảo trì và hoạt động bình thường trở lại.')}
-            </p>
-          </div>
-        </div>
+        <Toast tone="success" icon="check_circle" title={t('appLayout.restoredToastTitle')} closeLabel={t('common.close')} onClose={() => setRestoredToast(false)}>
+          {t('appLayout.restoredToastDesc')}
+        </Toast>
       )}
 
-      {/* ─── REALTIME AUTO-QUARANTINE TOAST ─── */}
       {blockedToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-red-500/80 flex items-start gap-3 max-w-md animate-in slide-in-from-bottom-5 duration-200">
-          <div className="w-9 h-9 rounded-xl bg-red-600/30 text-red-400 flex items-center justify-center flex-shrink-0 border border-red-500/40">
-            <span className="material-symbols-outlined text-[20px]">shield</span>
-          </div>
-          <div className="flex-1 text-xs">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-red-400 uppercase tracking-wider">
-                {t('appLayout.quarantineToastTitle', 'AIOps Đã Chặn Đứng Nguồn Tấn Công')}
-              </span>
-              <button onClick={() => setBlockedToast(null)} className="text-slate-400 hover:text-white cursor-pointer">
-                <span className="material-symbols-outlined text-[14px]">close</span>
-              </button>
-            </div>
-            <p className="text-slate-300 font-medium">
-              {t('appLayout.quarantineToastIp', { ip: blockedToast.maskedIp })}
-            </p>
-            <p className="text-slate-400 text-[11px] mt-0.5 line-clamp-2">
-              {t('appLayout.quarantineToastReason', { reason: blockedToast.reason })}
-            </p>
-            <div className="mt-2.5 flex items-center gap-2">
-              <button
-                onClick={() => { setBlockedToast(null); navigate('/aiops'); }}
-                className="text-red-400 hover:text-red-300 font-semibold underline text-[11px] cursor-pointer"
-              >
-                {t('appLayout.viewQuarantineList', 'Xem danh sách cô lập →')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Toast tone="danger" icon="shield" title={t('appLayout.quarantineToastTitle')} closeLabel={t('common.close')} onClose={() => setBlockedToast(null)}>
+          <p className="m-0">{t('appLayout.quarantineToastIp', { ip: blockedToast.maskedIp })}</p>
+          {blockedToast.reason && <p className="m-0 mt-0.5 line-clamp-2 text-xs">{t('appLayout.quarantineToastReason', { reason: blockedToast.reason })}</p>}
+          <Link to="/aiops" onClick={() => setBlockedToast(null)} className="mt-2 inline-block text-sm font-medium text-danger hover:underline">
+            {t('appLayout.viewQuarantineList')}
+          </Link>
+        </Toast>
       )}
 
-      {/* ─── INACTIVITY AUTO-LOCK SCREEN OVERLAY ─── */}
       <LockScreenModal />
-
-      {/* ─── MANDATORY FIRST LOGIN SECURITY SETUP MODAL ─── */}
       <FirstLoginModal />
     </div>
   );

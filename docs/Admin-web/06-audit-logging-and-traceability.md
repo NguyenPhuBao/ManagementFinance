@@ -3,8 +3,8 @@
 > **Mã chức năng:** `ADMIN-FEAT-06`  
 > **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/system/AuditLogPage.jsx`  
-> - Backend: `src/Backend/middleware/audit-log.middleware.js`, `src/Backend/modules/auth/auth.service.js`, `src/Backend/modules/admin/admin.repository.js`  
+> - Frontend: `src/Admin-web/src/pages/system/AuditLogPage.jsx`, `src/Admin-web/src/pages/system/audit/DataIncidentsTab.jsx`  
+> - Backend: `src/Backend/middleware/audit-log.middleware.js`, `src/Backend/modules/auth/auth.service.js`, `src/Backend/modules/admin/admin.repository.js`, `src/Backend/modules/admin/data-incident.service.js`  
 
 ---
 
@@ -70,7 +70,7 @@ Theo phê duyệt của PO nhằm tối ưu tính minh bạch và chuyên nghi�
 2. **Cột "Yêu cầu API" (Technical API Request Column):**
    - Đảm nhiệm vai trò hiển thị phương thức HTTP và endpoint kỹ thuật:
      - Badge Method sắc nét: `GET` (Xanh da trời), `POST` (Xanh ngọc lục bảo), `PUT`/`PATCH` (Vàng hổ phách), `DELETE` (Đỏ hồng).
-     - Đường dẫn API Route tương ứng (vd: `/api/v1/payments/create-order`, `/api/admin/change-pin`).
+     - Đường dẫn API Route tương ứng (vd: `/api/payment/create-order`, `/api/admin/change-pin`).
 3. **Lược Bỏ Nút "Làm Mới" Dư Thừa:**
    - Trang bị loại bỏ hoàn toàn nút "Làm mới" trên thanh công cụ do bảng đã được tích hợp kênh Socket.io `audit_activity` tự động chèn bản ghi mới nhất theo thời gian thực. Bổ sung nút **"Đặt lại"** để xóa các bộ lọc ngày/trạng thái.
 
@@ -117,22 +117,16 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 
 ---
 
-## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
+## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (cập nhật 2026-11-14 theo mã)
 
-1. **Bộ Lọc Tìm Kiếm Đa Chiều (`AuditLogPage.jsx`):**
-   - Lọc theo từng mã trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, `Accepted`, `Processing`, `Pending`).
-   - Tìm kiếm tức thời theo Tên tài khoản (`Username`) hoặc Đường dẫn API (`Request`).
-   - Lọc theo khoảng ngày bắt đầu (`dateFrom`) và ngày kết thúc (`dateTo`).
-   - Nút **"Đặt lại"** khôi phục nhanh về trạng thái hiển thị ban đầu.
-2. **Xuất Báo Cáo CSV Chuẩn UTF-8 (`exportToCsv`):**
-   - Cho phép tải toàn bộ danh sách log đang lọc (tối đa 1,000 bản ghi) thành tệp `.csv` với tiền tố BOM UTF-8 `\uFEFF`, mở trực tiếp trên Microsoft Excel không bị lỗi font tiếng Việt.
-   - **Kế thừa cột Hành động tiếng Việt:** File CSV xuất ra chứa đầy đủ các cột chuẩn hóa: `#`, `Người Dùng`, `Thao Tác / Hành Động` (Mô tả tiếng Việt thân thiện), `Phương Thức`, `Yêu Cầu API (Route)`, `Trạng Thái`, `Lý Do / Kết Quả`, `Thời Gian Phản Hồi (ms)`, `Địa Chỉ IP`, `Thời Điểm`.
-   - Định dạng tên tệp chuẩn: `audit_logs_YYYYMMDD_HHmm.csv`.
-3. **Luồng Cập Nhật Real-time Thông Minh:**
-   - Kết nối Socket.io qua sự kiện `audit_activity`. Khi đang ở Trang 1 và không áp dụng bộ lọc, hệ thống tự động chèn log mới vào đầu bảng.
-   - Nếu đang duyệt trang sau hoặc đang lọc, hệ thống hiển thị thông báo badge đếm số lượng log mới xuất hiện để không gây xáo trộn tầm nhìn của người dùng.
-4. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
-   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang.
+Trang Nhật ký kiểm toán có 2 tab: **Nhật ký thao tác** (mặc định) và **Sự cố dữ liệu**.
+
+1. **Bộ lọc:** tìm theo tài khoản hoặc đường dẫn API; lọc trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, `Accepted`, `Processing`, `Pending`); khoảng ngày Từ – Đến; nút đặt lại.
+2. **Xuất CSV (`exportToCsv`):** tải danh sách đang lọc (tối đa 1.000 bản ghi) thành tệp `audit_logs_YYYY-MM-DD.csv` có BOM UTF-8, mở thẳng bằng Excel.
+3. **Realtime:** sự kiện `audit_activity`. Ở trang 1 không lọc thì chèn bản ghi mới lên đầu; đang ở trang khác hoặc đang lọc thì hiện thông báo số bản ghi mới. Cột IP chỉ hiện IP đã che (Backend che trước khi phát sự kiện).
+4. **Phân trang:** 5, 10, 20 hoặc 50 bản ghi / trang, mặc định 10.
+5. **Tab Sự cố dữ liệu (`DataIncidentsTab.jsx`):** sổ sự cố theo quy trình `docs/Rule_Project/Quy_trinh_su_co_du_lieu.md`. Mở / sửa sự cố (tiêu đề, mô tả, nguồn, thời điểm phát hiện / xảy ra, loại dữ liệu, dữ liệu nhạy cảm, số người dùng và bản ghi bị ảnh hưởng, hậu quả, biện pháp, đầu mối); đồng hồ đếm ngược tới hạn phát hiện + 72 giờ (đổi màu khi còn dưới 24 giờ và khi quá hạn); các bước Đã ngăn chặn → Đã báo cơ quan (báo sau 72 giờ bắt buộc lý do) → Đã báo người dùng → Đóng sự cố (bắt buộc nguyên nhân gốc, đã báo cơ quan hoặc lý do không cần báo, xác thực PIN). Sự cố đã đóng không sửa được; không có thao tác xóa.
+6. **Kiểm thử:** `src/Admin-web/src/tests/audit.test.jsx`, `dataIncidents.test.jsx`.
 
 ---
 
@@ -151,10 +145,15 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/audit-logs` | Lấy danh sách nhật ký truy vết có lọc và phân trang | Admin |
+| `GET` | `/api/admin/data-incidents` | Sổ sự cố dữ liệu (kèm hạn 72 giờ, quá hạn, báo muộn) | Admin |
+| `POST` | `/api/admin/data-incidents` | Mở sự cố | Admin |
+| `PATCH` | `/api/admin/data-incidents/:id` | Sửa sự cố chưa đóng | Admin |
+| `POST` | `/api/admin/data-incidents/:id/:action` | `contain`, `report`, `notify-users`, `close` (close bắt buộc PIN) | Admin |
 
 ### Socket.io Events
 - **Phát tán (`Server -> admin_room`):**
-  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res, ip }` mỗi khi một request được hoàn tất.
+  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res, ip }` mỗi khi một request được hoàn tất; `ip` là IP đã che (`a.b.xx.xx`, từ 2026-11-14).
+  - `admin.data_incident_changed`: `{ id, code, status }` khi sổ sự cố thay đổi.
 
 ---
 

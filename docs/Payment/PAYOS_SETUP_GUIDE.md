@@ -93,8 +93,8 @@ PAYOS_API_KEY=dán_API_Key_vào_đây
 PAYOS_CHECKSUM_KEY=dán_Checksum_Key_vào_đây
 
 # Đường dẫn chuyển hướng sau khi thanh toán thành công hoặc hủy trên trình duyệt
-PAYOS_RETURN_URL=https://managementfinance-admin.vercel.app/payment/success
-PAYOS_CANCEL_URL=https://managementfinance-admin.vercel.app/payment/cancel
+PAYOS_RETURN_URL=https://management-finance-gamma.vercel.app/payment/success
+PAYOS_CANCEL_URL=https://management-finance-gamma.vercel.app/payment/cancel
 
 # Giá gói dịch vụ Premium (VNĐ) và thời hạn mặc định (ngày)
 PREMIUM_PRICE_VND=49000

@@ -3,8 +3,8 @@
 > **Mã chức năng:** `ADMIN-FEAT-02`  
 > **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/dashboard/DashboardPage.jsx`, `src/Admin-web/src/components/common/InteractiveLineChart.jsx`, `ServerHealthPanel.jsx`  
-> - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.controller.js`, `admin.repository.js`, `src/Backend/modules/auth/auth.service.js`  
+> - Frontend: `src/Admin-web/src/pages/dashboard/DashboardPage.jsx`, `src/Admin-web/src/pages/dashboard/components/AvailabilityModal.jsx`, `src/Admin-web/src/components/common/InteractiveLineChart.jsx`, `ServerHealthPanel.jsx`  
+> - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.controller.js`, `admin.repository.js`, `availability.js`, `availability.service.js`, `src/Backend/core/resilience/server-session.js`, `src/Backend/modules/auth/auth.service.js`  
 
 ---
 
@@ -15,7 +15,7 @@
 Toàn bộ dữ liệu hiển thị trên Dashboard được **thống kê và tổng hợp 100% từ cơ sở dữ liệu PostgreSQL** theo mô hình lai (Hybrid Architecture) tối ưu theo quyết định của PO:
 - **Chu kỳ Polling 10 giây (10s Polling):** Định kỳ quét và cập nhật ngầm (silent background update) các chỉ số vĩ mô: Tổng số user, Tổng danh mục, Người dùng mới, Biểu đồ tần suất đăng nhập và Biểu đồ lưu lượng request mà không gây giật lag hay block giao diện người dùng.
 - **Thời gian thực tuyệt đối (Real-Time Socket.io):** Giữ nguyên kết nối Socket.io cho danh mục **Hoạt động gần đây (Audit-log)** qua sự kiện `audit_activity` để chèn ngay lập tức thao tác mới nhất lên đầu bảng phân trang.
-- **Server Health & Resilience:** Uptime và tình trạng máy chủ được cập nhật định kỳ mỗi 10 giây.
+- **Server Health & Resilience:** Độ khả dụng tháng hiện tại, thời gian chạy liên tục và tình trạng máy chủ được cập nhật định kỳ mỗi 10 giây (REST) và mỗi 3 giây (socket). Độ khả dụng tính theo kỳ lịch (tháng / quý / năm) và không mất số liệu khi máy chủ khởi động lại (mục 3.5).
 
 ---
 
@@ -88,7 +88,11 @@ $$\text{Growth (\%)} = \begin{cases}
 - *Ví dụ:* Kỳ này có 15 user mới, kỳ trước có 10 user mới $\implies \text{Growth} = 150\%$.
 - *Đánh dấu màu:* Nếu $\ge 100\%$ hiển thị Badge màu Xanh lá (Tăng trưởng); nếu $< 100\%$ hiển thị Badge màu Đỏ hoặc Vàng Cam.
 
-### 3.2. Thuật toán Gom nhóm Dữ liệu Biểu đồ (Time-Bucket Aggregation)
+### 3.2. Nguồn số liệu hai biểu đồ
+- **Biểu đồ "Đăng nhập" (`loginStats`):** đếm **mọi lượt gọi API đăng nhập** trong khoảng thời gian, gồm thành công (`Pass`), sai thông tin (`Rejected` / `Fail`) và bị ngắt giữa chừng (`Interrupted`), để thấy được đợt dò mật khẩu. Điều kiện lọc: bảng `audit_log`, cột `Request` đúng bằng `POST /api/auth/login` (giá trị middleware audit-log ghi cho mỗi lượt gọi đăng nhập; chữ "Đăng nhập hệ thống" nằm ở cột `Action`). Đăng nhập Admin-web và Client-app dùng chung API này nên đều được đếm. Lượt đăng nhập bằng tên tài khoản không tồn tại không ghi được vào `audit_log` (chỉ phát realtime lên bảng hoạt động) nên không có trong biểu đồ.
+- **Biểu đồ "Lưu lượng yêu cầu" (`requestStats`):** đếm mọi dòng `audit_log` trong khoảng thời gian (các API giám sát của dashboard không ghi nhật ký nên không tự làm tăng số liệu).
+
+### 3.3. Thuật toán Gom nhóm Dữ liệu Biểu đồ (Time-Bucket Aggregation)
 Thay vì trả về hàng ngàn bản ghi thô gây tràn bộ nhớ trình duyệt, Backend gom nhóm toàn bộ logs vào các thùng chứa (buckets) với độ phức tạp $O(N)$ bằng `Map`:
 
 ```javascript
@@ -106,10 +110,44 @@ for (const log of logs) {
 }
 ```
 
-### 3.3. Các chỉ số tóm tắt (Statistical Summary)
+### 3.4. Các chỉ số tóm tắt (Statistical Summary)
 - **Tổng số (`total`):** $\sum_{i=1}^{k} \text{count}_i$
 - **Đỉnh cao nhất (`max`):** $\max(\text{count}_1, \text{count}_2, \dots, \text{count}_k)$
 - **Trung bình (`avg`):** $\text{round}\left(\frac{\text{total}}{k}\right)$
+
+### 3.5. Độ Khả Dụng Hệ Thống & Chạy Liên Tục (thẻ thứ tư)
+Thẻ thứ tư trả lời hai câu hỏi khác nhau bằng hai chỉ số riêng.
+
+**a) Độ khả dụng (%) theo kỳ lịch** (tháng, quý, năm; ranh giới kỳ là 00:00 giờ Việt Nam). Số liệu lưu trong CSDL nên không mất khi máy chủ khởi động lại:
+
+$$\text{Độ khả dụng} = \frac{T_{\text{đo được}} - T_{\text{bảo trì}} - T_{\text{gián đoạn}}}{T_{\text{đo được}}} \times 100$$
+
+| Ký hiệu | Ý nghĩa | Cách xác định |
+|---|---|---|
+| $T_{\text{đo được}}$ | Phần của kỳ mà hệ thống có số liệu | Từ $\max(\text{đầu kỳ}, \text{lúc phiên chạy đầu tiên được ghi})$ tới $\min(\text{cuối kỳ}, \text{bây giờ})$ |
+| $T_{\text{bảo trì}}$ | Thời gian bảo trì trong kỳ | Phiên `COMPLETED` hoặc `ONGOING` của `maintenance_history` giao với $T_{\text{đo được}}$ (phiên đang diễn ra tính tới bây giờ). Có trừ, vì bảo trì chặn khách hàng |
+| $T_{\text{gián đoạn}}$ | Gián đoạn ngoài dự kiến (sập) | Khoảng không có phiên chạy nào, ngay sau một phiên không được đóng êm (`UNKNOWN`, hoặc phiên còn mở nhưng mất nhịp quá 3 phút), trừ phần trùng bảo trì |
+| Tắt có chủ đích | Deploy, Render cho ngủ | Khoảng không có phiên chạy ngay sau một phiên đóng êm (`GRACEFUL`), trừ phần trùng bảo trì. Chỉ báo riêng, **không trừ** vào độ khả dụng |
+
+- Bảo trì chia hai loại để hiển thị: *khẩn cấp* (`EMERGENCY`) và *có kế hoạch* (`SCHEDULED`, `ROUTINE`, `UPGRADE`). Hai phiên chồng nhau thì phần chồng tính cho khẩn cấp. Lịch chưa tới giờ (`SCHEDULED`) và lịch đã huỷ (`CANCELLED`) không tính.
+- $T_{\text{đo được}} = 0$ (kỳ nằm trước lúc bắt đầu đo, hoặc kỳ ở tương lai) ⇒ không có %, giao diện ghi "Chưa có dữ liệu".
+- Kết quả làm tròn 2 chữ số thập phân, giới hạn trong 0–100.
+- Ví dụ 1: tháng 30 ngày đo đủ, bảo trì có kế hoạch 1 giờ ⇒ $(2.592.000 - 3.600) ÷ 2.592.000 × 100 = 99{,}86\%$.
+- Ví dụ 2: tháng 31 ngày đo đủ; tắt có chủ đích 1 giờ, sập 2 giờ, bảo trì khẩn cấp 30 phút, không trùng nhau ⇒ $(2.678.400 - 1.800 - 7.200) ÷ 2.678.400 × 100 = 99{,}66\%$; 1 giờ tắt có chủ đích chỉ hiện ở dòng riêng.
+
+**Nguồn số liệu phiên chạy (bảng `server_session`):**
+
+| Thời điểm | Hành vi |
+|---|---|
+| Máy chủ khởi động | Đóng các phiên còn mở thành `UNKNOWN` (kết thúc = nhịp cuối `last_seen_at`) nếu là phiên của chính máy này (`instance_id` trùng) hoặc phiên của máy khác đã mất nhịp quá 3 phút; sau đó chèn phiên mới (`instance_id` = `RENDER_INSTANCE_ID` hoặc tên máy, `version` = 12 ký tự đầu của `RENDER_GIT_COMMIT` nếu có) |
+| Mỗi 60 giây | Ghi nhịp `last_seen_at = NOW()` |
+| Nhận SIGTERM / SIGINT | Đóng phiên `GRACEFUL` (chờ tối đa 2 giây) |
+| CSDL lỗi lúc khởi động | Máy chủ vẫn chạy; thử ghi phiên lại sau mỗi 30 giây |
+
+- Sai số: sập giữa hai nhịp mất tối đa 60 giây số liệu; tiến trình bị buộc dừng (SIGKILL) không kịp ghi thì khoảng nghỉ bị tính là gián đoạn (nghiêng về thận trọng).
+- Độ khả dụng chỉ có số liệu từ phiên chạy đầu tiên được ghi; kỳ bắt đầu sớm hơn thì giao diện ghi "Dữ liệu từ dd/mm/yyyy".
+
+**b) Chạy liên tục** $= \text{bây giờ} - \text{lúc tiến trình máy chủ khởi động}$ (`process.uptime()`). Không trừ bảo trì, về 0 mỗi lần khởi động; dùng để xem bản đang chạy đã ổn định bao lâu kể từ lần deploy gần nhất. Dưới 1 phút ghi "dưới 1 phút", còn lại dạng "N ngày N giờ N phút".
 
 ---
 
@@ -121,6 +159,11 @@ for (const log of logs) {
    - Mặc định phân trang 10 bản ghi/trang khi tải trang (có tùy chọn [5, 10, 20, 50]), phản hồi tối ưu ($< 50\text{ms}$).
 3. **Bảo vệ Bộ nhớ Đồ họa SVG:**
    - Biểu đồ đường SVG tương tác sử dụng thuộc tính `vectorEffect="non-scaling-stroke"` và thuật toán vẽ đường cong mềm Bezier mượt mà, giới hạn tối đa 31 điểm trên một khung nhìn nhằm đảm bảo FPS luôn đạt 60fps trên mọi trình duyệt.
+4. **Độ khả dụng (mục 3.5):**
+   - Tham số kỳ: `period` = `month` | `quarter` | `year`, `year` 2000–2100, `month` 1–12, `quarter` 1–4; sai ⇒ HTTP 400 mã `INVALID_PERIOD`.
+   - Danh sách sự cố trả tối đa 100 dòng, mới nhất trước.
+   - Độ khả dụng tháng hiện tại trên `GET /system/health` và socket được lưu đệm 60 giây, tính lại ngay khi trạng thái bảo trì đổi; luồng socket 3 giây không truy vấn CSDL mỗi lần.
+   - CSDL chưa có bảng `server_session` ⇒ API trả `trackingAvailable: false`, % rỗng; máy chủ vẫn chạy bình thường.
 
 ---
 
@@ -145,12 +188,26 @@ for (const log of logs) {
    - Hiển thị đầy đủ Badge trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`), thời gian xử lý và tên người dùng thực hiện.
    - **Tối ưu trải nghiệm (PO approved):** Loại bỏ hoàn toàn hiệu ứng lượn sóng nhấp nháy (`animate-pulse` trên dòng bảng và `animate-ping` trên badge Real-time) để giao diện hiển thị gọn gàng, chuyên nghiệp, không gây rối mắt.
 5. **Cấu Trúc Bố Cục Trực Quan Mới (Standard Dashboard Layout):**
-   - **Hàng 1:** 4 Thẻ KPI vĩ mô (Tổng người dùng, Tổng danh mục, Uptime hệ thống thực tế theo PO, Người dùng mới). Thẻ Uptime bỏ dòng chữ "Chuẩn SLA 30 ngày (Không gián đoạn)".
+   - **Hàng 1:** 4 Thẻ KPI vĩ mô (Tổng người dùng, Người dùng mới, Tổng danh mục, Độ khả dụng).
+   - **Thẻ "Độ khả dụng · Tháng MM/YYYY"** (tháng hiện tại theo giờ Việt Nam):
+     - Giá trị: % độ khả dụng tháng hiện tại (mục 3.5), 2 chữ số thập phân; màu ≥ 99,5% xanh, ≥ 95% vàng, < 95% đỏ.
+     - Chưa có số liệu phiên chạy ⇒ "Chưa có dữ liệu"; chưa nhận được phản hồi ⇒ "—" kèm "Đang tải..."; lỗi ⇒ "—" kèm "Mất kết nối".
+     - Dòng phụ: "Chạy liên tục {thời gian}".
+     - Nút "Xem chi tiết ›" mở hộp "Độ khả dụng hệ thống".
+   - **Hộp "Độ khả dụng hệ thống"** (`AvailabilityModal.jsx`):
+     - Dòng mô tả công thức dưới tiêu đề.
+     - Bộ chọn loại kỳ **Tháng | Quý | Năm** (mặc định Tháng, tháng và năm hiện tại) và ô chọn phụ: Tháng 1–12 kèm năm; Quý 1–4 kèm năm; chỉ năm. Danh sách năm gồm từ năm có phiên chạy đầu tiên tới năm hiện tại. Bộ chọn này độc lập với bộ lọc "Hôm nay / 7 ngày / 1 tháng / 1 năm" (kỳ lịch khác khoảng thời gian trượt).
+     - % của kỳ (màu như thẻ) và "Dữ liệu từ dd/mm/yyyy".
+     - Bốn ô chia nhỏ: Bảo trì có kế hoạch, Bảo trì khẩn cấp, Gián đoạn ngoài dự kiến, Tắt có chủ đích (không trừ); thời lượng dạng "N giờ N phút", "N phút" hoặc "dưới 1 phút".
+     - Biểu đồ cột: kỳ tháng theo ngày, kỳ quý / năm theo tháng; cột chưa có dữ liệu tô xám; rê chuột hiện % của cột.
+     - Bảng "Sự cố trong kỳ": Bắt đầu (hh:mm dd/mm/yyyy), Loại, Thời lượng (kèm "đang diễn ra" nếu chưa kết thúc), Lý do; trống thì ghi "Không có sự cố trong kỳ.".
+     - Thông báo: "Chưa có dữ liệu cho kỳ này"; "Máy chủ chưa ghi nhận phiên chạy nên chưa tính được độ khả dụng."; "Không tải được số liệu độ khả dụng." khi gọi API lỗi.
+     - Hộp không tự làm mới: gọi API khi mở và mỗi lần đổi kỳ.
    - **Hàng 2 (Grid 2 cột):** Bảng Hoạt động gần đây (`lg:col-span-2`) nằm ngang hàng với Box Sức khỏe máy chủ `ServerHealthPanel` (`lg:col-span-1`).
    - **Hàng 3:** Biểu đồ Tần suất đăng nhập (Full-width).
    - **Hàng 4:** Biểu đồ Lưu lượng Request (Full-width, đồng bộ chiều cao và tỷ lệ hiển thị với Biểu đồ Đăng nhập).
 6. **Tinh Chỉnh Sức Khỏe Máy Chủ & Điều Hành Bảo Trì Tại Dashboard (`ServerHealthPanel.jsx`):**
-   - **Đồng bộ Uptime:** Nhận trực tiếp `uptimeData` từ `DashboardPage` để hiển thị khớp 100% tỷ lệ % và thời gian chạy thực tế với Card Uptime.
+   - **Đồng bộ với thẻ Độ khả dụng:** nhận `uptimeData` từ `DashboardPage`; hiện "Độ khả dụng (tháng)", "Chạy liên tục", "Khởi động lúc" và "Phiên bản" (chỉ hiện khi máy chủ có mã phiên bản).
    - **Phân biệt trực quan 2 chế độ:** Chế độ Khẩn cấp dùng tông đỏ rose (`border-rose-300 bg-rose-50/90`), icon `crisis_alert`, badge `Khẩn cấp`; Chế độ Thông thường dùng tông cam hổ phách (`border-amber-300 bg-amber-50/90`), icon `construction`, badge `Thông thường`.
    - **Khóa công tắc an toàn:** Nút `#btn-maintenance-toggle` bị **KHÓA CHẶT** (`disabled={true}`) khi đang có bất kỳ phiên bảo trì nào đang diễn ra, con trỏ chuột chuyển sang `cursor-not-allowed` kèm tooltip giải thích rõ ràng nhằm ngăn chặn thao tác tắt bật tùy tiện ngoài tầm kiểm soát tại Dashboard.
    - **Điều hướng chuyên trách:** Nút liên kết "Quản trị & Lên lịch bảo trì →" sử dụng component an toàn `SafeMaintenanceLink` điều hướng trực tiếp sang Trung tâm điều hành `/broadcast`.
@@ -161,6 +218,7 @@ for (const log of logs) {
 
 - **Đến Backend & PostgreSQL:**
   - Nhờ tính toán trước bằng Aggregate Query và Index trên cột `time_req`, truy vấn Dashboard hoàn tất trong $< 15\text{ms}$, không gây khóa bảng (Lock table) ảnh hưởng đến giao dịch của Client-app.
+  - Độ khả dụng đọc bảng `server_session` (ghi 1 dòng mỗi lần khởi động, cập nhật 1 dòng mỗi phút) và `maintenance_history`; không đụng dữ liệu người dùng.
 - **Đến Mobile App (Client-app):**
   - Khi người dùng Client-app thực hiện bất kỳ thao tác nào (Đăng ký, Đăng nhập, Gửi yêu cầu sync), số liệu trên Dashboard của Admin sẽ tự động nhảy số theo thời gian thực mà không làm tăng độ trễ mạng của Client-app.
 
@@ -177,8 +235,10 @@ for (const log of logs) {
 | `GET` | `/api/admin/login-stats` | Lấy chuỗi dữ liệu biểu đồ đăng nhập theo bộ lọc | Admin |
 | `GET` | `/api/admin/request-stats` | Lấy chuỗi dữ liệu biểu đồ request theo bộ lọc | Admin |
 | `GET` | `/api/auth/recent-activities` | Lấy danh sách nhật ký hoạt động có phân trang | Admin |
+| `GET` | `/api/admin/system/health` | Sức khỏe máy chủ, chạy liên tục, độ khả dụng tháng hiện tại (khối `uptime`) | Admin |
+| `GET` | `/api/admin/system/availability` | Độ khả dụng theo kỳ (`period`, `year`, `month` / `quarter`): `percent`, `measuredSeconds`, `coverageFrom`, bốn khoản chia nhỏ, `buckets[]`, `incidents[]`, `availableYears[]`, `trackingAvailable` | Admin |
 
 ### Chu Kỳ Polling & Socket.io Events Lắng Nghe
-- **Polling ngầm 10s (`setInterval`):** Đồng bộ `totalUsers`, `totalCategories`, `newUsers`, `loginStats`, `requestStats` và `getSystemHealth` (Uptime & Sức khỏe phần cứng) định kỳ mà không giật lag màn hình.
+- **Polling ngầm 10s (`setInterval`):** Đồng bộ `totalUsers`, `totalCategories`, `newUsers`, `loginStats`, `requestStats` và `getSystemHealth` (độ khả dụng tháng, chạy liên tục, sức khỏe phần cứng) định kỳ mà không giật lag màn hình. Hộp chi tiết độ khả dụng không tự làm mới: gọi API khi mở và mỗi lần đổi kỳ.
 - **Socket.io Real-time Event (`audit_activity`):** Lắng nghe trực tiếp luồng audit log từ server để chèn ngay lập tức thao tác mới lên dòng đầu của bảng "Hoạt động gần đây" và tăng `total` bản ghi phân trang theo thời gian thực.
-- **Socket.io Nhịp Tim Máy Chủ (`admin.metrics_stream` - 3s/lần):** Cập nhật thời gian thực chỉ số CPU (Delta Ticks tức thời, số Cores thật) và RAM (`ramUsedMb`, `ramTotalMb`, `ramPercent`, `ramRssMb`) trực tiếp từ `SystemHardwareMonitor`, loại bỏ hoàn toàn giá trị gán cứng và bảo toàn dữ liệu không bị tụt về `0/100 MB`.
+- **Socket.io Nhịp Tim Máy Chủ (`admin.metrics_stream` - 3s/lần):** Cập nhật thời gian thực chỉ số CPU (Delta Ticks tức thời, số Cores thật) và RAM (`ramUsedMb`, `ramTotalMb`, `ramPercent`, `ramRssMb`) trực tiếp từ `SystemHardwareMonitor`, loại bỏ hoàn toàn giá trị gán cứng và bảo toàn dữ liệu không bị tụt về `0/100 MB`. Gói tin mang thêm `runningSeconds`, `runningFormatted`, `startedAt`, `version`, `availability` để thẻ Độ khả dụng và panel Sức khỏe máy chủ cập nhật ngay. Các khoá `uptimeSeconds`, `totalSeconds`, `uptimeFormatted` mang giá trị chạy liên tục, `uptimePercent` là độ khả dụng tháng hiện tại (có thể `null`), `downtimeSeconds` là bảo trì + gián đoạn trong tháng; nhóm khoá này giữ lại cho tương thích và sẽ gỡ.

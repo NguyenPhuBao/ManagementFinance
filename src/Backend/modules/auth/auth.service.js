@@ -10,6 +10,7 @@ const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
 const { maskIp } = require("../../utils/masking.util");
 const { trackDeviceAccess } = require("./device-history.service");
+const { getClientIp } = require('../../utils/ip-protection.util');
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -76,7 +77,7 @@ function generateTokens(payload, idrole) {
 function getDeviceInfo(req) {
   const headers = (req && req.headers) ? req.headers : {};
   const userAgent = headers["user-agent"] || null;
-  const rawIp = (req && req.ip) || (headers['x-forwarded-for']?.split(',')[0]?.trim()) || (req && req.socket?.remoteAddress) || null;
+  const rawIp = getClientIp(req);
   return {
     ip_address: maskIp(rawIp),
     user_agent: userAgent,
@@ -417,7 +418,7 @@ const authService = {
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
-    const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const clientIp = getClientIp(req);
 
     // Tự động đăng ký bảo vệ IP động & gỡ phong tỏa khi đăng nhập thành công với quyền Quản trị viên (Dynamic Admin Session Protection)
     if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {
@@ -928,7 +929,6 @@ const authService = {
       if (p.includes('/webhook')) return 'Webhook tiếp nhận thanh toán PayOS';
       if (p.includes('/confirm-upgrade')) return 'Xác nhận nâng cấp gói cước';
       if (p.includes('/stats')) return 'Thống kê doanh thu thanh toán';
-      if (p.includes('/payos-qr')) return 'Tạo mã QR thanh toán PayOS';
       if (p.includes('/simulate-webhook')) return 'Mô phỏng Webhook thanh toán';
       return 'Giao dịch thanh toán gói cước';
     }
@@ -998,7 +998,7 @@ const authService = {
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
         username: data.userDetails?.username || null,
-        ip: data.ip || '127.0.0.1',
+        ip: require('../../utils/masking.util').maskIp(data.ip || '127.0.0.1'),
         action: data.action || data.request,
         request: data.request,
         reason: data.reason || null,

@@ -1,8 +1,117 @@
 const adminService = require('./admin.service');
+const deviceHistory = require('../auth/device-history.service');
+const policyService = require('../policy/policy.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
 const adminController = {
+  async getUserDevices(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const devices = await deviceHistory.listDevicesForAdmin(idaccount, 10);
+      return ResponseHandler.success(res, devices, 'Thiết bị đăng nhập của người dùng');
+    } catch (error) {
+      logger.error('getUserDevices failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async getPolicies(req, res) {
+    try {
+      const data = await policyService.listForAdmin();
+      return ResponseHandler.success(res, data, 'Các phiên bản chính sách bảo mật');
+    } catch (error) {
+      logger.error('getPolicies failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  /** Thêm chính sách: `documentId` = phiên bản mới của chính sách có sẵn; không có thì `title` là chính sách mới. Tạo ở trạng thái Ngừng sử dụng. */
+  async publishPolicy(req, res) {
+    try {
+      const { documentId, title, content, pin, password } = req.body || {};
+      const draft = await policyService.publish({ documentId, title, content }, req.user?.idaccount);
+      await adminService.verifySecurityAction({ pin, password, action: 'PUBLISH_POLICY', targetId: draft.title || String(draft.documentId) }, req.user);
+      const created = await policyService.createVersion(draft);
+      req.auditActionName = `Thêm chính sách ${policyService.label(created)} (Ngừng sử dụng)`;
+      return ResponseHandler.success(res, policyService.toPublic(created), 'Đã thêm chính sách', 201);
+    } catch (error) {
+      if (!error.statusCode || error.statusCode >= 500) logger.error('publishPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+    }
+  },
+
+  /** Ngừng / kích hoạt một phiên bản chính sách; bắt buộc PIN. */
+  async setPolicyStatus(req, res) {
+    try {
+      const version = parseInt(req.params.id, 10);
+      if (isNaN(version)) return ResponseHandler.badRequest(res, 'Mã chính sách không hợp lệ');
+      const { status, pin, password } = req.body || {};
+      policyService.assertStatus(status);
+      await adminService.verifySecurityAction({ pin, password, action: 'CHANGE_POLICY_STATUS', targetId: String(version) }, req.user);
+      const updated = await policyService.setStatus({ version, status, actorId: req.user?.idaccount });
+      req.auditActionName = `${status === 'ACTIVE' ? 'Kích hoạt' : 'Ngừng'} chính sách ${policyService.label(updated)}`;
+      return ResponseHandler.success(res, policyService.toPublic(updated), status === 'ACTIVE' ? 'Đã kích hoạt chính sách' : 'Đã ngừng chính sách');
+    } catch (error) {
+      if (!error.statusCode || error.statusCode >= 500) logger.error('setPolicyStatus failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+    }
+  },
+
+  async getUserPolicy(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const data = await policyService.acceptancesForAccount(idaccount);
+      return ResponseHandler.success(res, data, 'Lịch sử đồng ý chính sách');
+    } catch (error) {
+      logger.error('getUserPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async getUserDataExports(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const { listForAdmin } = require('../account/data-export.service');
+      return ResponseHandler.success(res, await listForAdmin(idaccount), 'Yêu cầu bản sao dữ liệu');
+    } catch (error) {
+      logger.error('getUserDataExports failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async revealDeviceIp(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      const { deviceId } = req.params;
+      if (isNaN(iduser) || !deviceId) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      req.auditActionName = `Xem IP đầy đủ (người dùng #${iduser}, thiết bị #${deviceId})`;
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const { pin, password } = req.body || {};
+      await adminService.verifySecurityAction(
+        { pin, password, action: 'REVEAL_IP', targetId: `user#${iduser}/device#${deviceId}` },
+        req.user
+      );
+      const ip = await deviceHistory.revealDeviceIp(idaccount, deviceId);
+      if (!ip) return ResponseHandler.notFound(res, 'IP đầy đủ không còn lưu (đã quá thời hạn lưu trữ) hoặc không tồn tại');
+      res.set?.('Cache-Control', 'no-store');
+      return ResponseHandler.success(res, { ip }, 'IP đầy đủ của thiết bị');
+    } catch (error) {
+      logger.warn('revealDeviceIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
   async totalUsers(req, res) {
     try {
       const result = await adminService.getTotalUsers();
@@ -252,6 +361,21 @@ const adminController = {
       return ResponseHandler.success(res, result, 'Danh sách lịch sử bảo trì hệ thống');
     } catch (error) {
       logger.error('getMaintenanceHistory failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  /** Độ khả dụng theo kỳ: ?period=month&year=2026&month=11 | period=quarter&quarter=4 | period=year */
+  async getAvailability(req, res) {
+    try {
+      const { getAvailability } = require('./availability.service');
+      const result = await getAvailability(req.query || {});
+      return ResponseHandler.success(res, result, 'Độ khả dụng hệ thống theo kỳ');
+    } catch (error) {
+      if (error.statusCode === 400) {
+        return ResponseHandler.error(res, error.message, 400, null, error.code);
+      }
+      logger.error('getAvailability failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
     }
   },

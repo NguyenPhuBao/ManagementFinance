@@ -183,12 +183,13 @@ describe('Auth & Account Lifecycle Suite v2', () => {
       assert.strictEqual(info.user_agent, 'Chrome/120 Mobile');
     });
 
-    it('4.2. getDeviceInfo tự động che bớt IPv6 và xử lý header x-forwarded-for an toàn', () => {
+    it('4.2. getDeviceInfo tự động che bớt IPv6, lấy IP qua req.ip và bỏ qua x-forwarded-for do client gửi', () => {
       const mockReq = {
         headers: {
-          'x-forwarded-for': '2001:0db8:85a3:0000:0000:8a2e:0370:7334, 10.0.0.1',
+          'x-forwarded-for': '9.9.9.9',
           'user-agent': 'Safari iOS',
         },
+        ip: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
       };
       const info = authService.getDeviceInfo(mockReq);
       assert.strictEqual(info.ip_address, '2001:0db8:xxxx:xxxx');

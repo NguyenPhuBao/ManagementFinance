@@ -96,7 +96,8 @@ test('Payment Service Suite', async (t) => {
     try {
       const res = await paymentService.handlePayOSWebhook({
         code: '00',
-        data: { orderCode: 123456, amount: 49000 },
+        // Webhook thật luôn mang `reference` (mã giao dịch ngân hàng); thiếu thì đi nhánh chờ đối soát (migration 53)
+        data: { orderCode: 123456, amount: 49000, reference: 'FT-IDEMPOTENT-1' },
         signature: 'valid',
       });
 

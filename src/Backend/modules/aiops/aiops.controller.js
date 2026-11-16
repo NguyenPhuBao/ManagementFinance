@@ -1,11 +1,12 @@
 const { defaultAIOpsService } = require('./aiops.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
+const { getClientIp } = require('../../utils/ip-protection.util');
 
 const aiopsController = {
   getStatus(req, res) {
     try {
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      const clientIp = getClientIp(req);
       const status = defaultAIOpsService.getStatus();
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
       const isClientProtected = defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.isProtectedIp === 'function'
@@ -84,19 +85,25 @@ const aiopsController = {
     }
   },
 
-  unblockQuarantine(req, res) {
+  async revealQuarantineIp(req, res) {
     try {
       const { hash } = req.params;
+      if (!hash) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      req.auditActionName = `Xem IP đầy đủ của nguồn bị cô lập (${hash.slice(0, 12)})`;
+      const { pin, password } = req.body || {};
+      const adminService = require('../admin/admin.service');
+      await adminService.verifySecurityAction(
+        { pin, password, action: 'REVEAL_IP', targetId: `aiops-ip#${hash}` },
+        req.user
+      );
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const unblocked = defaultAIOpsQuarantine.unblock(hash);
-      if (!unblocked) {
-        return ResponseHandler.notFound(res, 'Không tìm thấy nguồn IP tương ứng trong danh sách cô lập');
-      }
-      req.auditActionName = `Gỡ chặn IP cô lập (${hash})`;
-      return ResponseHandler.success(res, { hash, unblocked: true }, 'Đã gỡ chặn nguồn IP thành công');
+      const ip = await defaultAIOpsQuarantine.revealFullIp(hash);
+      if (!ip) return ResponseHandler.notFound(res, 'IP đầy đủ không còn lưu (đã quá thời hạn lưu trữ) hoặc không tồn tại');
+      res.set?.('Cache-Control', 'no-store');
+      return ResponseHandler.success(res, { ip }, 'IP đầy đủ của nguồn bị cô lập');
     } catch (error) {
-      logger.error('[AIOpsController] unblockQuarantine failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      logger.warn('[AIOpsController] revealQuarantineIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   },
 
@@ -119,7 +126,8 @@ const aiopsController = {
         return ResponseHandler.error(res, 'Không thể phong tỏa nguồn request này', 400);
       }
       req.auditActionName = `Phong tỏa IP thủ công (${record.maskedIp || hash})`;
-      return ResponseHandler.success(res, record, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
+      const { ip: _fullIp, ...publicRecord } = record;
+      return ResponseHandler.success(res, publicRecord, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
     } catch (error) {
       logger.error('[AIOpsController] quarantineActor failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
@@ -148,10 +156,6 @@ const aiopsController = {
       logger.error('[AIOpsController] getIncidents failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
     }
-  },
-
-  async clearIncidents(req, res) {
-    return ResponseHandler.error(res, 'Chức năng làm sạch nhật ký đã bị vô hiệu hóa để bảo đảm tính toàn vẹn và bất biến của CSDL an ninh', 403);
   },
 
   async unblockIp(req, res) {

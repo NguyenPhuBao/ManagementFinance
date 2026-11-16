@@ -132,7 +132,8 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
    - Xóa token khỏi `localStorage`, xóa phiên Socket.io và điều hướng về trang Login ngay lập tức.
 7. **Modal Xác Thực Mã PIN Bảo Mật Cấp 2 Trước Thao Tác Chí Mạng (`SecurityConfirmModal.jsx`):**
    - **Nguyên tắc an ninh tối cao:** Mọi hành động có tác động hệ thống lớn hoặc thay đổi trạng thái nhạy cảm (Khóa/Mở khóa tài khoản người dùng, Xóa mềm người dùng, Khôi phục danh mục đã xóa, Lưu thay đổi phân quyền gói cước Staged Changes, Kích hoạt bảo trì khẩn cấp) **bắt buộc phải qua xác thực mã PIN quản trị viên 6 chữ số**.
-   - **Quy trình hoạt động:** Frontend hiển thị popup `SecurityConfirmModal`, Admin nhập mã PIN, gọi API `POST /api/admin/verify-security-action` kèm mã PIN đã băm SHA-256 (`pin_hash`). Nếu khớp, hệ thống cấp vé thông hành thực thi hành động; nếu sai, từ chối thực thi và cảnh báo ngay lập tức.
+   - **Chỉ chấp nhận mã PIN, không chấp nhận mật khẩu:** popup không có lựa chọn "Dùng mật khẩu"; Backend (`adminService.verifySecurityAction`) bỏ qua trường `password` nếu có gửi lên và từ chối 400 khi thiếu PIN. Mục đích: kẻ gian lấy được mật khẩu đăng nhập vẫn không thay đổi được hệ thống. Đổi PIN và đổi mật khẩu đều đòi PIN hiện tại, nên không có đường vòng chỉ cần mật khẩu.
+   - **Quy trình hoạt động:** Frontend hiển thị popup `SecurityConfirmModal`, Admin nhập mã PIN 6 số, gọi `POST /api/admin/verify-security-action` với `{ pin, action, targetId }` (hoặc gửi `pin` kèm lời gọi API của chính thao tác: xem IP, đăng chính sách, đóng sự cố dữ liệu). PIN đi qua HTTPS, Backend so với `pin_hash` (bcrypt) của tài khoản; tài khoản chưa có `pin_hash` thì so với PIN hệ thống `ADMIN_SECURITY_PIN`. Khớp thì thực thi và ghi nhật ký `[SECURITY]`; sai thì từ chối 400 "Mã PIN quản trị viên không chính xác!". Sai 5 lần trong 15 phút thì khóa xác thực 15 phút (429).
 8. **Quy Trình Cấp Tài Khoản Quản Trị Viên Mới (`SettingsModal.jsx`):**
    - **Giao diện Modal chuẩn hóa Grid 2 cột (`max-w-lg` 512px):**
      + `FullName`: Họ và tên quản trị viên (Bắt buộc, tối thiểu 2 ký tự).
@@ -156,7 +157,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
   - Bảng `refreshtoken` được làm sạch tự động định kỳ, thu hồi các token hết hạn (`Status = true`).
 - **Đến Mobile App (Client-app):**
   - Cơ chế phân quyền cách ly hoàn toàn người dùng di động khỏi các route quản trị (`/api/admin/*`). Nếu người dùng Client-app thử gọi API Admin, server trả về ngay HTTP 403 mà không tốn tài nguyên xử lý logic.
-  - Khi Admin thực hiện khóa hoặc vô hiệu hóa tài khoản của người dùng từ Admin-web (`PATCH /api/admin/updatestatus/:id`), Backend phát lệnh Socket (`account.disabled` / `account.status_changed`) và thu hồi Refresh Token, cưỡng chế đăng xuất Mobile App tức thời. (Lưu ý: Tuân thủ nguyên tắc bảo mật Zero-Knowledge, Admin tuyệt đối không có quyền can thiệp hay đổi mật khẩu người dùng).
+  - Khi Admin thực hiện khóa hoặc vô hiệu hóa tài khoản của người dùng từ Admin-web (`PATCH /api/admin/updatestatus/:id`), Backend phát lệnh Socket (`account.force_logout` tới thiết bị người dùng, `admin.user_status_changed` tới Admin-web) và thu hồi Refresh Token, cưỡng chế đăng xuất Mobile App tức thời. (Lưu ý: Tuân thủ nguyên tắc bảo mật Zero-Knowledge, Admin tuyệt đối không có quyền can thiệp hay đổi mật khẩu người dùng).
 
 ---
 
@@ -170,7 +171,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 | `GET` | `/api/auth/me` | Lấy thông tin tài khoản tươi mới từ CSDL PostgreSQL | Authenticated |
 | `POST` | `/api/auth/logout` | Đăng xuất & Thu hồi Refresh Token | Authenticated |
 | `GET` | `/api/auth/profile` | Lấy thông tin chi tiết tài khoản Admin | Admin (`idrole === 1`) |
-| `POST` | `/api/admin/change-first-login` | Đổi mật khẩu & PIN bắt buộc lần đầu | Admin mới (`is_first_login = true`) |
+| `POST` | `/api/admin/first-login-setup` | Đổi mật khẩu & PIN bắt buộc lần đầu | Admin mới (`is_first_login = true`) |
 | `POST` | `/api/admin/change-pin` | Đổi mã PIN bảo mật Admin 6 số | Admin (`idrole === 1`) |
 | `POST` | `/api/admin/change-password` | Đổi mật khẩu tài khoản Admin | Admin (`idrole === 1`) |
 | `POST` | `/api/admin/create-admin` | Cấp tài khoản Admin mới kèm xác thực PIN | Admin (`idrole === 1`) |

@@ -11,7 +11,7 @@
 
 Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh hoạt:
 1. **Trợ lý AI Trên Máy (On-Device SLM - Đã có sẵn):** Chạy mô hình Gemma 4 E2B cục bộ qua LiteRT-LM + 9 tool chỉ đọc trên SQLite v27 (`lib/features/ai_chat/`). Hoạt động **100% Offline khi không có mạng**.
-2. **Trợ lý Tài chính Trực Tuyến (Cloud AI Copilot - Đợt này):** Kết nối lên Backend (`POST /api/ai/chatbot/chat/stream`), sử dụng mô hình Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường `GEMINI_MODEL` tại Backend) có khả năng suy luận mở, RAG tri thức luật thuế/quy tắc 50/30/20 và Tấm khiên riêng tư (Privacy Shield). Hoạt động **khi có kết nối mạng Internet**.
+2. **Trợ lý Tài chính Trực Tuyến (Cloud AI Copilot - Đợt này):** Kết nối lên Backend (`POST /api/ai/chatbot/chat/stream`), sử dụng dịch vụ AI đám mây của Backend (DeepSeek khi có `DEEPSEEK_API_KEY`, dự phòng Gemini 3.5 Flash qua `GEMINI_MODEL`; xem `docs/AI/ChatbotAI.md`) có khả năng suy luận mở, RAG tri thức luật thuế/quy tắc 50/30/20 và Tấm khiên riêng tư (Privacy Shield). Hoạt động **khi có kết nối mạng Internet**.
 
 ---
 
@@ -77,7 +77,9 @@ Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh h
   - `429 Too Many Requests`: Vượt hạn mức 15 req/phút $\rightarrow$ Hiện thông báo: *"Bạn đang gửi yêu cầu quá nhanh (giới hạn 15 tin nhắn/phút), vui lòng thử lại sau giây lát"*.
   - `Circuit Breaker & Fallback Notice`: Khi Gemini API lỗi hoặc Circuit Breaker mở, Backend gửi trực tiếp thông báo hệ thống minh bạch (tuyệt đối không bịa số liệu giả), đồng thời Client-app có thể gợi ý chuyển sang Trợ lý AI Offline (`Gemma 4 E2B`).
 
-### 2.2. API Lấy Bản Chụp Sức Khỏe Tài Chính (Financial Health Snapshot)
+### 2.2. API Lấy Bản Chụp Sức Khỏe Tài Chính (Financial Health Snapshot) — ĐÃ GỠ 2026-11-07
+
+> Route này không còn trên Backend (xem `docs/AI/ChatbotAI.md`). Snapshot chỉ tính nội bộ để đưa vào ngữ cảnh chatbot. Client-app không gọi route này; phần dưới giữ làm tham khảo cấu trúc dữ liệu.
 
 - **Method & URL:** `GET /api/ai/chatbot/snapshot`
 - **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`

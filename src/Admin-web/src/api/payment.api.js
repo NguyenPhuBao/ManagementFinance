@@ -23,18 +23,15 @@ const paymentApi = {
    * Lấy thông tin mã QR trực tiếp từ kênh thanh toán PayOS
    * @param {object} params
    */
-  getPayosQr: (params = {}) => axiosClient.get('/admin/payments/payos-qr', { params }),
 
   /**
-   * Tạo đơn hàng mẫu thử nghiệm kèm mã QR
-   * @param {object} data
+   * Tạo đơn thử nghiệm 2.000 ₫ (Backend quyết định số tiền, gắn với admin đang đăng nhập).
+   * @param {{pin: string}} data mã PIN quản trị
    */
-  createSampleOrder: (data = {}) => axiosClient.post('/admin/payments/sample', data),
+  createSampleOrder: ({ pin }) => axiosClient.post('/admin/payments/sample', { pin }),
 
-  /**
-   * Xóa tất cả các đơn hàng mẫu thử nghiệm
-   */
-  deleteSampleOrders: () => axiosClient.delete('/admin/payments/sample'),
+  /** Hạn mức đơn thử hôm nay: { used, limit, amount } */
+  getSampleQuota: () => axiosClient.get('/admin/payments/sample/quota'),
 
   /**
    * Người dùng xác nhận hoặc từ chối kích hoạt gói khi chuyển thừa tiền
@@ -49,9 +46,9 @@ const paymentApi = {
   getPackageTypes: () => axiosClient.get('/admin/payments/packages'),
 
   /**
-   * Admin xử lý hoàn tiền cho khách hàng kèm upload minh chứng
+   * Admin ghi nhận hoàn tiền thủ công (đã tự chuyển khoản trả khách).
    * @param {string} orderId
-   * @param {object|FormData} data { refundedAmount, refundProof, refundReason, refundedAt, proofFile }
+   * @param {FormData} data refunded_amount, refund_reason, bank_reference, refunded_at, pin, proofFile | refund_proof
    */
   processRefund: (orderId, data) => {
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
@@ -59,12 +56,6 @@ const paymentApi = {
       headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
     });
   },
-
-  /**
-   * Admin giả lập Webhook cho chế độ Sandbox Roleplay
-   * @param {object} data { orderCode, simulateType }
-   */
-  simulateWebhook: (data) => axiosClient.post('/admin/payments/simulate-webhook', data),
 };
 
 export default paymentApi;

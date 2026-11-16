@@ -2,122 +2,92 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../store/auth.context';
 import { useLanguageSafe } from '../../store/language.context';
+import { Icon } from '../ui';
 
-const Sidebar = ({ collapsed, onToggle }) => {
+const NAV_ITEMS = [
+  { to: '/dashboard', icon: 'dashboard', key: 'nav.dashboard' },
+  { to: '/aiops', icon: 'security', key: 'nav.aiops' },
+  { to: '/users', icon: 'group', key: 'nav.users' },
+  { to: '/permissions', icon: 'admin_panel_settings', key: 'nav.permissions' },
+  { to: '/payments', icon: 'receipt_long', key: 'nav.payments' },
+  { to: '/categories', icon: 'category', key: 'nav.categories' },
+  { to: '/audit-logs', icon: 'fact_check', key: 'nav.auditLogs' },
+  { to: '/broadcast', icon: 'campaign', key: 'nav.broadcast' },
+];
+
+const itemBase = 'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors';
+
+const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => {
   const navigate = useNavigate();
   const { logout } = useAuthContext();
   const { t } = useLanguageSafe();
 
-  const navItems = [
-    { key: '/dashboard', icon: 'dashboard', label: t('nav.dashboard') },
-    { key: '/aiops', icon: 'security', label: t('nav.aiops') },
-    { key: '/users', icon: 'group', label: t('nav.users') },
-    { key: '/permissions', icon: 'admin_panel_settings', label: t('nav.permissions') },
-    { key: '/payments', icon: 'receipt_long', label: t('nav.payments') },
-    { key: '/categories', icon: 'category', label: t('nav.categories') },
-    { key: '/audit-logs', icon: 'fact_check', label: t('nav.auditLogs') },
-    { key: '/broadcast', icon: 'campaign', label: t('nav.broadcast') },
-  ];
-
   const handleLogout = async () => {
+    onCloseMobile?.();
     await logout();
     navigate('/login');
   };
 
+  const label = (text) => <span className={`truncate ${collapsed ? 'md:sr-only' : ''}`}>{text}</span>;
+
   return (
     <>
-      {/* Mobile Backdrop Overlay khi Sidebar mở */}
-      {!collapsed && (
-        <div
-          onClick={onToggle}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-35 md:hidden animate-in fade-in duration-150"
-        />
-      )}
-
+      {mobileOpen && <div aria-hidden="true" onClick={onCloseMobile} className="fixed inset-0 z-30 bg-overlay md:hidden" />}
       <aside
-        className={`fixed left-0 top-0 h-full bg-on-background border-r border-outline-variant flex flex-col py-page-padding transition-all duration-300 z-40 overflow-x-hidden ${
-          collapsed
-            ? '-translate-x-full md:translate-x-0 md:w-[76px]'
-            : 'translate-x-0 w-[260px] shadow-2xl md:shadow-none'
-        }`}
+        data-mobile-open={mobileOpen}
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-line bg-card transition-all duration-200 md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'
+        } ${collapsed ? 'md:w-[72px]' : 'md:w-60'}`}
       >
-        {/* Brand Header */}
-        <div className="px-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shrink-0 overflow-hidden shadow-2xs">
-              <span className="material-symbols-outlined text-[24px]">account_balance</span>
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 transition-opacity duration-200">
-                <h1 className="font-headline-md text-headline-md font-bold text-white whitespace-nowrap truncate">
-                  {t('nav.brandSubtitle')}
-                </h1>
-                <p className="text-[10px] text-primary-fixed-dim uppercase tracking-wider font-semibold">
-                  Admin Portal
-                </p>
-              </div>
-            )}
-          </div>
+        <div className={`flex h-14 shrink-0 items-center gap-2.5 px-4 ${collapsed ? 'md:justify-center md:px-0' : ''}`}>
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-on">
+            F
+          </span>
+          <span className={`truncate text-base font-bold text-ink ${collapsed ? 'md:hidden' : ''}`}>{t('nav.brandTitle', 'FlowMoney Admin')}</span>
         </div>
 
-        {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.key}
-              to={item.key}
-              title={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl border-l-4 cursor-pointer transition-all duration-200 ${
-                  collapsed ? 'justify-center px-0' : ''
-                } ${
-                  isActive
-                    ? 'border-primary-fixed-dim bg-on-secondary-fixed-variant text-white font-bold shadow-2xs'
-                    : 'border-transparent text-secondary-fixed-dim hover:text-white hover:bg-on-secondary-fixed-variant/70'
-                }`
-              }
-            >
-              <span className="material-symbols-outlined shrink-0 text-[22px]">{item.icon}</span>
-              {!collapsed && (
-                <span className="font-body-md text-body-md whitespace-nowrap truncate">{item.label}</span>
-              )}
-            </NavLink>
-          ))}
-        </div>
+        <nav aria-label={t('nav.mainMenu', 'Menu chính')} className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+          {NAV_ITEMS.map((item) => {
+            const text = t(item.key);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={onCloseMobile}
+                title={collapsed ? text : undefined}
+                className={({ isActive }) =>
+                  `${itemBase} ${collapsed ? 'md:justify-center md:px-0' : ''} ${
+                    isActive ? 'bg-brand-soft font-semibold text-brand' : 'font-medium text-ink-muted hover:bg-muted hover:text-ink'
+                  }`
+                }
+              >
+                <Icon name={item.icon} className="shrink-0" />
+                {label(text)}
+              </NavLink>
+            );
+          })}
+        </nav>
 
-        {/* Footer: Thu gọn & Đăng xuất */}
-        <div className="px-2 mt-auto pt-4 border-t border-secondary-fixed-dim/20 space-y-1">
-          {/* Nút Toggle Mini Mode trên Desktop */}
+        <div className="space-y-1 border-t border-line px-3 py-3">
           <button
             type="button"
             onClick={onToggle}
-            title={collapsed ? 'Mở rộng menu' : 'Thu nhỏ menu'}
-            className={`w-full hidden md:flex items-center gap-3 px-3 py-2 rounded-xl text-secondary-fixed-dim hover:text-white hover:bg-on-secondary-fixed-variant/70 transition cursor-pointer ${
-              collapsed ? 'justify-center px-0' : ''
+            title={collapsed ? t('nav.expand', 'Mở rộng menu') : undefined}
+            className={`${itemBase} hidden w-full cursor-pointer font-medium text-ink-muted hover:bg-muted hover:text-ink md:flex ${
+              collapsed ? 'md:justify-center md:px-0' : ''
             }`}
           >
-            <span className="material-symbols-outlined shrink-0 text-[20px]">
-              {collapsed ? 'chevron_right' : 'chevron_left'}
-            </span>
-            {!collapsed && (
-              <span className="text-xs font-semibold whitespace-nowrap">
-                Thu gọn thanh bên
-              </span>
-            )}
+            <Icon name={collapsed ? 'chevron_right' : 'chevron_left'} className="shrink-0" />
+            {label(collapsed ? t('nav.expand', 'Mở rộng menu') : t('nav.collapse', 'Thu gọn menu'))}
           </button>
-
-          {/* Đăng xuất */}
           <button
+            type="button"
             onClick={handleLogout}
             title={collapsed ? t('nav.logout') : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-300 hover:text-rose-100 hover:bg-rose-950/40 transition-colors duration-200 cursor-pointer active:scale-95 ${
-              collapsed ? 'justify-center px-0' : ''
-            }`}
+            className={`${itemBase} w-full cursor-pointer font-medium text-danger hover:bg-danger-soft ${collapsed ? 'md:justify-center md:px-0' : ''}`}
           >
-            <span className="material-symbols-outlined shrink-0 text-[22px]">logout</span>
-            {!collapsed && (
-              <span className="font-body-md text-body-md">{t('nav.logout')}</span>
-            )}
+            <Icon name="logout" className="shrink-0" />
+            {label(t('nav.logout'))}
           </button>
         </div>
       </aside>

@@ -21,8 +21,9 @@ describe('getSystemHealth', () => {
     assert.strictEqual(typeof result.ram.usedMb, 'number');
     assert.strictEqual(typeof result.eventLoop.lagMs, 'number');
     assert.strictEqual(typeof result.maintenance.active, 'boolean');
-    assert.strictEqual(typeof result.uptime.uptimePercent, 'number');
-    assert.ok(result.uptime.uptimePercent >= 0 && result.uptime.uptimePercent <= 100);
+    // Q9 (2026-11-15): uptimePercent = độ khả dụng tháng hiện tại; null khi chưa có dữ liệu phiên chạy.
+    const pct = result.uptime.uptimePercent;
+    assert.ok(pct === null || (typeof pct === 'number' && pct >= 0 && pct <= 100));
     assert.strictEqual(typeof result.uptime.uptimeFormatted, 'string');
   });
 

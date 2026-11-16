@@ -45,6 +45,7 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
 
     prisma.account_device_history.create = async ({ data }) => {
       const newRecord = {
+        ...data,
         id: BigInt(autoIncrementId++),
         idaccount: data.idaccount,
         device_name: data.device_name,
@@ -85,9 +86,10 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const mockReq = {
         headers: {
           'x-device-name': 'Samsung Galaxy S24 Ultra',
-          'x-forwarded-for': '113.161.45.12, 10.0.0.1',
+          'x-forwarded-for': '1.2.3.4',
           'user-agent': 'Mozilla/5.0 (Android; Mobile)',
         },
+        ip: '113.161.45.12',
       };
 
       const info = extractClientInfo(mockReq);
@@ -112,8 +114,8 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const req = {
         headers: {
           'x-device-name': 'iPhone 15 Pro',
-          'x-forwarded-for': '42.112.89.20',
         },
+        ip: '42.112.89.20',
       };
 
       // Lần 1: Chưa có trong cache -> Thực thi CSDL và lưu vào throttle cache
@@ -138,8 +140,8 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const req = {
         headers: {
           'x-device-name': 'Xiaomi 14 Ultra',
-          'x-forwarded-for': '113.161.77.88',
         },
+        ip: '113.161.77.88',
       };
 
       const result = await trackDeviceAccess(idaccount, req, {}, { skipThrottle: true });
@@ -156,8 +158,8 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const req = {
         headers: {
           'x-device-name': 'Xiaomi 14 Ultra',
-          'x-forwarded-for': '113.161.77.88',
         },
+        ip: '113.161.77.88',
       };
 
       // Bước 1: Khởi tạo bản ghi cũ lúc 1 tiếng trước
@@ -200,8 +202,8 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const req4G = {
         headers: {
           'x-device-name': 'Xiaomi 14 Ultra', // Cùng máy
-          'x-forwarded-for': '171.244.12.34',  // Khác IP
         },
+        ip: '171.244.12.34',
       };
 
       const result = await trackDeviceAccess(idaccount, req4G, {}, { skipThrottle: true });
@@ -231,8 +233,8 @@ describe('2-Tier Test Suite: Device & IP Tracking Engine', () => {
       const reqTablet = {
         headers: {
           'x-device-name': 'iPad Pro M2',  // Khác thiết bị
-          'x-forwarded-for': '113.161.77.88', // Cùng subnet Wi-Fi
         },
+        ip: '113.161.77.88',
       };
 
       const result = await trackDeviceAccess(idaccount, reqTablet, {}, { skipThrottle: true });

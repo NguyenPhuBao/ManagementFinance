@@ -94,6 +94,29 @@ describe('NotificationService — Xử lý sự kiện EventBus & Phát Realtime
     assert.strictEqual(broadcastEvent.data.title, 'Bảo trì hệ thống định kỳ');
   });
 
+  it('3b. broadcast trả số thiết bị người dùng đang kết nối cho admin; gói tin phát tới app không mang trường này', async () => {
+    socket.emitSystemBroadcast = (data) => {
+      emittedSocketEvents.push({ event: 'system.broadcast', data });
+      return 3;
+    };
+    const result = await notificationService.broadcast({ title: 'Tin thử', message: 'Nội dung', level: 'info' });
+    assert.strictEqual(result.deliveredCount, 3);
+    const sent = emittedSocketEvents.find((e) => e.event === 'system.broadcast');
+    assert.strictEqual(sent.data.deliveredCount, undefined);
+    assert.strictEqual(typeof sent.data.id, 'string', 'hợp đồng với Client-app: id là chuỗi');
+  });
+
+  it('3c. countUserSockets chỉ đếm socket người dùng, bỏ socket admin (idrole = 1)', () => {
+    const sockets = new Map([
+      ['a', { data: { idaccount: 5, idrole: 2 } }],
+      ['b', { data: { idaccount: 5, idrole: 2 } }],
+      ['c', { data: { idaccount: 1, idrole: 1 } }],
+      ['d', { data: {} }],
+    ]);
+    assert.strictEqual(socket.countUserSockets(sockets), 2);
+    assert.strictEqual(socket.countUserSockets(new Map()), 0);
+  });
+
   it('4. Gửi thông báo trực tiếp cho người dùng (sendDirectNotification)', async () => {
     const notif = await notificationService.sendDirectNotification(202, {
       title: 'Nhắc nhở ngân sách',

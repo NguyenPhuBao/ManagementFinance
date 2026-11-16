@@ -69,7 +69,7 @@ Hệ thống triển khai chuẩn hóa theo bảng danh mục sự kiện tại 
 - `payment.underpaid_warning`: Cảnh báo chuyển thiếu tiền, từ chối kích hoạt và xếp vào danh sách chờ hoàn tiền.
 - `payment.refunded`: Thông báo đã hoàn tiền thành công kèm link xem ảnh ủy nhiệm chi/biên lai chuyển khoản.
 - `account.countdown`: Thông báo số ngày ân hạn còn lại trước khi tài khoản bị xóa vĩnh viễn (30 ngày).
-- `account.disabled`: Cưỡng chế đăng xuất tức thì khi tài khoản bị Admin khóa hoặc vô hiệu hóa.
+- `account.force_logout`: Cưỡng chế đăng xuất tức thì khi tài khoản bị Admin khóa hoặc vô hiệu hóa.
 - `ocr.completed` & `ocr.duplicate`: Thông báo hoàn tất bóc tách hóa đơn hoặc cảnh báo trùng lặp.
 - `sync.completed`: Báo hiệu có dữ liệu mới trên Cloud để Client-app đánh thức tiến trình Pull.
 
@@ -78,7 +78,7 @@ Hệ thống triển khai chuẩn hóa theo bảng danh mục sự kiện tại 
 - `admin.maintenance_changed`: Cập nhật trạng thái công tắc và lịch bảo trì trên mọi tab Admin-web.
 - `payment.order_created`: Thông báo đơn hàng mới được khởi tạo (phục vụ đối soát realtime).
 - `payment.success`: Thông báo đơn hàng thanh toán thành công, tự động cập nhật doanh thu KPI.
-- `aiops.alert`: Cảnh báo tự động từ AIOps Sentinel khi phát hiện mối đe dọa tấn công hoặc nghẽn tài nguyên.
+- `admin.security_alert` (phòng `admin_room`): Cảnh báo tự động từ AIOps Sentinel khi phát hiện mối đe dọa tấn công hoặc nghẽn tài nguyên.
 
 ## 3. Chi Tiết Các Thành Phần
 

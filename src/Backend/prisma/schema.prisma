@@ -464,6 +464,9 @@ model payment_order {
   refund_reason       String?               @db.Text @map("refund_reason")
   refund_proof        String?               @db.Text @map("refund_proof")
   is_template         Boolean               @default(false) @map("is_template")
+  /// Ẩn đơn mẫu khỏi danh sách admin (migration 53). Đơn không bao giờ bị xoá; trigger chặn DELETE và sửa trường gốc.
+  hidden_at           DateTime?             @db.Timestamp(6) @map("hidden_at")
+  hidden_by           Int?                  @map("hidden_by")
 
   account             account               @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_account")
   payment_transaction payment_transaction[]
@@ -476,18 +479,37 @@ model payment_order {
   @@map("payment_order")
 }
 
-/// Bảng nhật ký giao dịch đối soát Webhook PayOS (2.15)
+/// Sổ giao dịch thanh toán (2.15, migration 53): mỗi dòng là một lần tiền vào (IN, PayOS) hoặc ra (OUT, admin hoàn tiền).
+/// Bất biến: trigger trg_protect_payment_transaction cấm UPDATE / DELETE. Mã giao dịch ngân hàng bắt buộc, duy nhất.
 model payment_transaction {
-  id                   String        @id @db.VarChar(36) @map("id")
-  order_id             String        @db.VarChar(36) @map("order_id")
-  idaccount            Int           @map("idaccount")
-  payos_transaction_id String?       @db.VarChar(100) @map("payos_transaction_id")
-  amount               Decimal       @db.Decimal(15, 2) @map("amount")
-  bank_code            String?       @db.VarChar(50) @map("bank_code")
-  transaction_time     DateTime      @default(now()) @db.Timestamp(6) @map("transaction_time")
-  signature_verified   Boolean       @default(true) @map("signature_verified")
-  raw_webhook_hash     String?       @db.VarChar(256) @map("raw_webhook_hash")
-  created_at           DateTime      @default(now()) @db.Timestamp(6) @map("created_at")
+  id                        String        @id @db.VarChar(36) @map("id")
+  order_id                  String        @db.VarChar(36) @map("order_id")
+  idaccount                 Int           @map("idaccount")
+  /// Mã giao dịch ngân hàng (PayOS `reference` / mã chuyển khoản hoàn tiền). Không bao giờ là mã đơn.
+  /// Duy nhất nhờ chỉ mục một phần uq_payment_transaction_payos_id (SQL; Prisma không biểu diễn được).
+  payos_transaction_id      String        @db.VarChar(100) @map("payos_transaction_id")
+  amount                    Decimal       @db.Decimal(15, 2) @map("amount")
+  bank_code                 String?       @db.VarChar(50) @map("bank_code")
+  transaction_time          DateTime      @default(now()) @db.Timestamp(6) @map("transaction_time")
+  signature_verified        Boolean       @default(true) @map("signature_verified")
+  raw_webhook_hash          String?       @db.VarChar(256) @map("raw_webhook_hash")
+  created_at                DateTime      @default(now()) @db.Timestamp(6) @map("created_at")
+  direction                 String        @default("IN") @db.VarChar(3) @map("direction")
+  source                    String?       @db.VarChar(12) @map("source")
+  receiving_account_number  String?       @db.VarChar(50) @map("receiving_account_number")
+  payment_link_id           String?       @db.VarChar(64) @map("payment_link_id")
+  transfer_description      String?       @db.VarChar(255) @map("transfer_description")
+  currency                  String?       @db.VarChar(10) @map("currency")
+  counter_account_bank_id   String?       @db.VarChar(20) @map("counter_account_bank_id")
+  counter_account_bank_name String?       @db.VarChar(255) @map("counter_account_bank_name")
+  /// Mã hoá AES-256-GCM (dữ liệu cá nhân)
+  counter_account_name      String?       @db.VarChar(512) @map("counter_account_name")
+  /// Mã hoá AES-256-GCM (dữ liệu cá nhân)
+  counter_account_number    String?       @db.VarChar(512) @map("counter_account_number")
+  /// Webhook gốc có chữ ký / phản hồi API PayOS, mã hoá AES-256-GCM
+  raw_payload               String?       @map("raw_payload")
+  created_by                Int?          @map("created_by")
+  proof                     String?       @map("proof")
 
   order                payment_order @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_order")
   account              account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_account")
@@ -495,6 +517,23 @@ model payment_transaction {
   @@index([order_id], map: "idx_payment_transaction_order")
   @@index([idaccount], map: "idx_payment_transaction_account")
   @@map("payment_transaction")
+}
+
+/// Nhật ký mọi webhook PayOS có chữ ký hợp lệ (migration 53). Append-only: trigger cấm UPDATE / DELETE.
+model payment_webhook_log {
+  id              BigInt   @id @default(autoincrement()) @map("id")
+  received_at     DateTime @default(dbgenerated("(now() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6) @map("received_at")
+  order_code      BigInt?  @map("order_code")
+  reference       String?  @db.VarChar(100) @map("reference")
+  amount          Decimal? @db.Decimal(15, 2) @map("amount")
+  signature_valid Boolean  @map("signature_valid")
+  handled_as      String?  @db.VarChar(40) @map("handled_as")
+  /// Payload webhook gốc, mã hoá AES-256-GCM
+  payload         String   @map("payload")
+
+  @@index([order_code], map: "idx_payment_webhook_log_order_code")
+  @@index([received_at], map: "idx_payment_webhook_log_received_at")
+  @@map("payment_webhook_log")
 }
 
 /// Bảng danh mục chức năng hệ thống (2.16)
@@ -539,7 +578,7 @@ model aiops_ip_quarantine {
   id                  String                              @id @db.VarChar(64) @map("id")
   ip_hash             String                              @unique @db.VarChar(64) @map("ip_hash")
   masked_ip           String                              @db.VarChar(45) @map("masked_ip")
-  raw_ip              String?                             @db.VarChar(45) @map("raw_ip")
+  raw_ip              String?                             @db.Text @map("raw_ip")
   status              String                              @default("TEMPORARY") @db.VarChar(20) @map("status")
   reason              String                              @db.Text @map("reason")
   violation_vector    String?                             @db.VarChar(20) @map("violation_vector")
@@ -614,11 +653,132 @@ model aiops_quarantine_incident_link {
 }
 
 /// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+/// Một chính sách (migration 54); các phiên bản nằm ở privacy_policy
+model policy_document {
+  id         Int              @id @default(autoincrement()) @map("id")
+  title      String           @unique(map: "uq_policy_document_title") @db.VarChar(200) @map("title")
+  created_at DateTime         @default(now()) @db.Timestamp(6) @map("created_at")
+  created_by Int?             @map("created_by")
+
+  versions   privacy_policy[]
+
+  @@map("policy_document")
+}
+
+/// Phiên bản chính sách. `version` là mã nội bộ (policy_acceptance tham chiếu); số hiển thị là `doc_version`.
+/// Nội dung đã đăng không sửa (trigger trg_protect_privacy_policy); chỉ đổi status ACTIVE / INACTIVE.
+/// Index có điều kiện uq_privacy_policy_one_active (document_id) WHERE status = 'ACTIVE' nằm ở migration 54 (Prisma không biểu diễn được).
+model privacy_policy {
+  version           Int                 @id @map("version")
+  title             String              @db.VarChar(200) @map("title")
+  content           String              @db.Text @map("content")
+  published_at      DateTime            @default(now()) @db.Timestamp(6) @map("published_at")
+  published_by      Int?                @map("published_by")
+  document_id       Int                 @map("document_id")
+  doc_version       Int                 @map("doc_version")
+  status            String              @default("INACTIVE") @db.VarChar(10) @map("status")
+  status_changed_at DateTime?           @db.Timestamp(6) @map("status_changed_at")
+  status_changed_by Int?                @map("status_changed_by")
+
+  document          policy_document     @relation(fields: [document_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_privacy_policy_document")
+  acceptances       policy_acceptance[]
+
+  @@unique([document_id, doc_version], map: "uq_privacy_policy_document_version")
+  @@index([status], map: "idx_privacy_policy_status")
+  @@map("privacy_policy")
+}
+
+model policy_acceptance {
+  id             BigInt         @id @default(autoincrement()) @map("id")
+  idaccount      Int            @map("idaccount")
+  policy_version Int            @map("policy_version")
+  accepted_at    DateTime       @default(now()) @db.Timestamp(6) @map("accepted_at")
+  ip_hash        String?        @db.VarChar(64) @map("ip_hash")
+  device_name    String?        @db.VarChar(150) @map("device_name")
+  user_agent     String?        @db.Text @map("user_agent")
+
+  policy         privacy_policy @relation(fields: [policy_version], references: [version], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([idaccount, policy_version], map: "uq_policy_acceptance_account_version")
+  @@index([policy_version], map: "idx_policy_acceptance_version")
+  @@map("policy_acceptance")
+}
+
+/// Yêu cầu bản sao dữ liệu cá nhân (migration 50). Tệp ở Supabase Storage bucket data-exports, hết hạn 24 giờ.
+model data_export_request {
+  id            String    @id @db.VarChar(36) @map("id")
+  idaccount     Int       @map("idaccount")
+  status        String    @default("PROCESSING") @db.VarChar(20) @map("status")
+  json_ref      String?   @db.Text @map("json_ref")
+  csv_ref       String?   @db.Text @map("csv_ref")
+  requested_at  DateTime  @default(now()) @db.Timestamp(6) @map("requested_at")
+  ready_at      DateTime? @db.Timestamp(6) @map("ready_at")
+  expires_at    DateTime? @db.Timestamp(6) @map("expires_at")
+  email_sent_at DateTime? @db.Timestamp(6) @map("email_sent_at")
+  error         String?   @db.Text @map("error")
+
+  @@index([idaccount, requested_at(sort: Desc)], map: "idx_data_export_account_time")
+  @@map("data_export_request")
+}
+
+/// Sổ sự cố dữ liệu cá nhân (migration 51). Hạn báo cơ quan = detected_at + 72 giờ. Trigger chặn DELETE.
+model data_incident {
+  id                    Int       @id @default(autoincrement()) @map("id")
+  code                  String    @unique @db.VarChar(20) @map("code")
+  title                 String    @db.VarChar(200) @map("title")
+  description           String    @db.Text @map("description")
+  source                String    @default("OTHER") @db.VarChar(20) @map("source")
+  detected_at           DateTime  @db.Timestamp(6) @map("detected_at")
+  occurred_at           DateTime? @db.Timestamp(6) @map("occurred_at")
+  data_types            String?   @db.Text @map("data_types")
+  sensitive             Boolean   @default(false) @map("sensitive")
+  affected_users        Int?      @map("affected_users")
+  affected_records      Int?      @map("affected_records")
+  consequences          String?   @db.Text @map("consequences")
+  measures              String?   @db.Text @map("measures")
+  contact               String?   @db.Text @map("contact")
+  status                String    @default("OPEN") @db.VarChar(20) @map("status")
+  contained_at          DateTime? @db.Timestamp(6) @map("contained_at")
+  authority_reported_at DateTime? @db.Timestamp(6) @map("authority_reported_at")
+  authority_report_ref  String?   @db.Text @map("authority_report_ref")
+  late_reason           String?   @db.Text @map("late_reason")
+  report_not_required   Boolean   @default(false) @map("report_not_required")
+  no_report_reason      String?   @db.Text @map("no_report_reason")
+  users_notified_at     DateTime? @db.Timestamp(6) @map("users_notified_at")
+  root_cause            String?   @db.Text @map("root_cause")
+  closed_at             DateTime? @db.Timestamp(6) @map("closed_at")
+  created_by            Int?      @map("created_by")
+  updated_by            Int?      @map("updated_by")
+  created_at            DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at            DateTime  @default(now()) @db.Timestamp(6) @map("updated_at")
+
+  @@index([status, detected_at(sort: Desc)], map: "idx_data_incident_status_detected")
+  @@map("data_incident")
+}
+
+/// Phiên chạy của tiến trình Backend (migration 52), phục vụ độ khả dụng theo kỳ.
+/// end_reason: GRACEFUL (tắt có chủ đích) | UNKNOWN (sập, đóng ở lần khởi động sau). Truy cập bằng pg thô.
+/// Chỉ mục một phần idx_server_session_open (WHERE ended_at IS NULL) nằm trong tệp SQL, Prisma không biểu diễn được.
+model server_session {
+  id           BigInt    @id @default(autoincrement()) @map("id")
+  instance_id  String    @db.VarChar(100) @map("instance_id")
+  version      String?   @db.VarChar(64) @map("version")
+  started_at   DateTime  @default(now()) @db.Timestamptz(6) @map("started_at")
+  last_seen_at DateTime  @default(now()) @db.Timestamptz(6) @map("last_seen_at")
+  ended_at     DateTime? @db.Timestamptz(6) @map("ended_at")
+  end_reason   String?   @db.VarChar(20) @map("end_reason")
+
+  @@index([started_at], map: "idx_server_session_started_at")
+  @@map("server_session")
+}
+
 model account_device_history {
   id             BigInt   @id @default(autoincrement()) @map("id")
   idaccount      Int      @map("idaccount")
   device_name    String   @db.VarChar(150) @map("device_name")
   ip_address     String   @db.VarChar(256) @map("ip_address")
+  ip_encrypted   String?  @db.Text @map("ip_encrypted")
+  ip_hash        String?  @db.VarChar(64) @map("ip_hash")
   user_agent     String?  @db.Text @map("user_agent")
   first_seen_at  DateTime @default(now()) @db.Timestamp(6) @map("first_seen_at")
   last_active_at DateTime @default(now()) @db.Timestamp(6) @map("last_active_at")

@@ -5,6 +5,7 @@ const logger = require('../../core/logger');
 const paymentRepository = require('./payment.repository');
 const permissionRepository = require('./permission.repository');
 const payosClient = require('./payos.client');
+const { prisma } = require('../../config/db');
 
 /**
  * Đọc giờ giao dịch của PayOS (đơn 62.5). PayOS gửi giờ Việt Nam không kèm múi giờ; `new Date()` đọc chuỗi
@@ -141,8 +142,11 @@ async function handlePayOSWebhook(webhookPayload) {
     }
   }
 
+  const ledger = require('./payment.ledger');
+
   if (!order) {
     logger.warn('[PAYMENT_WEBHOOK] Đơn hàng không tồn tại trong CSDL cho orderCode từ Webhook hợp lệ', { orderCode });
+    await ledger.logWebhook({ payload: webhookPayload, data: verifiedData, handledAs: 'NO_ORDER' });
     return { success: true, message: 'Đơn hàng không tồn tại trong hệ thống' };
   }
 
@@ -155,17 +159,28 @@ async function handlePayOSWebhook(webhookPayload) {
     .update(JSON.stringify(webhookPayload))
     .digest('hex');
 
-  const txData = {
-    id: crypto.randomUUID(),
-    orderId: order.id,
-    idaccount: order.idaccount,
-    payosTransactionId: reference || String(orderCode),
-    amount: receivedAmount,
-    bankCode: verifiedData.counterAccountBankId || null,
-    transactionTime: txTime,
-    signatureVerified: true,
-    rawWebhookHash,
-  };
+  // Mã giao dịch ngân hàng: lấy từ webhook; thiếu thì hỏi lại PayOS. Không có thì KHÔNG ghi sổ, không kích hoạt,
+  // giữ nguyên đơn và lưu nhật ký để đối soát sau — tuyệt đối không dùng mã đơn thay mã ngân hàng.
+  let txData;
+  if (reference) {
+    txData = ledger.ledgerFromPayos({ order, tx: verifiedData, amount: receivedAmount, txTime, source: 'WEBHOOK', rawPayload: webhookPayload, rawWebhookHash });
+  } else {
+    const apiTx = await ledger.findPayosTransaction(orderCode, receivedAmount);
+    txData = apiTx
+      ? ledger.ledgerFromPayos({ order, tx: { ...verifiedData, ...apiTx }, amount: receivedAmount, txTime, source: 'PAYOS_API', rawPayload: { webhook: webhookPayload, payosTransaction: apiTx }, rawWebhookHash })
+      : null;
+  }
+  if (!txData) {
+    logger.error('[PAYMENT_WEBHOOK] Webhook hợp lệ nhưng không có mã giao dịch ngân hàng: chưa ghi sổ, chờ đối soát', { orderCode });
+    await ledger.logWebhook({ payload: webhookPayload, data: verifiedData, handledAs: 'MISSING_REFERENCE' });
+    try {
+      const { getIO } = require('../../core/socket');
+      const io = getIO();
+      if (io) io.to('admin_room').emit('payment.reconciliation_needed', { orderCode: Number(orderCode), amount: receivedAmount });
+    } catch (_) {}
+    return { success: true, message: 'Chưa có mã giao dịch ngân hàng, chờ đối soát' };
+  }
+  await ledger.logWebhook({ payload: webhookPayload, data: { ...verifiedData, reference: txData.payosTransactionId }, handledAs: order.is_template ? 'TEMPLATE' : 'PROCESSED' });
 
   // Tiền vào một đơn đã huỷ (đơn 62.3): không kích hoạt, đưa vào hàng hoàn tiền để admin thấy.
   // Lần phát lại đã thấy REFUND_PENDING nên rơi xuống nhánh idempotent bên dưới.
@@ -568,25 +583,65 @@ async function confirmUpgrade(idaccount, { orderCode, accept, lyDoTuChoi = 'Do n
  * @param {string} orderId
  * @param {object} param1 { refundedAmount, refundProof, refundReason }
  */
-async function processOrderRefund(orderId, { refundedAmount, refundProof, refundReason, refundedAt }) {
-  const refundDate = refundedAt ? new Date(refundedAt) : new Date();
+async function processOrderRefund(orderId, { refundedAmount, refundProof, refundReason, refundedAt, bankReference }, admin = null) {
+  // Hoàn tiền thủ công: admin tự chuyển khoản rồi tự nhập số tiền, mã giao dịch, ngày hoàn, nội dung, minh chứng.
+  const fail = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+  const order = await paymentRepository.findOrderById(orderId);
+  if (!order) throw fail(404, 'Không tìm thấy đơn hàng');
+  if (order.status === 'REFUNDED') throw fail(409, 'Đơn đã được hoàn tiền, không hoàn lần hai');
+  if (!['REFUND_PENDING', 'PAID'].includes(order.status)) throw fail(409, 'Chỉ hoàn tiền cho đơn đã nhận tiền (đã thanh toán hoặc chờ hoàn tiền)');
+
+  const amount = Number(refundedAmount);
+  const received = Number(order.amount_received || 0);
+  if (!(amount > 0)) throw fail(400, 'Số tiền hoàn phải lớn hơn 0');
+  if (amount > received) throw fail(400, `Số tiền hoàn vượt số tiền đã nhận (${received})`);
+
+  const ref = String(bankReference || '').trim();
+  if (!ref || ref.length > 100) throw fail(400, 'Vui lòng nhập mã giao dịch chuyển khoản hoàn tiền');
+
+  const refundDate = refundedAt ? new Date(refundedAt) : null;
+  if (!refundDate || Number.isNaN(refundDate.getTime())) throw fail(400, 'Vui lòng nhập ngày giờ hoàn tiền');
+  if (refundDate.getTime() > Date.now() + 5 * 60 * 1000) throw fail(400, 'Ngày hoàn tiền không được ở tương lai');
+  if (order.created_at && refundDate.getTime() < new Date(order.created_at).getTime()) throw fail(400, 'Ngày hoàn tiền không được trước ngày tạo đơn');
+
+  if (!refundProof) throw fail(400, 'Vui lòng đính kèm minh chứng hoàn tiền');
+
+  const existed = await prisma.payment_transaction.findFirst({ where: { payos_transaction_id: ref }, select: { id: true } });
+  if (existed) throw fail(409, 'Mã giao dịch này đã được ghi nhận trước đó');
+
   const result = await paymentRepository.processRefund({
     orderId,
-    refundedAmount: Number(refundedAmount),
+    idaccount: order.idaccount,
+    refundedAmount: amount,
     refundProof,
     refundReason,
     refundedAt: refundDate,
+    bankReference: ref,
+    adminId: admin?.idaccount || null,
   });
+
+  try {
+    await prisma.auditlog.create({
+      data: {
+        idaccount: admin?.idaccount || order.idaccount,
+        request: `PUT /api/admin/payments/orders/${orderId}/refund`,
+        action: `[PAYMENT] Hoàn tiền ${amount.toLocaleString('vi-VN')} đ đơn ${order.order_code} — mã GD ${ref}`.slice(0, 255),
+        req_status: 'Pass',
+        reason: `Ngày hoàn do admin xác nhận: ${refundDate.toISOString()}`,
+      },
+    });
+  } catch (_) {}
 
   try {
     const { emitToAccount, getIO } = require('../../core/socket');
     if (result.idaccount) {
+      const { resolveUrl } = require('../../core/storage');
       emitToAccount(result.idaccount, 'payment.refunded', {
         orderId,
         refundedAmount: Number(refundedAmount),
         refundedAt: result.refunded_at || new Date(),
         refundReason,
-        refundProof,
+        refundProof: await resolveUrl(refundProof, 3600),
       });
     }
     const io = getIO();
@@ -604,50 +659,6 @@ async function processOrderRefund(orderId, { refundedAmount, refundProof, refund
     message: 'Hoàn tiền thành công',
     data: result,
   };
-}
-
-/**
- * Giả lập Webhook dành cho chế độ Sandbox Roleplay của Admin
- * @param {object} param0 { orderCode, simulateType }
- */
-async function simulateWebhook({ orderCode, simulateType = 'EXACT' }) {
-  const order = await paymentRepository.findOrderByCode(orderCode);
-  if (!order) {
-    const error = new Error('Không tìm thấy đơn hàng để giả lập');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  let simulatedAmount = Number(order.amount);
-  if (simulateType === 'OVERPAID') {
-    simulatedAmount = Number(order.amount) + 21000;
-  } else if (simulateType === 'UNDERPAID') {
-    simulatedAmount = Math.max(1000, Number(order.amount) - 29000);
-  }
-
-  const mockPayload = {
-    code: '00',
-    desc: 'Success',
-    data: {
-      orderCode: Number(order.order_code),
-      amount: simulatedAmount,
-      description: order.transfer_content || `CSCYDEZ2N10 ${order.recognition_code || 'MOCK6C'}`,
-      accountNumber: '0000000000',
-      reference: `SIM-REF-${Date.now()}`,
-      transactionDateTime: new Date().toISOString(),
-      counterAccountBankId: 'MBBANK',
-    },
-    signature: 'SIMULATED_HMAC_SHA256_PASS',
-  };
-
-  const origVerify = payosClient.verifyWebhookData;
-  payosClient.verifyWebhookData = async () => mockPayload.data;
-
-  try {
-    return await handlePayOSWebhook(mockPayload);
-  } finally {
-    payosClient.verifyWebhookData = origVerify;
-  }
 }
 
 /**
@@ -679,22 +690,26 @@ async function syncOrderWithPayOS(order) {
           : null;
         const txTime = docGioPayOS(latestTx?.transactionDateTime, new Date());
 
+        // Chỉ ghi sổ khi PayOS trả mã giao dịch ngân hàng; không tự sinh mã thay thế.
+        const txData = require('./payment.ledger').ledgerFromPayos({
+          order,
+          tx: latestTx,
+          amount: receivedAmount,
+          txTime,
+          source: 'PAYOS_API',
+          rawPayload: { payosLink: { status: payosInfo.status, amountPaid: payosInfo.amountPaid }, payosTransaction: latestTx },
+        });
+        if (!txData) {
+          logger.error('[PAYOS_JIT_SYNC] PayOS báo có tiền nhưng chưa có mã giao dịch ngân hàng: chưa ghi sổ', { orderCode });
+          return order;
+        }
+
         const ketQua = await xuLyTienVaoDon(order, {
           orderCode,
           receivedAmount,
           txTime,
           description: latestTx?.description,
-          txData: {
-            id: crypto.randomUUID(),
-            orderId: order.id,
-            idaccount: order.idaccount,
-            amount: receivedAmount,
-            payosTransactionId: latestTx?.reference || latestTx?.transactionId || `JIT_${order.id}_${Date.now()}`,
-            bankCode: latestTx?.counterAccountBankName || 'PAYOS_JIT',
-            transactionTime: txTime,
-            signatureVerified: true,
-            rawWebhookHash: 'JIT_SYNC_DIRECT_API',
-          },
+          txData,
         });
 
         order.status = ketQua.action;
@@ -893,15 +908,53 @@ async function getSubscriptionInfo(idaccount) {
  * @param {object} options 
  */
 async function getOrderHistory(idaccount, options) {
-  return paymentRepository.findOrdersByAccount(idaccount, options);
+  const result = await paymentRepository.findOrdersByAccount(idaccount, options);
+  if (!Array.isArray(result?.items)) return result;
+  return { ...result, items: await Promise.all(result.items.map(withProofUrl)) };
 }
 
 /**
  * Lấy danh sách đơn hàng cho Admin kèm bộ lọc và phân trang
  * @param {object} options
  */
+async function withProofUrl(order) {
+  if (!order || !order.refund_proof) return order;
+  const { resolveUrl } = require('../../core/storage');
+  return { ...order, refund_proof: await resolveUrl(order.refund_proof, 600) };
+}
+
+/**
+ * Sổ giao dịch hiển thị cho admin: đủ để đối chiếu, không lộ chứng cứ thô / dữ liệu cá nhân.
+ * Bỏ payload gốc và tên người chuyển; số tài khoản người chuyển che còn 4 số cuối.
+ */
+function ledgerForAdmin(order) {
+  if (!order || !Array.isArray(order.payment_transaction)) return order;
+  const { decrypt } = require('../../utils/crypto.util');
+  const mask = (enc) => {
+    if (!enc) return null;
+    try {
+      const plain = String(decrypt(enc) || '');
+      if (!plain || plain.startsWith('enc:')) return '••••';
+      return `••••${plain.slice(-4)}`;
+    } catch (_) {
+      return '••••';
+    }
+  };
+  return {
+    ...order,
+    payment_transaction: order.payment_transaction.map((tx) => {
+      const { raw_payload, counter_account_name, counter_account_number, ...rest } = tx;
+      void raw_payload;
+      void counter_account_name;
+      return { ...rest, counter_account_number: mask(counter_account_number) };
+    }),
+  };
+}
+
 async function getOrdersForAdmin(options) {
-  return paymentRepository.findOrdersForAdmin(options);
+  const result = await paymentRepository.findOrdersForAdmin(options);
+  if (!Array.isArray(result?.items)) return result;
+  return { ...result, items: await Promise.all(result.items.map(withProofUrl)) };
 }
 
 /**
@@ -926,15 +979,29 @@ async function getOrderDetailForAdmin(orderId) {
   if (order.status === 'PENDING') {
     order = await syncOrderWithPayOS(order);
   }
-  return order;
+  return withProofUrl(ledgerForAdmin(order));
 }
 
 /**
- * Tạo đơn hàng mẫu thử nghiệm
- * @param {object} options
+ * Tạo đơn thử nghiệm: luôn 2.000 đ, gắn với admin tạo, tối đa 10 đơn / ngày cho toàn hệ thống.
+ * Mọi tham số từ body (số tiền, trạng thái, tài khoản…) đều bị bỏ qua. PIN xác thực ở controller.
+ * @param {{idaccount: number, username?: string}} admin
  */
-async function createSampleOrder(options) {
-  const result = await paymentRepository.createSampleOrder(options);
+async function createSampleOrder(admin) {
+  const result = await paymentRepository.createSampleOrderLocked(admin);
+  try {
+    await prisma.auditlog.create({
+      data: {
+        idaccount: Number(admin.idaccount),
+        request: 'POST /api/admin/payments/sample',
+        action: `[PAYMENT] Tạo đơn thử nghiệm ${paymentRepository.SAMPLE_AMOUNT.toLocaleString('vi-VN')} đ, mã đơn ${result.order_code}`,
+        req_status: 'Pass',
+        reason: `Người tạo: ${admin.username || admin.idaccount}`,
+      },
+    });
+  } catch (auditErr) {
+    logger.warn('[PAYMENT] Không ghi được nhật ký tạo đơn thử nghiệm', { error: auditErr.message });
+  }
   try {
     const { getIO } = require('../../core/socket');
     const io = getIO();
@@ -954,11 +1021,9 @@ async function createSampleOrder(options) {
   return result;
 }
 
-/**
- * Xóa các đơn hàng mẫu thử nghiệm
- */
-async function deleteSampleOrders() {
-  return paymentRepository.deleteSampleOrders();
+/** Hạn mức đơn thử nghiệm trong ngày (giờ Việt Nam). */
+async function getSampleQuota(now = new Date()) {
+  return paymentRepository.getSampleQuota(now);
 }
 
 /**
@@ -966,13 +1031,6 @@ async function deleteSampleOrders() {
  */
 async function getPackageTypes() {
   return paymentRepository.getPackageTypes();
-}
-
-/**
- * Lấy hoặc sinh mã QR từ kênh thanh toán PayOS
- */
-async function getOrCreatePayosQr(options) {
-  return paymentRepository.getOrCreatePayosQr(options);
 }
 
 let _expiryInterval = null;
@@ -1020,7 +1078,6 @@ module.exports = {
   handlePayOSWebhook,
   confirmUpgrade,
   processOrderRefund,
-  simulateWebhook,
   getOrderStatus,
   getSubscriptionInfo,
   getOrderHistory,
@@ -1029,8 +1086,7 @@ module.exports = {
   getOrderDetailForAdmin,
   getPackageTypes,
   createSampleOrder,
-  deleteSampleOrders,
-  getOrCreatePayosQr,
+  getSampleQuota,
   initPaymentAutoExpiryJob,
   stopPaymentAutoExpiryJob,
   syncOrderWithPayOS,

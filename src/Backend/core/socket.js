@@ -248,16 +248,35 @@ function emitAdminNotification(notificationData) {
  * Phát thông báo Broadcast toàn hệ thống tới tất cả các client đang kết nối
  * @param {Object} broadcastData 
  */
+/**
+ * Số socket người dùng (không tính admin, idrole = 1) trong danh sách socket đang nối của tiến trình này.
+ * @param {Map<string, import('socket.io').Socket>} sockets
+ */
+function countUserSockets(sockets) {
+  let n = 0;
+  for (const s of sockets.values()) {
+    if (s.data?.idaccount && Number(s.data.idrole) !== 1) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Phát tin tới mọi socket đang nối. Chỉ thiết bị đang kết nối lúc này nhận được (không có đẩy / nhận bù).
+ * @returns {number} số thiết bị người dùng đang kết nối khi phát (0 nếu chưa khởi tạo / lỗi)
+ */
 function emitSystemBroadcast(broadcastData) {
   if (!io) {
     logger.warn('[Socket] Attempted to emit system broadcast before Socket.io initialized');
-    return;
+    return 0;
   }
   try {
     io.emit('system.broadcast', broadcastData);
-    logger.info('[Socket] Emitted system.broadcast to all connected clients', { title: broadcastData.title });
+    const deliveredCount = countUserSockets(io.of('/').sockets);
+    logger.info('[Socket] Emitted system.broadcast to all connected clients', { title: broadcastData.title, deliveredCount });
+    return deliveredCount;
   } catch (error) {
     logger.error('[Socket] Failed to emit system broadcast', { error: error.message });
+    return 0;
   }
 }
 
@@ -307,11 +326,19 @@ function emitUserStatusChanged(statusData) {
  * Phát sự kiện thay đổi danh mục (thêm, sửa, xóa) tới admin_room
  * @param {Object} categoryData 
  */
+/**
+ * Danh mục hệ thống đổi (thêm / sửa / xoá mềm / khôi phục từ Admin-web).
+ * - `admin.category_updated` tới admin_room: Admin-web cập nhật bảng.
+ * - `sync.completed` tới MỌI socket: Client-app không có sự kiện riêng cho danh mục; tên này client đã nghe và
+ *   hiểu là "server có dữ liệu mới" ⇒ kéo /sync/pull ngay, im lặng, không đọc payload. Danh mục hệ thống dùng
+ *   chung cho mọi tài khoản nên phát tới tất cả. Payload không mang dữ liệu danh mục.
+ */
 function emitCategoryUpdated(categoryData) {
   if (!io) return;
   try {
     io.to('admin_room').emit('admin.category_updated', categoryData);
-    logger.info('[Socket] Emitted admin.category_updated to admin_room', { action: categoryData.action });
+    io.emit('sync.completed', { source: 'system_category', at: new Date().toISOString() });
+    logger.info('[Socket] Emitted admin.category_updated to admin_room + sync.completed to all clients', { action: categoryData.action });
   } catch (error) {
     logger.error('[Socket] Failed to emit admin.category_updated', { error: error.message });
   }
@@ -339,7 +366,7 @@ function emitMaintenanceChanged(maintenanceStatus) {
 function emitSystemMetricsStream(metrics) {
   if (!io) return;
   try {
-    io.to('admin_room').emit('admin.metrics_stream', metrics);
+    io.to('admin_room').emit('admin.metrics_stream', require('../utils/ip-protection.util').stripRawIp(metrics));
   } catch (error) {
     logger.error('[Socket] Failed to emit admin.metrics_stream', { error: error.message });
   }
@@ -409,6 +436,7 @@ module.exports = {
   emitSyncCompleted,
   emitAdminNotification,
   emitSystemBroadcast,
+  countUserSockets,
   emitUserRegistered,
   emitUserLoggedIn,
   emitUserStatusChanged,

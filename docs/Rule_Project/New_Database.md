@@ -470,3 +470,32 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `premium_expires_at` (`TIMESTAMP(6)` NULL): Thời điểm hết hạn gói Premium của tài khoản. Quản lý bởi Payment Service và Scheduler hạ cấp tự động 0h00 hàng ngày.
 
 
+
+### 5.5. Bảo vệ địa chỉ IP (Migration 48, 2026-11-13)
+- `account_device_history.ip_encrypted` (`TEXT` NULL): IP đầy đủ mã hóa AES-256-GCM (`enc:iv:tag:data`, khóa `DATA_ENCRYPTION_KEY`).
+- `account_device_history.ip_hash` (`VARCHAR(64)` NULL): HMAC-SHA256 của IP đầy đủ (khóa `BLIND_INDEX_SECRET`), so khớp và tra cứu không cần giải mã. Cả hai cột về NULL khi hết hạn `IP_RETENTION_DAYS` hoặc khi tài khoản hết 30 ngày chờ xóa (`processFullSoftDelete`). Chỉ mục một phần `idx_device_history_ip_hash` (`WHERE ip_hash IS NOT NULL`), `idx_device_history_ip_retention` trên `last_active_at` (`WHERE ip_encrypted IS NOT NULL`).
+- `account_device_history.ip_address` giữ vai trò bản che để hiển thị.
+- `aiops_ip_quarantine.raw_ip`: đổi `VARCHAR(45)` → `TEXT`, lưu bản mã AES-256-GCM thay cho IP thô.
+- `aiops_ip_quarantine.ip_hash`, `aiops_quarantine_incident_link.ip_hash`, `aiops_incident.actor_hash` (từ G4.1, 2026-11-13, không đổi cấu trúc): HMAC-SHA256 64 ký tự khóa `BLIND_INDEX_SECRET` (trước đây SHA-256 muối cố định, cắt 16 ký tự). Dòng cũ có `raw_ip` được tính lại khi Backend nạp danh sách chặn; dòng sự cố cũ giữ giá trị cũ.
+- Bản mã và chỉ mục mù bị xóa sau `IP_RETENTION_DAYS` (job `runDailyIpRetentionPurgeTask`). Áp bằng `node scripts/apply_migration_48.js --url=<CSDL>` (bắt buộc chỉ định đích; đích không phải máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.8.
+
+### 5.6. Chính sách bảo mật & bằng chứng đồng ý (Migration 49, 2026-11-13)
+- `privacy_policy`: `version` (`INTEGER` PK, > 0), `title` (`VARCHAR(200)`), `content` (`TEXT`), `published_at`, `published_by` (FK `account.Idaccount`, `ON DELETE SET NULL`). Phiên bản lớn nhất là hiện hành.
+- `policy_acceptance`: `id` (`BIGSERIAL`), `idaccount` (FK, `ON DELETE CASCADE`), `policy_version` (FK `privacy_policy.version`, `RESTRICT`), `accepted_at`, `ip_hash` (`VARCHAR(64)`), `device_name` (`VARCHAR(150)`), `user_agent`; `UNIQUE (idaccount, policy_version)`; chỉ mục `idx_policy_acceptance_version`.
+- Trigger `protect_policy_immutability` chặn `UPDATE` trên cả hai bảng. Áp bằng `node scripts/apply_migration_file.js --file=49_privacy_policy_acceptance.sql --url=<CSDL>` (đích ngoài máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.10.
+
+### 5.7. Nhiều chính sách, phiên bản theo chính sách, trạng thái (Migration 54, 2026-11-15)
+- Thay quy ước "phiên bản lớn nhất là hiện hành" của mục 5.6.
+- `policy_document`: `id` (`SERIAL` PK), `title` (`VARCHAR(200)`, `UNIQUE` `uq_policy_document_title`), `created_at`, `created_by` (FK `account`, `SET NULL`).
+- `privacy_policy` thêm: `document_id` (FK `policy_document.id`, `RESTRICT`, NOT NULL), `doc_version` (`INTEGER` > 0, NOT NULL), `status` (`VARCHAR(10)` `ACTIVE` / `INACTIVE`, mặc định `INACTIVE`), `status_changed_at`, `status_changed_by` (FK `account`, `SET NULL`). `version` giữ là mã nội bộ (PK, `policy_acceptance` tham chiếu).
+- Chỉ mục: `uq_privacy_policy_document_version (document_id, doc_version)`, **`uq_privacy_policy_one_active (document_id) WHERE status = 'ACTIVE'`** (mỗi chính sách tối đa một bản đang dùng; có trong `db:verify-indexes`), `idx_privacy_policy_status`.
+- Trigger `trg_protect_privacy_policy` đổi sang hàm `protect_privacy_policy_content`: chỉ cho đổi `status`, `status_changed_*`; `published_by` chỉ được về NULL; `document_id` / `doc_version` chỉ gán một lần. `policy_acceptance` giữ trigger cũ.
+- Chuyển dữ liệu cũ: mỗi tiêu đề thành một chính sách, `doc_version` đánh từ 1 theo thứ tự đăng, bản mới nhất của mỗi tiêu đề `ACTIVE`. Áp bằng `node scripts/apply_migration_file.js --file=54_policy_documents_status.sql --url=<CSDL>`.
+
+### 5.7. Yêu cầu bản sao dữ liệu cá nhân (Migration 50, 2026-11-14)
+- `data_export_request`: `id` (`VARCHAR(36)` PK, UUID), `idaccount` (FK `account`, `ON DELETE CASCADE`), `status` (`PROCESSING` / `READY` / `EXPIRED` / `FAILED`, CHECK `ck_data_export_status`), `json_ref`, `csv_ref` (khóa Supabase Storage `sb://data-exports/{idaccount}/{id}.json|csv`), `requested_at`, `ready_at`, `expires_at` (+24 giờ), `email_sent_at`, `error`.
+- Chỉ mục `idx_data_export_account_time` (`idaccount`, `requested_at DESC`), `idx_data_export_expiry` (`expires_at` WHERE `status = 'READY'`). Job hằng ngày xóa tệp hết hạn và chuyển `EXPIRED`; dòng giữ lại làm bằng chứng đã đáp ứng yêu cầu. Không đi qua `/sync/*`.
+
+### 5.8. Sổ sự cố dữ liệu cá nhân (Migration 51, 2026-11-14)
+- `data_incident`: `id` (`SERIAL`), `code` (`SC-YYYY-NNN`, UNIQUE), `title`, `description`, `source` (`AIOPS` / `AUDIT_LOG` / `USER_REPORT` / `PROCESSOR` / `OTHER`), `detected_at` (T0), `occurred_at`, `data_types`, `sensitive`, `affected_users`, `affected_records`, `consequences`, `measures`, `contact`, `status` (`OPEN` / `CONTAINED` / `REPORTED` / `CLOSED`), `contained_at`, `authority_reported_at`, `authority_report_ref`, `late_reason`, `report_not_required`, `no_report_reason`, `users_notified_at`, `root_cause`, `closed_at`, `created_by` / `updated_by` (FK `account`, `ON DELETE SET NULL`), `created_at`, `updated_at`.
+- CHECK `ck_data_incident_status`, `ck_data_incident_source`; chỉ mục `idx_data_incident_status_detected`; trigger `trg_protect_data_incident` (`protect_data_incident_delete`) chặn DELETE. Không đi qua `/sync/*`.

@@ -85,8 +85,8 @@ const config = {
     clientId: process.env.PAYOS_CLIENT_ID,
     apiKey: process.env.PAYOS_API_KEY,
     checksumKey: process.env.PAYOS_CHECKSUM_KEY,
-    returnUrl: process.env.PAYOS_RETURN_URL || 'https://management-finance.app/payment/success',
-    cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://management-finance.app/payment/cancel',
+    returnUrl: process.env.PAYOS_RETURN_URL || 'https://management-finance-gamma.vercel.app/payment/success',
+    cancelUrl: process.env.PAYOS_CANCEL_URL || 'https://management-finance-gamma.vercel.app/payment/cancel',
   },
 
   payment: {

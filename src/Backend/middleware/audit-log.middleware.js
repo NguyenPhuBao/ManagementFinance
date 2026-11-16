@@ -1,5 +1,7 @@
 const authService = require('../modules/auth/auth.service');
 const logger = require('../core/logger');
+const { getClientIp } = require('../utils/ip-protection.util');
+const { maskIp } = require('../utils/masking.util');
 
 /**
  * Middleware ghi nhận yêu cầu từ client vào bảng audit_log song song (non-blocking)
@@ -40,7 +42,7 @@ function auditLogMiddleware(req, res, next) {
         path.includes('/admin/getusertotime') ||
         path.includes('/admin/login-stats') ||
         path.includes('/admin/request-stats') ||
-        path.includes('/admin/aiops') ||
+        (req.method === 'GET' && path.includes('/admin/aiops')) ||
         path.includes('/admin/system/health') ||
         (req.method === 'GET' && path.includes('/admin/system/maintenance')) ||
         path.includes('/admin/maintenance/status') ||
@@ -49,7 +51,7 @@ function auditLogMiddleware(req, res, next) {
         return;
       }
 
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress || '127.0.0.1';
+      const clientIp = getClientIp(req) || '127.0.0.1';
       const req_status = authService.determineReqStatus(res, req);
       const reason = authService.determineReqReason(res, req);
       const actionName = authService.formatActionName(req.method, path, req);
@@ -99,7 +101,7 @@ function auditLogMiddleware(req, res, next) {
               idaccount: null,
               user: identifier || 'Anonymous / Guest',
               username: identifier || 'Guest',
-              ip: clientIp,
+              ip: maskIp(clientIp),
               action: actionName,
               request: apiEndpoint,
               reason: reason || (res.statusCode === 429 ? 'Vượt quá giới hạn tần suất (Rate Limit)' : res.statusCode === 401 ? 'Chưa xác thực' : null),

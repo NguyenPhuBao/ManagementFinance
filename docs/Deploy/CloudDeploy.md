@@ -87,6 +87,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 3. **Áp dụng Lược đồ CSDL:**
    - Chạy các script từ `database/1_schema.sql` đến `database/14_fix_grab_keyword_category.sql` qua Supabase SQL Editor.
    - ⚠️ **Cảnh báo:** Tuyệt đối không chạy `prisma migrate dev` trên Supabase để tránh mất mệnh đề `WHERE` của 5 Partial Unique Indexes.
+4. **Tạo bucket Storage (một lần):** từ `src/Backend`, với `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` trong môi trường: `node scripts/setup_storage_buckets.js --xac-nhan-tu-xa` (lũy đẳng; tạo `refund-proofs` 5 MB ảnh / PDF và `data-exports` 20 MB JSON / CSV, đều riêng tư). Gói Free: 1 GB lưu trữ, 5 GB băng thông / tháng; vượt hạn mức không tính tiền nhưng có thể bị hạn chế cả tổ chức.
 
 ---
 
@@ -123,7 +124,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 > [!TIP]
 > **Lưu ý Cài đặt Phụ thuộc Mới (AI Chatbot & Resilience):**  
 > Khi clone hoặc kéo mã nguồn mới nhất từ Git, lập trình viên môi trường cục bộ cũng như Render cần đảm bảo chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói phụ thuộc mới:
-> - `@google/generative-ai`: SDK Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường GEMINI_MODEL)
+> - `@google/generative-ai`: SDK Google Gemini 3.5 Flash (cấu hình linh hoạt qua biến môi trường GEMINI_MODEL)
 > - `ioredis`: Kết nối Redis phục vụ Rate Limiter Token-Bucket & Snapshot Cache
 > - `express-rate-limit`: Bảo vệ các route API cơ bản
 
@@ -151,6 +152,16 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    PG_POOL_MAX=20
 
    # ========================================================
+   # 2b. KHO LƯU TRỮ TỆP (SUPABASE STORAGE, từ 2026-11-13)
+   # ========================================================
+   # Minh chứng hoàn tiền và bản sao dữ liệu cá nhân lưu ở bucket riêng tư (refund-proofs, data-exports).
+   # Lấy ở Supabase Dashboard → Project Settings → API Keys: khóa Secret (sb_secret_...) hoặc khóa service_role cũ (eyJ...). Khóa toàn quyền: chỉ đặt ở Render.
+   # Khóa sb_secret_ chỉ được gửi ở header apikey (không phải JWT); core/storage tự chọn header theo dạng khóa.
+   # Thiếu hai biến này thì tệp ghi vào ổ đĩa Render và MẤT sau mỗi lần deploy (log báo lỗi lúc khởi động).
+   SUPABASE_URL=https://[PROJECT-REF].supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=[SERVICE_ROLE_KEY]
+
+   # ========================================================
    # 3. MESSAGE BROKER & IN-MEMORY CACHE (UPSTASH REDIS TLS)
    # ========================================================
    REDIS_URL=rediss://default:[UPSTASH_PASSWORD]@[YOUR-ENDPOINT].upstash.io:6379
@@ -162,6 +173,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    DATA_ENCRYPTION_KEY=[CHUỖI_HEX_64_KÝ_TỰ_SINH_BỞI_CRYPTO]
    # BẮT BUỘC Ở PRODUCTION: Chuỗi bí mật dùng cho HMAC-SHA256 Blind Index
    BLIND_INDEX_SECRET=[CHUỖI_BẢO_MẬT_NGẪU_NHIÊN_32_KÝ_TỰ]
+   # Số ngày giữ IP đầy đủ (bản mã + chỉ mục mù); quá hạn job 0h00 xóa (Data_Security.md 10.8). Mặc định 365.
+   IP_RETENTION_DAYS=365
 
    # ========================================================
    # 5. XÁC THỰC BẢO MẬT JWT (TOKEN PAIR & EXPIRATION)
@@ -176,6 +189,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # ========================================================
    # 6. ĐẶC QUYỀN QUẢN TRỊ & GIÁM SÁT AN NINH (ADMIN FAST-LANE)
    # ========================================================
+   # PIN hệ thống cho quản trị viên chưa có PIN riêng. BẮT BUỘC: production thiếu biến này thì mọi PIN dự phòng bị từ chối (từ 2026-11-14)
+   ADMIN_SECURITY_PIN=[PIN_6_SỐ_KHÔNG_DÙNG_123456]
    # Khóa cứu hộ đặc quyền x-emergency-admin-key (Bypass Rate Limiter)
    ADMIN_EMERGENCY_KEY=[SECRET_EMERGENCY_ADMIN_KEY_2026]
    # Email nhận thông báo đỏ khi AIOps Sentinel phát hiện tấn công mức CRITICAL
@@ -185,7 +200,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 7. MẠNG, CORS & ĐIỀU TIẾT TẢI (NETWORK & RATE LIMITING)
    # ========================================================
    # Khai báo chính xác domain Vercel của Admin-web và domain local
-   CORS_ORIGIN=https://management-finance-gamma.vercel.app,https://managementfinance-admin.vercel.app,http://localhost:5173,http://localhost:3000
+   CORS_ORIGIN=https://management-finance-gamma.vercel.app
    RATE_LIMIT_ENABLED=true
    RATE_LIMIT_WINDOW_MS=900000
    RATE_LIMIT_MAX=1000
@@ -194,11 +209,19 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 8. TRÍ TUỆ NHÂN TẠO GOOGLE GEMINI (AI OCR & CLASSIFICATION)
    # ========================================================
    GEMINI_API_KEY=[API_KEY_GOOGLE_AI_STUDIO]
-   GEMINI_MODEL=gemini-3.8-flash
+   GEMINI_MODEL=gemini-3.5-flash
+   # Chatbot AI dùng nhà cung cấp riêng: có DEEPSEEK_API_KEY thì dùng DeepSeek, không có thì giữ Gemini (OCR, phân loại vẫn dùng GEMINI_*)
+   DEEPSEEK_API_KEY=[API_KEY_DEEPSEEK]
 
    # ========================================================
-   # 9. DỊCH VỤ EMAIL HỆ THỐNG (GMAIL SMTP / SENDGRID)
+   # 9. DỊCH VỤ EMAIL HỆ THỐNG (BREVO → RESEND → SMTP)
    # ========================================================
+   # core/email.service.js thử lần lượt: Brevo (có BREVO_API_KEY) → Resend (có RESEND_API_KEY) → SMTP (có SMTP_USER).
+   BREVO_API_KEY=[API_KEY_BREVO]
+   BREVO_SENDER_EMAIL=[EMAIL_GUI_DA_XAC_MINH_TREN_BREVO]
+   BREVO_SENDER_NAME=FlowMoney
+   # RESEND_API_KEY=[API_KEY_RESEND]
+   # RESEND_FROM=FlowMoney <no-reply@ten-mien-da-xac-minh>
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USER=[EMAIL_GUI_OTP@GMAIL.COM]
@@ -280,7 +303,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    - `VITE_SOCKET_URL`: `https://managementfinance.onrender.com` (Bắt buộc cho WebSockets/Socket.IO kết nối trực tiếp đến Render vì Vercel rewrites không hỗ trợ giao thức Upgrade WebSocket).
 
 4. **Lưu ý về Hiệu Năng Gói Free Render:**
-   - **Hiện tượng ngủ đông (Spin-down):** Sau 15 phút không hoạt động, Render tắt container. Lần truy cập tiếp theo mất 30–50s để khởi động lại.
+   - **Hiện tượng ngủ đông (Spin-down):** Sau 15 phút không hoạt động, Render tắt container. Lần truy cập tiếp theo mất 30–50s để khởi động lại. Khi Render cho ngủ hoặc deploy, tiến trình nhận SIGTERM và ghi phiên chạy `GRACEFUL` (bảng `server_session`, migration 52); khoảng nghỉ đó hiện ở Admin-web là "Tắt có chủ đích", không trừ vào độ khả dụng. Sập không kịp ghi thì tính là gián đoạn ngoài dự kiến.
+   - **Khởi động lại giữa phiên bảo trì:** máy chủ đọc `maintenance_history` và khoá lại nếu phiên còn hiệu lực; trong lúc chưa đọc được CSDL, người dùng nhận 503 "Hệ thống đang khởi động" (health check vẫn 200). Rủi ro đã chấp nhận: tắt bảo trì đúng lúc CSDL sập rồi máy chủ khởi động lại trước khi ghi bù thì bảo trì bật lại; tắt lại trên Admin-web.
    - **Tài nguyên 0.1 CPU & 512MB RAM:** Tránh mở đồng thời quá nhiều tab Admin-web cùng lúc để không bị bóp nghẽn CPU.
    - **CORS thông minh:** Backend đã hỗ trợ bộ lọc tự động nhận diện domain `management-finance*.vercel.app` và `managementfinance*.vercel.app`.
 
@@ -411,7 +435,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 ### 6.4. Nâng Cấp Hạn Ngạch Google Gemini API Sang Gói Pay-As-You-Go
 - **Hiện trạng Free Tier:** Dùng API Key miễn phí (Google AI Studio Free Tier) bị chặn cứng ở trần **$15\text{ RPM}$**, chỉ cho phép tối đa $2 - 3\text{ người chat cùng 1 lúc}$.
-- **Nâng cấp Mở rộng:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.8-flash`:
+- **Nâng cấp Mở rộng:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.5-flash`:
   - **$2.000\text{ RPM}$ (Requests Per Minute)** và **$4.000.000\text{ TPM}$ (Tokens Per Minute)**.
   - Đảm bảo phục vụ mượt mà từ **$30 - 50\text{ người dùng chat đồng thời}$** cùng một thời điểm.
 
