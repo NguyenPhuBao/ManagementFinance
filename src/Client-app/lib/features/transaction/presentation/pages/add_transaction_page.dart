@@ -19,6 +19,7 @@ import '../../data/doc_cau_bang_ai.dart';
 import '../../data/nguon_giong_noi.dart';
 import '../../domain/chon_loi_nghe.dart';
 import '../../data/them_giao_dich_nguon.dart';
+import '../../data/vi_chung_cho_form_nguon.dart';
 import '../../data/vi_theo_nguon_store.dart';
 import '../bloc/nghe_giong_noi_cubit.dart';
 import '../bloc/nghe_giong_noi_state.dart';
@@ -157,9 +158,13 @@ class AddTransactionPage extends StatefulWidget {
   /// `/add?noi=1` — mở form rồi nghe ngay.
   final bool batDauNghe;
 
-  /// Chế độ NHÀ (gia đình 1B, `02A` mục 4): ghi vào quỹ chung của nhà. Chỉ route `/nha/khoan` truyền; `/add` của cá nhân
-  /// không bao giờ — nút + thanh dưới không được vào phạm vi nhà. Ẩn Nhập nhanh, micro, tách, gợi ý, từ khoá, nút ba chấm.
+  /// Chế độ NHÀ cố định (gia đình 1B, `02A` mục 4): ghi vào quỹ chung của nhà. Chỉ route `/nha/khoan` truyền. Route `/add` vào
+  /// chế độ nhà TẠI CHỖ khi người dùng chọn ví chung ([viChung], `ThemGiaoDichState.nhaDangGhi` — spec 2026-11-16). Cả hai
+  /// cách đều ẩn Nhập nhanh, micro, tách, gợi ý, từ khoá, nút ba chấm.
   final CheDoNhaForm? nha;
+
+  /// Nhóm ví chung cho bộ chọn ví (spec 2026-11-16). Chỉ route `/add` truyền; `null` = không có nhóm.
+  final ViChungChoFormNguon? viChung;
 
   /// Nguồn dữ liệu tiêm vào (chế độ nhà dùng `ThemGiaoDichNguonNha`). `null` → nguồn thật của form cá nhân.
   final ThemGiaoDichNguon? nguon;
@@ -192,6 +197,7 @@ class AddTransactionPage extends StatefulWidget {
     this.batDauNghe = false,
     this.nha,
     this.nguon,
+    this.viChung,
   });
 
   @override
@@ -227,7 +233,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     huongBanDau: widget.huongBanDau,
     bienDong: widget.bienDong,
     choTickMon: widget.choTickMon,
+    // Route `/nha/khoan` đã cố định chế độ nhà — không có nhóm ví chung để đổi.
+    viChung: widget.nha == null ? widget.viChung : null,
   );
+
+  /// Chế độ nhà đang áp: cố định từ route `/nha/khoan`, hoặc TẠI CHỖ vì ví đang chọn là ví chung (spec 2026-11-16).
+  CheDoNhaForm? get _nha => widget.nha ?? _s.nhaDangGhi;
 
   ThemGiaoDichState get _s => _cubit.state;
 
@@ -443,6 +454,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         isDestination: isDestination,
         wallets: _s.vi,
         idDangChon: isDestination ? _s.viDich?.id : _s.viNguon?.id,
+        // Nhóm ví chung: chỉ ví nguồn, không ở đoạn Chuyển khoản (spec 2026-11-16 quyết định 2).
+        viChung: isDestination || _s.laChuyen ? const [] : _s.viChung,
+        tenNha: _cubit.tenNhaViChung,
         onChon: (w) {
           if (isDestination) {
             _cubit.chonViDich(w);
@@ -503,10 +517,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Future<void> _luu(BuildContext context) async {
     // Chế độ nhà: hỏi lại vai ĐẦU hàm, trước `await` (FINAL I-3). Vai đổi lúc form mở mà vẫn gửi event thì app báo thành công
     // trong khi server từ chối (ROLE_FORBIDDEN xoá hàng, READ_ONLY để nó kẹt `pending`) — không ai biết.
-    final hoiQuyen = widget.nha?.conDuocGhi;
+    final hoiQuyen = _nha?.conDuocGhi;
     if (hoiQuyen != null && !hoiQuyen(_s.laChuyen)) {
       baoNhanh('Bạn không còn quyền ghi khoản trong nhà này.', loai: LoaiThongBao.loi);
-      context.pop();
+      // `/add` ở chế độ nhà tại chỗ: giữ form (người dùng còn chọn được ví riêng), chỉ `/nha/khoan` mới đóng.
+      if (widget.nha != null) context.pop();
       return;
     }
     final r = await _cubit.chuanBiLuu();
@@ -524,7 +539,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _cubit.daGuiLuu(r);
         final bloc = context.read<TransactionBloc>();
         // Chế độ nhà: khoản MỚI mang `idhousehold` (thiếu là lưu thành khoản riêng trỏ ví nhà). Sửa thì hàng cũ đã mang nhà.
-        final idNha = widget.nha?.idNha;
+        final idNha = _nha?.idNha;
         TransactionEntity ganNha(TransactionEntity t) => idNha == null ? t : t.copyWith(idhousehold: idNha);
         final truoc = r.truoc;
         if (truoc != null) {
@@ -659,7 +674,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             title: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                widget.nha != null
+                _nha != null
                     ? tieuDeFormNha(_isEditing, _s.huong)
                     : (_isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch'),
                 maxLines: 1,
@@ -684,7 +699,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ] else ...[
                 if (luuTieuDe != null) luuTieuDe,
                 // Nút ba chấm chưa có việc gì để làm (handler rỗng): chế độ nhà không dựng.
-                if (widget.nha == null)
+                if (_nha == null)
                   IconButton(
                     tooltip: 'Thêm tuỳ chọn',
                     icon: const Icon(Icons.more_vert, color: AppColors.primary),
@@ -712,7 +727,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         coChuyen: widget.nha?.choChuyen ?? true,
                         khoaChieu: widget.initial?.transaction.fundPairId != null,
                       ),
-                      if (widget.nha case final nha?) ...[
+                      if (_nha case final nha?) ...[
                         const SizedBox(height: 8),
                         NhanNha(tenNha: nha.tenNha),
                       ],
@@ -752,7 +767,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             TheGoiYChuyen(gy: gy, onApDung: _cubit.apGoiYChuyen),
                             const SizedBox(height: 12),
                           ],
-                        ] else if (!_isEditing && widget.nha == null) ...[
+                        ] else if (!_isEditing && _nha == null) ...[
                           // Khối hai chip của câu nói / Nhập nhanh nằm TRONG thẻ (`_oNhapNhanh`, Stitch `d696e81e…`).
                           _nghe == null
                               ? _oNhapNhanh(null)
@@ -906,20 +921,20 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onChonDanhMuc: () async {
         // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
         final selected = await context.push<CategoryEntity>(
-          widget.nha?.duongChonDanhMuc ?? '/add/category',
+          _nha?.duongChonDanhMuc ?? '/add/category',
           // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
           extra: selectedCategory?.classify ?? (_s.huong == 'thu' ? 'thu' : kCategoryClassifies.first),
         );
         if (selected != null) _chonDanhMuc(selected);
       },
       onPickDate: _pickDate,
-      nhanVi: widget.nha == null ? 'Ví thanh toán' : 'Ví chung',
-      hienDongTach: widget.nha == null && _s.choTach && _s.phanTach.isEmpty,
+      nhanVi: _nha == null ? 'Ví thanh toán' : 'Ví chung',
+      hienDongTach: _nha == null && _s.choTach && _s.phanTach.isEmpty,
       onThemPhan: _themPhan,
       nhacTrung:
           _bienDong != null && _s.trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _s.trungTrongSo) : null,
       // Quyền `category_keywords_matching` (B1): không đề xuất thêm từ khoá; từ khoá đã có vẫn gợi ý danh mục (chốt 8).
-      deXuatTuKhoa: widget.nha == null &&
+      deXuatTuKhoa: _nha == null &&
               context.coQuyen(MaQuyen.categoryKeywordsMatching) &&
               (_s.deXuat != null || _s.daThemTuKhoa != null)
           ? DongDeXuatTuKhoa(
@@ -935,7 +950,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               onChon: _cubit.chonChieuNo,
             )
           : null,
-      theGoiY: s == null || widget.nha != null
+      theGoiY: s == null || _nha != null
           ? null
           : TheGoiYDanhMuc(
               key: _khoaTheGoiY,

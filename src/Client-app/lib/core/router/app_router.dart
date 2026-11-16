@@ -29,6 +29,7 @@ import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/domain/quyen_nha.dart';
 import '../../features/transaction/presentation/state/che_do_nha_form.dart';
+import '../../features/transaction/data/vi_chung_cho_form_nguon.dart';
 import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
 import '../../features/household/presentation/bloc/gop_rut_cubit.dart';
 import '../../features/household/presentation/pages/gop_rut_page.dart';
@@ -318,6 +319,8 @@ class AppRouter {
               bienDong: dienSanBienDongTuQuery(state.uri.queryParameters),
               // C4: nút Nói ở Trang chủ (`/add?noi=1`) — nghe ngay. Query, không `extra`: `extra is String` là chiều tiền.
               batDauNghe: state.uri.queryParameters['noi'] == '1',
+              // Nhóm ví chung trong bộ chọn ví (spec 2026-11-16): chọn ví chung là form đổi tại chỗ sang khoản của nhà.
+              viChung: sl.isRegistered<ViChungChoFormNguon>() ? sl<ViChungChoFormNguon>() : null,
             ),
             routes: [
               GoRoute(
