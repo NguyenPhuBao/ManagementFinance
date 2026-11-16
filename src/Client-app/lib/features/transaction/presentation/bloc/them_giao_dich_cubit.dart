@@ -29,6 +29,7 @@ import '../../../category/domain/phan_loai_so_tien.dart';
 import '../../application/dong_hang_bien_dong.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../data/them_giao_dich_nguon.dart';
+import '../../data/vi_chung_cho_form_nguon.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/chot_so_tien_cau.dart';
 import '../../domain/dien_san_bien_dong.dart';
@@ -36,6 +37,7 @@ import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../domain/vi_chon_san.dart';
+import 'doi_che_do_nha.dart';
 import 'them_giao_dich_state.dart';
 
 /// Kết quả [ThemGiaoDichCubit.chuanBiLuu].
@@ -83,7 +85,9 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     String? huongBanDau,
     DienSanBienDong? bienDong,
     bool choTickMon = false,
-  })  : _nguon = nguon,
+    ViChungChoFormNguon? viChung,
+  })  : _nguonRieng = nguon,
+        _viChungNguon = viChung,
         _taiKhoan = taiKhoan,
         _boGoiY = boGoiY,
         _dangSua = dangSua,
@@ -91,7 +95,13 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
         _choTickMon = choTickMon,
         super(_dauTien(dangSua, danhMucDangSua, huongBanDau, dangSua == null ? bienDong : null));
 
-  final ThemGiaoDichNguon _nguon;
+  final ThemGiaoDichNguon _nguonRieng;
+  final ViChungChoFormNguon? _viChungNguon;
+  NhomViChung? _nhom;
+
+  /// Nguồn đang dùng: của NHÀ khi ví đang chọn là ví chung (spec 2026-11-16) — học / phản hồi / ngân sách thành no-op.
+  ThemGiaoDichNguon get _nguon => state.nhaDangGhi != null && _nhom != null ? _nhom!.nguon : _nguonRieng;
+  String? get tenNhaViChung => _nhom?.tenNha; // tiêu đề nhóm ví chung trong bảng chọn ví
 
   /// Mã tài khoản của phiên, đọc ở MỖI lần cần (như `_accountId` của trang) — không chụp một lần lúc mở.
   final int? Function() _taiKhoan;
@@ -147,7 +157,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   Future<void> moTrang() async {
     final d = _bienDong;
     if (d != null) unawaited(_napAnh(d));
-    await Future.wait([_napVi(), _napLichSu().then((_) => _napTatCap())]);
+    await Future.wait([_napVi(), _napLichSu().then((_) => _napTatCap()), _napViChung()]);
     // Đường sửa mở với danh mục + ghi chú sẵn → tính đề xuất từ khoá sau khi có mẫu và tập tắt.
     unawaited(_tinhDeXuat());
     // D1: điền sau khi có cả ví (chọn sẵn theo nguồn) lẫn mô hình B1 + tập tắt (đoán danh mục).
@@ -168,6 +178,16 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       dich = _timVi(ds, sua.walletTransfer) ?? dich;
     }
     emit(state.copyWith(vi: ds, viNguon: nguon, viDich: dich, dangNapVi: false));
+  }
+
+  /// Nhóm ví chung — chỉ form TẠO MỚI thường (không sửa, không biến động / biên lai / ảnh quét), spec 2026-11-16 mục 2.1.
+  Future<void> _napViChung() async {
+    final c = _viChungNguon;
+    if (c == null || laSua || _bienDong != null) return;
+    final n = await c.nap();
+    if (n == null || isClosed) return;
+    _nhom = n;
+    _phat(state.copyWith(viChung: n.vi));
   }
 
   /// MỘT lần đọc sổ cho bảng ví hay dùng và hai mô hình gợi ý.
@@ -216,6 +236,11 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản. Vay/nợ gom cả hai chiều: đoạn chính là công tắc chiều tiền;
   /// danh mục thuộc chiều kia thì bỏ — giữ danh mục chi dưới đoạn Thu là hai sự thật trái nhau.
   void chonHuong(String huong) {
+    // Chuyển khoản không có ví chung (spec 2026-11-16 quyết định 2): về ví cá nhân chọn sẵn trước.
+    final viRieng = chonViChonSan<WalletEntity>(state.vi, laMacDinh: (w) => w.isDefault).nguon;
+    if (huong == 'transfer' && state.nhaDangGhi != null && viRieng != null) {
+      _phat(raCheDoNha(state, vi: viRieng, danhMucRieng: const []));
+    }
     var s = state.copyWith(huong: huong);
     // Tách chỉ cho khoản chi (spec A5 11.1 ý 1).
     if (huong != 'chi') s = s.copyWith(phanTach: const []);
@@ -261,6 +286,14 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   void chonChieuNo(String d) => _phat(state.copyWith(chieuNo: d, huong: d));
 
   void chonVi(WalletEntity w) {
+    if (_nhom != null && state.viChung.any((v) => v.id == w.id)) {
+      unawaited(_vaoNha(w));
+      return;
+    }
+    if (state.nhaDangGhi != null) {
+      unawaited(_raNha(w));
+      return;
+    }
     _nguoiDungDaChonVi = true;
     _phat(state.copyWith(viNguon: w));
     // Ví là một tín hiệu của gợi ý theo số tiền (dự án C); ví ĐÍCH thì không.
@@ -268,6 +301,27 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   }
 
   void chonViDich(WalletEntity w) => _phat(state.copyWith(viDich: w));
+
+  Future<void> _vaoNha(WalletEntity w) async {
+    _nguoiDungDaChonVi = true;
+    _choPhanXu = _danhMucAi = null;
+    final dm = await _danhMucCua(_nhom!.nguon);
+    if (!isClosed) _phat(vaoCheDoNha(state, vi: w, cheDo: cheDoTuNhom(_nhom!), danhMucNha: dm));
+  }
+
+  Future<void> _raNha(WalletEntity w) async {
+    _nguoiDungDaChonVi = true;
+    final dm = await _danhMucCua(_nguonRieng);
+    if (isClosed) return;
+    _phat(raCheDoNha(state, vi: w, danhMucRieng: dm));
+    unawaited(_tinhDeXuat());
+    _henGoiYTheoForm();
+  }
+
+  Future<List<CategoryEntity>> _danhMucCua(ThemGiaoDichNguon n) async {
+    final id = _taiKhoan();
+    return id == null ? const <CategoryEntity>[] : n.danhMucChonDuoc(id);
+  }
 
   void chonNgay(DateTime d) {
     _phat(state.copyWith(ngay: d));
@@ -433,8 +487,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý danh mục của người khác.
     if (accountId == null) return;
     // MỘT cửa cho cả ba nguồn (dự án C): hàm này nay được hẹn cả khi số tiền / ví / ngày / đoạn đổi, không chỉ khi ghi
-    // chú đổi — nên tự nó phải chặn hai trạng thái không bao giờ có thẻ.
-    if (state.laChuyen || state.danhMuc != null) return;
+    // chú đổi — nên tự nó phải chặn hai trạng thái không bao giờ có thẻ. Chế độ nhà: không gợi ý cá nhân (spec 2026-11-16).
+    if (state.laChuyen || state.danhMuc != null || state.nhaDangGhi != null) return;
     final luc = state;
     // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba phân loại vì chiều tiền suy từ danh mục được
     // chọn, không phải ngược lại.
@@ -520,6 +574,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// Từ `_tinhDeXuat` của trang — đề xuất thêm từ khoá (spec 2026-09-30), tính lại khi ghi chú hoặc danh mục đổi. Mọi
   /// nguồn danh mục như nhau (chọn tay, thẻ gợi ý, Nhập nhanh). Không phiên / không mẫu học → im.
   Future<void> _tinhDeXuat() async {
+    if (state.nhaDangGhi != null) return;
     final cat = state.danhMuc;
     final ghiChu = state.ghiChu.trim();
     final mau = _mauDeXuat ?? _boPhanLoai?.mau;
@@ -651,6 +706,10 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final editing = _dangSua;
     final accountId = editing?.idaccount ?? _taiKhoan();
     if (accountId == null) return const LoiLuu('Chưa xác định được tài khoản đăng nhập');
+    final nhaGhi = s.nhaDangGhi;
+    if (nhaGhi != null && !(nhaGhi.conDuocGhi?.call(false) ?? true)) {
+      return const LoiLuu('Bạn không còn quyền ghi khoản vào nhà này.');
+    }
 
     final tx = TransactionEntity(
       // Sửa thì giữ nguyên id (và những gì form không đụng tới) — tạo id mới là nhân đôi giao dịch.
@@ -663,7 +722,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       walletTransfer: s.laChuyen ? viDich!.id : null,
       goalId: editing?.goalId,
       // Hai trường nhà đi theo hàng cũ: `toCompanion` ghi cả hai, dựng entity sửa mà bỏ chúng là ghi NULL đè.
-      idhousehold: editing?.idhousehold,
+      idhousehold: editing?.idhousehold ?? nhaGhi?.idNha,
       fundPairId: editing?.fundPairId,
       amount: amount,
       type: type,
