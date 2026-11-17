@@ -14,9 +14,14 @@ String? cauMoDau(LoaiTran tran, TranGoi tranGoi, {bool laPremium = false}) {
   final n = tranGoi.cua(tran);
   if (n == null) return null;
   if (n == 0) return 'Gói ${laPremium ? 'Premium' : 'Basic'} hiện không cho tạo thêm ${tenTran(tran)}.';
-  if (laPremium) return 'Gói Premium hiện cho tạo tối đa $n ${tenTran(tran)}.';
-  return 'Bạn đã dùng $n/$n ${tenTran(tran)} của gói Basic.';
+  final kemLuuTru = tran == LoaiTran.vi ? ' $kTinhCaViLuuTru' : '';
+  if (laPremium) return 'Gói Premium hiện cho tạo tối đa $n ${tenTran(tran)}$kemLuuTru.';
+  return 'Bạn đã dùng $n/$n ${tenTran(tran)}$kemLuuTru của gói Basic.';
 }
+
+/// Trần ví đếm cả ví lưu trữ (`DemDangHoatDong`, 2026-11-17) — câu chặn phải nói ra, kẻo người có 2 ví đang dùng + 1 ví
+/// lưu trữ không hiểu vì sao bị chặn ở trần 3.
+const String kTinhCaViLuuTru = '(tính cả ví đã lưu trữ)';
 
 /// Câu mở đầu khi đến từ một tính năng bị khoá (`/premium?quyen=`) — spec phân quyền 2026-10-08 mục 4.4; [tamNgung] (B1).
 String cauMoDauQuyen(MaQuyen ma, {bool tamNgung = false}) =>

@@ -87,6 +87,9 @@ void main() {
     'features/wallet/application/default_account_data_initializer.dart':
         'Seed hai ví cho tài khoản mới: phải thấy ví đã lưu trữ để không seed lại ví saving / '
             'cash đã có.',
+    'features/premium/data/dem_dang_hoat_dong.dart':
+        'Đếm ví cho trần theo gói — trần ví tính CẢ ví lưu trữ (người dùng chốt 2026-11-17), '
+            'không phải bộ chọn ví.',
   };
 
   /// Các tệp là **bộ chọn ví** — chúng phải gọi `getActive`/`watchActive`.

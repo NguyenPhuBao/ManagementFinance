@@ -619,6 +619,10 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
 
+### 💎 Trần ví tính cả ví lưu trữ (2026-11-17, mã xong, ✅ đo máy ảo đạt)
+
+Người dùng mở chốt mã cho riêng việc này: giới hạn ví theo thiết lập admin đếm cả ví đã lưu trữ (`DemDangHoatDong` đọc `walletDao.getAll`; câu chặn kèm *"(tính cả ví đã lưu trữ)"*). Chi tiết + bảng đo: mục 8.12 `PREMIUM_FEATURE.md`. `flutter test` 9636 / 11 skip, analyze 20. Chỉ thi hành ở client — việc backend (nếu cần) chờ người dùng quyết.
+
 ### 📜 Điều khoản sử dụng + Chính sách bảo mật viết cứng (2026-11-16 phiên 49, `0f838a05..fe20fea4`, mã xong, ✅ đo máy ảo đạt)
 
 Đơn `client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md` (README mục 12 = đơn 51) **đổi hướng** ở `origin/main` `d6a17999` (NPBao): chính sách viết

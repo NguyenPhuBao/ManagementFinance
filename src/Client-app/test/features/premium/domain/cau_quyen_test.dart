@@ -9,14 +9,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('cauMoDau — Basic giữ câu 3ec874aa', () {
-    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 3)), 'Bạn đã dùng 3/3 ví của gói Basic.');
+    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 3)), 'Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic.',
+        reason: 'trần ví đếm cả ví lưu trữ (2026-11-17) — câu phải nói, kẻo người có 2 ví dùng + 1 lưu trữ không hiểu');
+    expect(cauMoDau(LoaiTran.mucTieu, const TranGoi(mucTieu: 3)), 'Bạn đã dùng 3/3 mục tiêu tiết kiệm của gói Basic.');
     expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 0)), 'Gói Basic hiện không cho tạo thêm ví.');
     expect(cauMoDau(LoaiTran.danhMucRieng, const TranGoi(danhMucRieng: 0)),
         'Gói Basic hiện không cho tạo thêm danh mục riêng.');
   });
 
   test('⭐ cauMoDau — Premium chạm trần cột Premium (B1)', () {
-    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 10), laPremium: true), 'Gói Premium hiện cho tạo tối đa 10 ví.');
+    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 10), laPremium: true), 'Gói Premium hiện cho tạo tối đa 10 ví (tính cả ví đã lưu trữ).');
     expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 0), laPremium: true), 'Gói Premium hiện không cho tạo thêm ví.');
   });
 

@@ -40,7 +40,7 @@ Tài khoản có hai gói: **Basic** (mặc định) và **Premium** (49.000 đ 
 
 | Đặc quyền Premium | Basic thấy gì |
 |---|---|
-| Không giới hạn ví | tối đa **3** ví đang hoạt động; đủ trần, bấm + → màn Nâng cấp mở đầu bằng *"Bạn đã dùng 3/3 ví của gói Basic."* |
+| Không giới hạn ví | tối đa **3** ví **kể cả ví đã lưu trữ** (từ 2026-11-17, mục 8.12; ví đã xoá không tính); đủ trần, bấm + → màn Nâng cấp mở đầu bằng *"Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic."* |
 | Không giới hạn ngân sách | tối đa **3** đang hoạt động (chưa xoá, chưa hết hạn) |
 | Không giới hạn mục tiêu tiết kiệm | tối đa **3** đang hoạt động (chưa xoá, chưa đạt) |
 | Trợ lý AI & Nhập nhanh bằng AI | màn Trợ lý AI mở nhưng ô nhập + chip khoá (kể cả lệnh tạo C3), băng *"Trợ lý AI là tính năng Premium…"* + nút Nâng cấp; ô Nhập nhanh ở màn Thêm giao dịch mờ, nút Điền thay bằng Nâng cấp |
@@ -561,3 +561,11 @@ Dò sọc tràn: 24 ảnh bản debug ở 360 dp, 0 điểm vàng. Lượt này 
 - **`giaDinh`** vào danh sách đặc quyền màn Nâng cấp (*"Gia đình"*), `/nha/tao` qua `redirectTheoQuyen`; Premium bị admin tắt → *"Đang tạm ngừng"*, ẩn giá + nút mua (I2).
 - **`thamGiaNha` KHÔNG vào đặc quyền** (`dacQuyenPremium` loại nó, M3): Basic mặc định được tham gia nhà; quyền chỉ để admin chủ động tắt, và khi tắt màn Tham gia / nút *Chấp nhận* khoá với câu trung tính (`cauLoiNha(tinhNangKhongMo)`), **không** mời mua. Quyền tắt thắng cả trạng thái đang-ở-nhà (Ruling Task 6).
 - Quét 21 (`quyen_tinh_nang_mot_noi_test`) có miễn trừ cho khoá JSON `'household'` của `nha_cua_toi.dart` (G113 nợ 5, đã đóng). Bước 0 go / no-go (spec B1 mục 10) **chưa đo lại** cho hai mã mới: đo khi ma trận đổi.
+
+### 8.12 Trần ví tính cả ví lưu trữ (2026-11-17, người dùng chốt)
+
+Trước đó `DemDangHoatDong.dem(LoaiTran.vi)` đếm `walletDao.getActive` (ví đang dùng) nên lưu trữ một ví là nhả một chỗ — số ví thật tăng không giới hạn. Nay đếm **`walletDao.getAll`**: mọi ví cá nhân chưa xoá, gồm cả ví lưu trữ; ví đã xoá nhả chỗ; ví chung của nhà không tính (trần riêng `toiDaViChung`). Trần vẫn lấy theo thiết lập admin (`tranHieuLuc`), cả Basic lẫn cột Premium. Bỏ lưu trữ không đổi số đếm nên không có cửa chặn mới; người đang vượt trần giữ nguyên ví, chỉ không tạo thêm. Câu chặn của ví kèm hằng `kTinhCaViLuuTru` (`cau_quyen.dart`): *"Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic."* / *"Gói Premium hiện cho tạo tối đa N ví (tính cả ví đã lưu trữ)."* Quét 2 (`wallet_picker_sources_test`) khai `dem_dang_hoat_dong.dart` vào danh sách được đọc mọi ví — **đừng** đổi về `getActive`.
+
+⚠️ Chỉ thi hành ở client: backend không sửa, chưa rõ server có chặn theo cùng luật (ví tạo bằng bản client cũ / đường khác vẫn lọt).
+
+**Đo máy ảo `FlowMoney_Thu` (API 36, APK debug trỏ Render, 2026-11-17)** — tài khoản Basic `nguyenphubao1` (server đặt 3 ví): 4 ví dùng + 2 lưu trữ → *Thêm ví mới* chặn, câu mới ✅; lưu trữ thêm 2 ví (còn **2** dùng + 4 lưu trữ — mã cũ cho tạo) → vẫn chặn, câu mới ✅; bỏ lưu trữ trả về 4 + 2 như cũ.
