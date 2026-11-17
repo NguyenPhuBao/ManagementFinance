@@ -42,8 +42,10 @@ if (config.env === 'development') {
 }
 
 // ─── AIOPS SENTINEL REAL-TIME METRIC STREAMING ───────────────────
+// AIOps tạm dừng mặc định (AIOPS_ENABLED khác 'true'): middleware bỏ qua, không đếm và không chặn.
+const { aiopsGated } = require('./modules/aiops/aiops.toggle');
 const { defaultFeatureCollector } = require('./modules/aiops/feature.collector');
-app.use(defaultFeatureCollector.createMiddleware());
+app.use(aiopsGated(defaultFeatureCollector.createMiddleware()));
 
 // ─── RESILIENCE & ADMIN PRIORITY PIPELINE ───────────────────────
 const { defaultAdminPriority } = require('./middleware/admin-priority.middleware');
@@ -60,7 +62,7 @@ app.use(defaultAdminPriority);
 app.use(auditLogMiddleware);
 
 // 1b. AIOps Active Quarantine Shield (Chặn đứng tức thì các IP tấn công/bất thường)
-app.use(defaultAIOpsQuarantine.createMiddleware());
+app.use(aiopsGated(defaultAIOpsQuarantine.createMiddleware()));
 
 // 2. Kiểm tra chế độ bảo trì khẩn cấp (Chặn client, giữ admin thông suốt)
 app.use(defaultMaintenance);

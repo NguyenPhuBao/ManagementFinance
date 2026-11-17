@@ -1,49 +1,57 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
-import { Badge, Card, ConfirmModal } from '../../../components/ui';
+import { Badge, Card } from '../../../components/ui';
 import { lockState } from './aiopsFormat';
+import { useNumberFormat } from '../../../utils/format';
 
 const BAR = { danger: 'bg-danger', warning: 'bg-warning', info: 'bg-info', success: 'bg-success', neutral: 'bg-ink-faint' };
-const barTone = (score) => (score >= 80 ? 'danger' : score >= 60 ? 'warning' : score >= 30 ? 'info' : 'success');
-const num = (v) => Number(v || 0).toLocaleString('vi-VN');
+const DEFAULT_BANDS = { elevated: 40, warning: 70, critical: 85 };
+// Màu thanh điểm theo băng điểm Backend trả (indicators.scoreBands).
+const barTone = (score, bands = DEFAULT_BANDS) =>
+  score >= bands.critical ? 'danger' : score >= bands.warning ? 'warning' : score >= bands.elevated ? 'info' : 'success';
 
-const statusOf = (key, score, ops, t) => {
+// Trạng thái từng nhóm lấy từ vectorDefenses của Backend, không tự suy từ điểm.
+const statusOf = (key, ops, t, num) => {
+  const backend = ops.statusData?.vectorDefenses?.[key]?.status || 'NORMAL';
+  const alerting = backend === 'ALERT' || backend === 'WARNING' || backend === 'CRITICAL';
   if (key === 'auth') {
     const n = ops.quarantineList.filter((item) => {
       const s = lockState(item);
-      return s.ip.kind !== 'unlocked' || (s.account && s.account.kind !== 'unlocked');
+      return (s.ip && s.ip.kind !== 'unlocked') || (s.account && s.account.kind !== 'unlocked');
     }).length;
     if (n > 0) return { tone: 'danger', text: t('aiopsPage.vectorCard.blocking', { n }) };
-    if (score >= 70) return { tone: 'danger', text: t('aiopsPage.vectorCard.blockingOn') };
+    if (alerting) return { tone: 'danger', text: t('aiopsPage.vectorCard.blockingOn') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.ready') };
   }
   if (key === 'traffic') {
-    if (score >= 70) return { tone: 'info', text: t('aiopsPage.vectorCard.throttling') };
+    if (alerting) return { tone: 'info', text: t('aiopsPage.vectorCard.throttling') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.trafficOk', { n: num(ops.targetConcurrency) }) };
   }
   if (key === 'exploit') {
-    if (score >= 70) return { tone: 'danger', text: t('aiopsPage.vectorCard.exploitBlocked') };
+    if (alerting) return { tone: 'danger', text: t('aiopsPage.vectorCard.exploitBlocked') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.ready') };
   }
   if (ops.isEmergencyResourceRisk) return { tone: 'danger', text: t('aiopsPage.vectorCard.needMaintenance') };
-  if (score >= 60) return { tone: 'warning', text: t('aiopsPage.vectorCard.shedding') };
+  if (alerting) return { tone: 'warning', text: t('aiopsPage.vectorCard.shedding') };
   return { tone: 'success', text: t('aiopsPage.vectorCard.stable') };
 };
 
-const metricsOf = (key, sample, t) => {
+const metricsOf = (key, sample, t, num) => {
   if (key === 'auth') return [[t('aiopsPage.signals.failedLogins'), num(sample.failedLogins)], [t('aiopsPage.signals.tokenReuse'), num(sample.tokenReuseAttacks)]];
   if (key === 'traffic') return [[t('aiopsPage.signals.traffic'), `${num(sample.requestsPerMin)} ${t('aiopsPage.unit.perMinute')}`], [t('aiopsPage.signals.distinctIps'), num(sample.distinctIpsCount)]];
   if (key === 'exploit') return [[t('aiopsPage.signals.malformed'), num(sample.malformedRequests)], [t('aiopsPage.vectorCard.traversal'), t('aiopsPage.vectorCard.autoDetect')]];
-  return [[t('aiopsPage.signals.lag'), `${sample.eventLoopLagMs ?? 0} ms`], ['CPU / RAM', `${sample.cpuPercent ?? 0}% / ${sample.ramPercent ?? 0}%`]];
+  return [[t('aiopsPage.signals.lag'), `${num(sample.eventLoopLagMs)} ms`], ['CPU / RAM', `${num(sample.cpuPercent)}% / ${num(sample.ramPercent)}%`]];
 };
 
 const VectorCard = ({ vectorKey, ops, onToggle }) => {
   const { t } = useLanguageSafe();
+  const f = useNumberFormat();
+  const num = (v) => f.number(v, { maxFrac: 1 });
   const name = t(`aiopsPage.vector.${vectorKey}`);
   const score = Number(ops.vectorScores[vectorKey] || 0);
   const enabled = ops.vectorConfig[vectorKey] !== false;
-  const status = enabled ? statusOf(vectorKey, score, ops, t) : { tone: 'neutral', text: t('aiopsPage.vectorCard.measureOnly') };
-  const tone = enabled ? barTone(score) : 'neutral';
+  const status = enabled ? statusOf(vectorKey, ops, t, num) : { tone: 'neutral', text: t('aiopsPage.vectorCard.measureOnly') };
+  const tone = enabled ? barTone(score, ops.indicators?.scoreBands) : 'neutral';
 
   return (
     <div className={`flex flex-col gap-3 rounded-xl border border-line p-4 ${enabled ? 'bg-card' : 'bg-muted'}`}>
@@ -70,7 +78,7 @@ const VectorCard = ({ vectorKey, ops, onToggle }) => {
         </div>
       </div>
       <dl className="m-0 flex flex-col gap-1 border-t border-line pt-3 text-sm">
-        {metricsOf(vectorKey, ops.sample, t).map(([label, value]) => (
+        {metricsOf(vectorKey, ops.sample, t, num).map(([label, value]) => (
           <div key={label} className="flex justify-between gap-2">
             <dt className="text-ink-muted">{label}</dt>
             <dd className="m-0 font-medium tabular-nums text-ink">{value}</dd>
@@ -84,37 +92,16 @@ const VectorCard = ({ vectorKey, ops, onToggle }) => {
   );
 };
 
+// Bật / tắt phòng vệ từng nhóm qua hộp PIN chung của trang (ops.toggleVector).
 const VectorSection = ({ ops }) => {
   const { t } = useLanguageSafe();
-  const [pending, setPending] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  const confirm = async () => {
-    setSaving(true);
-    const ok = await ops.toggleVector(pending.key, pending.enabled);
-    setSaving(false);
-    if (ok) setPending(null);
-  };
-
-  const name = pending ? t(`aiopsPage.vector.${pending.key}`) : '';
-
   return (
     <Card title={t('aiopsPage.vectorCard.title')} padded>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {['auth', 'traffic', 'exploit', 'resource'].map((key) => (
-          <VectorCard key={key} vectorKey={key} ops={ops} onToggle={(k, enabled) => setPending({ key: k, enabled })} />
+          <VectorCard key={key} vectorKey={key} ops={ops} onToggle={ops.toggleVector} />
         ))}
       </div>
-      <ConfirmModal
-        open={Boolean(pending)}
-        onCancel={() => setPending(null)}
-        onConfirm={confirm}
-        loading={saving}
-        confirmDanger={pending ? !pending.enabled : false}
-        title={pending ? t(pending.enabled ? 'aiopsPage.vectorCard.enableTitle' : 'aiopsPage.vectorCard.disableTitle', { name }) : ''}
-        message={pending ? t(pending.enabled ? 'aiopsPage.vectorCard.enableMsg' : 'aiopsPage.vectorCard.disableMsg') : ''}
-        confirmText={pending ? t(pending.enabled ? 'aiopsPage.vectorCard.enable' : 'aiopsPage.vectorCard.disable') : ''}
-      />
     </Card>
   );
 };

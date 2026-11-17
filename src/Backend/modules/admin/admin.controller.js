@@ -1,8 +1,19 @@
 const adminService = require('./admin.service');
 const deviceHistory = require('../auth/device-history.service');
 const policyService = require('../policy/policy.service');
+const preferenceService = require('./admin-preference.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
+
+/** Kiểm PIN quản trị gửi kèm trong chính request thao tác (thiếu / sai → lỗi 400, khoá → 429). */
+const requirePin = (req, action, targetId) =>
+  adminService.verifySecurityAction({ pin: req.body?.pin, action, targetId: String(targetId ?? 'N/A') }, req.user);
+
+/** Bỏ thông tin xác thực trước khi chuyển dữ liệu xuống service. */
+const withoutPin = (body) => {
+  const { pin, password, ...rest } = body || {};
+  return rest;
+};
 
 const adminController = {
   async getUserDevices(req, res) {
@@ -15,6 +26,27 @@ const adminController = {
       return ResponseHandler.success(res, devices, 'Thiết bị đăng nhập của người dùng');
     } catch (error) {
       logger.error('getUserDevices failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  /** Cài đặt cá nhân của CHÍNH tài khoản đang đăng nhập (idaccount từ token, không nhận từ body). */
+  async getMySettings(req, res) {
+    try {
+      const data = await preferenceService.get(req.user.idaccount);
+      return ResponseHandler.success(res, data, 'Cài đặt của tài khoản');
+    } catch (error) {
+      logger.error('getMySettings failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async updateMySettings(req, res) {
+    try {
+      const data = await preferenceService.update(req.user.idaccount, req.body);
+      return ResponseHandler.success(res, data, 'Đã lưu cài đặt của tài khoản');
+    } catch (error) {
+      if (error.statusCode !== 400) logger.error('updateMySettings failed', { error: error.message });
       return ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   },
@@ -169,7 +201,10 @@ const adminController = {
     try {
       const iduser = parseInt(req.params.id, 10);
       if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
-      const result = await adminService.updateStatus(iduser, req.body);
+      const data = withoutPin(req.body);
+      const action = data.status === 'Inactive' ? 'DEACTIVATE_USER' : data.status === 'Active' ? 'ACTIVATE_USER' : 'CHANGE_USER_STATUS';
+      await requirePin(req, action, `user#${iduser}`);
+      const result = await adminService.updateStatus(iduser, data, req.user);
       logger.info('User status updated', { iduser, ...result });
       req.auditActionName = result.newStatus === 'Active' ? 'Mở khóa tài khoản' : 'Khóa tài khoản';
       return ResponseHandler.success(res, result, 'Cập nhật trạng thái thành công');
@@ -184,6 +219,7 @@ const adminController = {
     try {
       const iduser = parseInt(req.params.id, 10);
       if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      await requirePin(req, 'DELETE_USER', `user#${iduser}`);
       const result = await adminService.deleteUser(iduser);
       logger.info('User soft deleted', { iduser, ...result });
       req.auditActionName = 'Xóa người dùng (xóa mềm)';
@@ -209,6 +245,7 @@ const adminController = {
     try {
       const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
+      await requirePin(req, 'SYNC_CATEGORIES', `category:add:${name}`);
       const result = await adminService.addCategory({ name, classify, is_default, keyword, icon }, req.user?.idaccount);
       return ResponseHandler.created(res, result, 'Thêm danh mục thành công');
     } catch (error) {
@@ -226,6 +263,7 @@ const adminController = {
       }
       const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
+      await requirePin(req, 'SYNC_CATEGORIES', `category:update:${id}`);
       const result = await adminService.updateCategory(id, { name, classify, is_default, keyword, icon }, req.user?.idaccount);
       return ResponseHandler.success(res, result, 'Cập nhật danh mục thành công');
     } catch (error) {
@@ -241,6 +279,7 @@ const adminController = {
       if (!id || typeof id !== 'string' || id.length < 32) {
         return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
       }
+      await requirePin(req, 'SYNC_CATEGORIES', `category:delete:${id}`);
       const result = await adminService.deleteCategory(id);
       return ResponseHandler.success(res, result, 'Xóa danh mục thành công');
     } catch (error) {
@@ -256,6 +295,7 @@ const adminController = {
       if (!id || typeof id !== 'string' || id.length < 32) {
         return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
       }
+      await requirePin(req, 'SYNC_CATEGORIES', `category:restore:${id}`);
       const result = await adminService.restoreCategory(id);
       return ResponseHandler.success(res, result, 'Khôi phục danh mục thành công');
     } catch (error) {
@@ -290,10 +330,17 @@ const adminController = {
     return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Trạng thái bảo trì hệ thống');
   },
 
-  setMaintenanceStatus(req, res) {
+  async setMaintenanceStatus(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
     const { active, reason, isEmergency, isUpgrade, type, scheduledAt, scheduledEndAt } = req.body || {};
     const adminUser = req.user?.username || req.user?.fullname || 'admin';
+
+    try {
+      const action = scheduledAt ? 'SCHEDULE_MAINTENANCE' : active ? 'EMERGENCY_MAINTENANCE' : 'STOP_MAINTENANCE';
+      await requirePin(req, action, scheduledAt || 'SYSTEM');
+    } catch (err) {
+      return ResponseHandler.error(res, err.message, err.statusCode || 500);
+    }
 
     // 1. Xử lý lên lịch bảo trì / nâng cấp trong tương lai
     if (scheduledAt) {
@@ -336,6 +383,12 @@ const adminController = {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
     const { defaultMaintenanceRepository } = require('./maintenance.repository');
     const id = req.params?.id || req.body?.id || req.query?.id || null;
+
+    try {
+      await requirePin(req, 'CANCEL_MAINTENANCE', id ? `maintenance#${id}` : 'maintenance:all');
+    } catch (err) {
+      return ResponseHandler.error(res, err.message, err.statusCode || 500);
+    }
 
     if (id) {
       try {
@@ -412,7 +465,8 @@ const adminController = {
 
   async updatePermissions(req, res) {
     try {
-      const { updates } = req.body;
+      const { updates } = req.body || {};
+      await requirePin(req, 'UPDATE_PERMISSIONS', `permissions:${Array.isArray(updates) ? updates.length : 0}`);
       const result = await adminService.updatePermissionsMatrix(updates, req.user);
       return ResponseHandler.success(res, result, 'Cập nhật phân quyền tính năng thành công');
     } catch (error) {
@@ -424,6 +478,7 @@ const adminController = {
 
   async resetPermissions(req, res) {
     try {
+      await requirePin(req, 'RESET_PERMISSIONS', 'permissions:default');
       const result = await adminService.resetPermissionsToDefault(req.user);
       return ResponseHandler.success(res, result, 'Khôi phục phân quyền về mặc định thành công');
     } catch (error) {

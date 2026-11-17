@@ -42,6 +42,7 @@
 3. **Thống kê & Tối ưu hóa hạ tầng (Device Telemetry):**
    - Thống kê tỷ lệ thiết bị người dùng (Android, iOS, các dòng máy phổ biến, phiên bản OS) để đội ngũ kỹ thuật có căn cứ ưu tiên tối ưu giao diện và kiểm thử tương thích.
 4. **Phối hợp với Hệ thống Tường lửa AIOps Sentinel:**
+   - *Tạm dừng từ 2026-11-17 (công tắc `AIOPS_ENABLED`, mặc định tắt): việc ghi lịch sử thiết bị vẫn chạy, chỉ phần phong toả IP không hoạt động.*
    - Cung cấp dữ liệu nhận diện thiết bị cho cơ chế phát hiện mối đe dọa (Threat Detection) và tự động phong tỏa IP vi phạm mà không làm ảnh hưởng nhầm đến người dùng hợp pháp khác.
 
 ### 1.2. Các Tính Năng / Màn Hình Tại Admin-Web Sử Dụng Dữ Liệu Này (Kế Hoạch)

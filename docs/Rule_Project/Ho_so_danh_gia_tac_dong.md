@@ -50,7 +50,7 @@ Việc chuyển dữ liệu ra nước ngoài cần **hồ sơ đánh giá tác 
 - Cách ly người dùng: mọi truy vấn lọc `idaccount` lấy từ JWT; `/sync/push` kiểm chủ sở hữu.
 - Nhật ký kiểm toán chỉ ghi thêm (trigger `trg_protect_auditlog`), giao dịch được bảo vệ (`trg_protect_transaction`).
 - Admin: PIN cho thao tác nhạy cảm, khóa xác thực sau 5 lần sai / 15 phút; xem IP đầy đủ phải nhập PIN và ghi nhật ký.
-- AIOps phát hiện bất thường, cách ly IP / tài khoản.
+- AIOps phát hiện bất thường, cách ly IP / tài khoản. Tạm dừng từ 2026-11-17 (mặc định tắt); trong thời gian tắt, đăng nhập và API được bảo vệ bằng bộ giới hạn tần suất, quản trị viên khoá tài khoản ở trang Người dùng.
 - Thời hạn lưu và thanh lọc tự động: `Data_Security.md` mục 8, 9.
 
 ## 6. Rủi ro còn lại và việc cần làm

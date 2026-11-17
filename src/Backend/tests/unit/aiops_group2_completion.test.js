@@ -1,6 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+// Từ 2026-11-16 mọi thao tác ghi AIOps đòi PIN (máy chủ kiểm). Tệp này kiểm hành vi khác nên giả lập PIN hợp lệ;
+// kiểm PIN thật nằm ở tests/unit/aiops.controller.pin_selflock.test.js.
+require('../../modules/admin/admin.service').verifySecurityAction = async () => ({ verified: true });
+
 test('AIOps Sentinel & Account Status — 2-Tier Verification Suite (Tasks 58.5, 58.6 & Đơn 43)', async (t) => {
   const { AIOpsQuarantine } = require('../../modules/aiops/aiops.quarantine');
   const aiopsController = require('../../modules/aiops/aiops.controller');
@@ -178,9 +182,10 @@ test('AIOps Sentinel & Account Status — 2-Tier Verification Suite (Tasks 58.5,
       assert.ok(updateCalled, 'Phải gọi updateMany để giải phóng hết hạn');
       const andArr = updateWhere.AND;
       // Phải có điều kiện loại trừ Admin / Quản trị viên
-      const dauCond = andArr.find(c => c.reason_inactive?.startsWith);
-      assert.ok(dauCond, 'Chỉ mở hàng mang dấu khoá tự động');
-      assert.strictEqual(dauCond.reason_inactive.startsWith, '[AIOPS_AUTO_QUARANTINE]');
+      // Từ 2026-11-16: mở khoá có thời hạn của AIOps (tự khoá hoặc admin tạm khoá), không mở khoá vĩnh viễn / khoá tay ở trang Người dùng
+      const dauCond = andArr.find((c) => Array.isArray(c.OR) && c.OR.some((o) => o.reason_inactive?.startsWith));
+      assert.ok(dauCond, 'Chỉ mở hàng mang dấu khoá có thời hạn của AIOps');
+      assert.deepStrictEqual(dauCond.OR.map((o) => o.reason_inactive.startsWith), ['[AIOPS_AUTO_QUARANTINE]', '[AIOPS_ADMIN_TEMP]']);
     } finally {
       prisma.account.updateMany = origUpdateMany;
       prisma.account.findFirst = origFindFirst;

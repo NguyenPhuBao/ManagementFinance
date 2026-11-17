@@ -4,7 +4,7 @@ import TruncateCell from '../../../components/common/TruncateCell';
 import { useLanguageSafe } from '../../../store/language.context';
 import { formatDateTime } from '../../../utils/format';
 import { Badge, Button, Card, DataTable, Pagination } from '../../../components/ui';
-import { HOUR, MIN_LEAD_HOURS, durationText } from './maintenanceFormat';
+import { HOUR, MIN_LEAD_HOURS, actualEnd, durationText } from './maintenanceFormat';
 
 const STATUS_TONE = { ONGOING: 'warning', SCHEDULED: 'info', COMPLETED: 'success', CANCELLED: 'neutral' };
 const TYPES = ['UPGRADE', 'EMERGENCY', 'SCHEDULED'];
@@ -22,6 +22,23 @@ const parseRows = (res) => {
   if (Array.isArray(payload)) return { rows: payload, total: payload.length };
   return { rows: [], total: 0 };
 };
+
+// Ngày một dòng, giờ một dòng cho bảng gọn; khoảng trắng giữa hai dòng giữ chữ đọc được khi sao chép.
+const DateTimeCell = ({ iso, label }) => {
+  if (!iso) return <span className="text-ink-faint">—</span>;
+  const text = formatDateTime(iso);
+  const cut = text.lastIndexOf(' ');
+  return (
+    <span className="whitespace-nowrap text-ink-muted">
+      {label && <span className="block text-xs text-ink-faint">{label}</span>}
+      {label && ' '}
+      <span className="block">{cut > 0 ? text.slice(0, cut) : text}</span>
+      {cut > 0 && ' '}
+      {cut > 0 && <span className="block text-xs">{text.slice(cut + 1)}</span>}
+    </span>
+  );
+};
+
 
 const MaintenanceHistory = ({ version, now, onCancel, busy }) => {
   const { t } = useLanguageSafe();
@@ -62,16 +79,20 @@ const MaintenanceHistory = ({ version, now, onCancel, busy }) => {
       ),
     },
     { key: 'user', title: t('broadcast.history.colUser'), render: (r) => <TruncateCell text={r.activated_by || 'system'} className="text-ink" /> },
-    { key: 'reason', title: t('broadcast.history.colReason'), width: '24%', render: (r) => <div className="max-w-xs"><TruncateCell text={r.reason || '—'} className="text-ink" /></div> },
-    { key: 'start', title: t('broadcast.history.colStart'), render: (r) => <span className="whitespace-nowrap text-ink-muted">{r.started_at ? formatDateTime(r.started_at) : '—'}</span> },
+    { key: 'reason', title: t('broadcast.history.colReason'), render: (r) => <div className="max-w-xs"><TruncateCell text={r.reason || '—'} className="text-ink" /></div> },
+    { key: 'start', title: t('broadcast.history.colStart'), render: (r) => <DateTimeCell iso={r.started_at} /> },
     {
-      key: 'end',
-      title: t('broadcast.history.colEnd'),
+      key: 'plannedEnd',
+      title: t('broadcast.history.colPlannedEnd'),
+      render: (r) => <DateTimeCell iso={r.scheduled_end_at} />,
+    },
+    {
+      key: 'actualEnd',
+      title: t('broadcast.history.colActualEnd'),
       render: (r) => {
-        let text = '—';
-        if (r.ended_at) text = r.status === 'CANCELLED' ? t('broadcast.history.cancelledAt', { time: formatDateTime(r.ended_at) }) : formatDateTime(r.ended_at);
-        else if (r.status !== 'CANCELLED' && r.scheduled_end_at) text = t('broadcast.history.plannedEnd', { time: formatDateTime(r.scheduled_end_at) });
-        return <span className="whitespace-nowrap text-ink-muted">{text}</span>;
+        const end = actualEnd(r);
+        if (end?.ongoing) return <span className="whitespace-nowrap text-ink-muted">{t('broadcast.history.status.ONGOING')}</span>;
+        return <DateTimeCell iso={end?.at} label={end?.cancelled ? t('broadcast.history.cancelledAt') : null} />;
       },
     },
     { key: 'duration', title: t('broadcast.history.colDuration'), render: (r) => <span className="whitespace-nowrap font-mono text-xs text-ink">{durationText(r, now, t)}</span> },

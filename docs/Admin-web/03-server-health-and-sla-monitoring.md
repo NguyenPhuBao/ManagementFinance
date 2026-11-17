@@ -127,7 +127,7 @@ Hệ thống tự động phát hiện `cgroup_v2` memory quota trên các dịc
 ### 5.1. Bật Bảo Trì Khẩn Cấp Tại Chỗ (Emergency Switch)
 Ngay tại `ServerHealthPanel`, quản trị viên có thể kích hoạt chế độ bảo trì khẩn cấp lập tức:
 - **Yêu cầu nhập lý do:** Bắt buộc nhập lý do vào ô text input trước khi gạt công tắc.
-- **Xác thực mã PIN cấp 2:** Khi bật công tắc, hệ thống kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên (6 chữ số).
+- **Xác thực mã PIN cấp 2:** Khi bật công tắc, hệ thống kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên (6 chữ số). Từ 2026-11-16 PIN gửi kèm lệnh bật bảo trì và Backend kiểm (`EMERGENCY_MAINTENANCE`).
 
 ### 5.2. Khóa Công Tắc Khi Đang Trong Trạng Thái Bảo Trì (Toggle Lock Protection)
 - **Vấn đề an toàn:** Tránh trường hợp quản trị viên vô tình click vào công tắc tại Dashboard làm tắt bảo trì sai quy trình khi hệ thống chưa khắc phục xong sự cố.

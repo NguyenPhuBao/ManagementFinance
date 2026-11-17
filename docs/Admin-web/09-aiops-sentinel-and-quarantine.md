@@ -2,10 +2,32 @@
 
 > **Mã chức năng:** `ADMIN-FEAT-09`  
 > **Phiên bản:** `v2.6 (23/10/2026)`  
-> **Trạng thái:** `Production Ready`  
+> **Trạng thái:** `Tạm dừng từ 2026-11-17 (xem mục Trạng thái)`  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AIOpsPage.jsx` (ghép khối), `src/Admin-web/src/pages/system/aiops/*` (`useAIOps.js`, `ScaleSection`, `SignalsSection`, `VectorSection`, `TrendSection`, `IncidentsSection`, `QuarantineSection`, `AIOpsModals`, `aiopsFormat.js`), `src/Admin-web/src/components/layout/AppLayout.jsx`  
 > - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`, `src/Backend/database/27b_create_aiops_metric_snapshot_table.sql`  
+
+## Trạng thái: tạm dừng (2026-11-17)
+
+Tính năng tạm dừng, thuộc phạm vi nâng cấp khi đưa hệ thống ra người dùng thật. Mã được giữ nguyên (bản công thức cuối: commit `a476d5ca`), bật lại bằng công tắc.
+
+| Công tắc | Nơi đặt | Mặc định |
+|---|---|---|
+| `AIOPS_ENABLED` | Backend (`.env`, Render) | tắt; chỉ bật khi `= true` |
+| `VITE_AIOPS_ENABLED` | Admin-web (lúc build, Vercel) | tắt; chỉ bật khi `= true` |
+
+Bật thì bật cả hai. Chỉ bật Admin-web thì trang gọi API sẽ nhận 404.
+
+**Khi tắt** (mã: `src/Backend/modules/aiops/aiops.toggle.js`, `src/Admin-web/src/config/features.js`; test: `tests/unit/aiops.toggle.test.js`, `src/tests/layout.test.jsx`, `src/tests/aiops.route.toggle.test.jsx`):
+- Backend không thu thập chỉ số, không chạy vòng đo 10 giây, không tự khoá IP hay tài khoản, không chặn IP đang cách ly (không còn 403 `AIOPS_QUARANTINED`).
+- `/admin/aiops/*` trả 404 `AIOPS_DISABLED`.
+- Danh sách phong toả vẫn được nạp để bộ quét hết hạn mở các tài khoản đang bị khoá tạm đúng hạn. Khoá vĩnh viễn giữ nguyên; quản trị viên mở ở trang Người dùng.
+- Đăng nhập vẫn được bảo vệ bởi bộ giới hạn tần suất (`authLimiter`, `generalLimiter`).
+- Admin-web ẩn menu "Giám sát an ninh"; `/aiops` chuyển về Dashboard; không thăm dò trạng thái, không hiện banner đe doạ, bỏ qua sự kiện socket `admin.security_alert` / `admin.security_blocked`.
+- Client-app không cần đổi: chỉ không còn nhận 403 `AIOPS_QUARANTINED`.
+- Bảng CSDL, migration, ma trận quyền giữ nguyên.
+
+---
 
 ---
 
@@ -46,10 +68,9 @@ graph TD
     end
 
     subgraph "Tầng 3: Bộ Điều Khiển Quy Mô Dung Lượng (Target Concurrency Scaler)"
-        SC["Admin tùy chỉnh N = 500 - 5,000 CCU"]
-        SC -->|"Baseline RPM = N * 10"| V2
-        SC -->|"Safe Peak = N * 30 RPM (N / 2 RPS)"| V2
-        SC -->|"Ngưỡng cách ly IP = 20 + 50*log10(N)"| V2
+        SC["Đường nền lưu lượng theo giờ (trung vị snapshot 7 ngày; thiếu lịch sử: N × 2)"]
+        SC -->|"Ngưỡng cảnh báo = max(3 × nền, 1,5 × P95, 300)"| V2
+        SC -->|"Ngưỡng chặn IP = 150 yêu cầu/10 giây (cố định)"| V2
     end
 
     F1 --> V1
@@ -138,16 +159,8 @@ Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm 
   + Ví dụ: Nếu mỗi vector chỉ biến động nhẹ $20 - 30$ điểm (hoàn toàn bình thường trong vận hành thực tế), công thức tổng hợp có thể đẩy điểm số lên mức báo động đỏ, gây kích hoạt chế độ bảo trì khẩn cấp ngoài ý muốn.
   + Việc loại bỏ Threat Score tổng giúp đội ngũ Quản trị viên và hệ thống phòng vệ phản ứng chính xác đúng nơi có sự cố: chỉ cách ly IP vi phạm nếu rủi ro thuộc $S_{\text{auth}}$ / $S_{\text{exploit}}$, chỉ điều chỉnh phân luồng nếu thuộc $S_{\text{traffic}}$, và chỉ bảo trì khi có nguy cơ sập phần cứng từ $S_{\text{resource}}$.
 
-### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (EWMA Anti-Poisoning Guard)
-```javascript
-// Chỉ cập nhật baseline khi không có vector nào vượt ngưỡng cảnh báo (Hệ thống an toàn)
-const isSafe = Object.values(vectorScores).every(score => score < 70);
-if (isSafe) {
-  this._updateHourlyBaseline(sample);
-} else {
-  logger.warn('[AIOps] Anti-Poisoning kích hoạt: Tạm dừng cập nhật Baseline khi có vector vượt ngưỡng rủi ro');
-}
-```
+### 3.5. Chống đầu độc đường nền (cập nhật 2026-11-17)
+Bỏ EWMA cập nhật mỗi 10 giây. Đường nền lưu lượng là **trung vị** snapshot có `is_anomaly = false` trong 7 ngày, tính lại mỗi giờ. Trung vị không bị một đợt tấn công kéo lệch, và mẫu bất thường bị loại khỏi tập học. Công thức đầy đủ (điểm liên tục, ngưỡng, năng lực theo Luật sử dụng): [AIOPS_CONG_THUC.md](../AIOps/AIOPS_CONG_THUC.md).
 
 ---
 
@@ -178,28 +191,15 @@ HTTP/1.1 403 Forbidden
 ```
 Request bị ngắt lập tức trước khi chạm vào router nghiệp vụ hoặc database, giải phóng tài nguyên CPU và RAM tức thì.
 
-### 4.3. Miễn Trừ Quản Trị Tuyệt Đối & Tự Động Giải Cứu (Admin Fast-Lane & Auto-Unquarantine)
-Quản trị viên và giao diện Admin-web luôn được bảo vệ bởi 4 tầng thông suốt:
-1. **Nhận diện Kênh Admin-web:** Toàn bộ request từ Admin-web được gắn header `x-client-platform: admin-web` cùng bộ lọc Origin/Referer, được middleware `adminPriority` cấp quyền `req.isAdmin = true` và `req.isAdminWebClient = true`.
-2. **Mở Cửa Ngõ Đăng Nhập:** Request `POST /api/auth/login` với tài khoản `admin` hoặc từ Admin-web không bị chặn đứng bởi phong tỏa, cho phép đi tiếp vào controller để so khớp mật khẩu bcrypt an toàn.
-3. **Cơ Chế Tự Động Giải Cứu (Auto-Unquarantine Upon Admin Login):** Khi đăng nhập thành công với vai trò Quản trị viên, hệ thống **tự động xóa IP đó khỏi danh sách phong tỏa ngay tức thì** (`defaultAIOpsQuarantine.unquarantine(clientIp)`).
-4. **Miễn Trừ Môi Trường Phát Triển (Dev Loopback Exemption):** Khi `NODE_ENV === 'development'`, các địa chỉ loopback (`127.0.0.1`, `::1`, `localhost`) được miễn trừ hoàn toàn khỏi lệnh cô lập, đảm bảo các thiết bị thử nghiệm thật kết nối qua `adb reverse` hoặc máy ảo không bao giờ bị khóa chùm.
-5. **Khai Thác IP Chuẩn Xác Tuân Thủ `trust proxy`:** Tuyệt đối không đọc thô phần tử đầu của `X-Forwarded-For` (vốn cho phép client giả mạo IP); hệ thống sử dụng chuẩn `req.ip || req.socket?.remoteAddress` đảm bảo tôn trọng `app.set('trust proxy', 1)`.
-6. **Phân Định Token Expired vs Token Reuse:** Hết hạn phiên làm việc thông thường chỉ trả về `401 Unauthorized` để client đăng nhập lại, tuyệt đối KHÔNG phong tỏa IP. Chỉ khi kẻ gian cố tình tái sử dụng Refresh Token đã bị thu hồi (`req.tokenReuseDetected === true`) mới kích hoạt cảnh báo Token Hijacking.
-
-### 4.4. Lá Chắn Bảo Vệ IP Admin Hybrid (Cấu Hình .env + Đăng Ký Động Theo Phiên Làm Việc)
-Hệ thống thiết lập cơ chế bảo vệ tối thượng kết hợp cả 2 tầng tĩnh và động nhằm **ngăn ngừa triệt để thảm họa tự khóa cửa nhốt mình ngoài trời (Admin Lockout Disaster)** ngay cả khi Quản trị viên thay đổi vị trí, thiết bị hoặc mạng internet (nhà riêng, văn phòng, 4G, quán cafe):
-1. **Lớp 1 — IP Tĩnh Cấu Hình Qua Biến Môi Trường (`ADMIN_TRUSTED_IPS`):**
-   - Không set cứng trong code. Hệ thống đọc danh sách IP tin cậy từ `process.env.ADMIN_TRUSTED_IPS` (phân cách bởi dấu phẩy, ví dụ: `127.0.0.1,::1,localhost,192.168.1.100`).
-   - Phù hợp cho IP tĩnh văn phòng, máy chủ nhảy cóc (Bastion Host) hoặc VPN nội bộ.
-2. **Lớp 2 — Tự Động Nhận Diện & Đăng Ký Động Khi Admin Đăng Nhập (Dynamic Admin Session Protection):**
-   - Khi Admin đăng nhập thành công (`authService.login`), Backend tự động đọc địa chỉ IP máy của Admin (`req.ip` / `req.socket.remoteAddress`) và gọi `defaultAIOpsQuarantine.registerAdminSession(clientIp, { userId, username, ttlMs })`.
-   - IP này lập tức được thêm vào danh sách bảo vệ động In-Memory. Nếu IP đó từng bị phong tỏa trước đây, hệ thống tự động giải phóng phong tỏa tức thì.
-   - Khi Admin bấm Đăng xuất (`authController.logout`): Hệ thống tự động gọi `unregisterAdminSession(clientIp)` để giải phóng bảo vệ.
-3. **Phòng Vệ Trực Quan & Động Trên Giao Diện (bảng Sự cố, `pages/system/aiops/IncidentsSection.jsx`):**
-   - Giao diện Admin-web nhận diện chính xác IP máy tính Admin đang ngồi (`currentClientIp` từ API status hoặc user session).
-   - Trên bảng RCA, dòng sự cố thuộc IP máy tính hiện tại sẽ hiển thị huy hiệu xanh lá: **`🛡️ IP Máy bạn (Đang đăng nhập)`** và **hoàn toàn ẩn/vô hiệu hóa nút đỏ "Phong Tỏa IP"**.
-   - Nếu đối tượng thuộc IP tĩnh hoặc nội bộ, hệ thống hiển thị huy hiệu **`🛡️ IP Được bảo vệ`** hoặc **`⚙️ Nội bộ hệ thống`**.
+### 4.3. Khoá IP chặn cả quản trị viên (đổi nghiệp vụ 2026-11-16)
+Trước 2026-11-16, request đã xác thực là admin (`req.isAdmin`) đi qua mọi IP bị khoá, và admin đăng nhập thì IP của mình được gỡ khoá và miễn khoá 24 giờ. Cơ chế đó đã **bỏ**, vì kẻ chiếm được một tài khoản admin có thể dùng nó để tự gỡ khoá IP của mình. Nay:
+1. IP đang bị khoá thì chặn mọi request (403 `AIOPS_QUARANTINED`), kể cả admin có token hợp lệ. Admin đăng nhập không gỡ và không miễn khoá IP.
+2. Ngoại lệ duy nhất: **tài khoản quản trị gốc** (mục 4.8): request mang token hợp lệ của tài khoản gốc, hoặc `POST /api/auth/login` với tên đăng nhập trùng `ROOT_ADMIN_USERNAME` (vẫn phải qua mật khẩu và khoá thứ hai).
+3. IP không bao giờ bị khoá: loopback và các IP trong `ADMIN_TRUSTED_IPS` (biến môi trường, phân cách dấu phẩy). Trên Render chưa đặt biến này, nên chỉ còn loopback.
+4. Admin được khoá IP mình đang dùng (trừ IP máy chủ); không được khoá tài khoản của chính mình (403 `CANNOT_LOCK_SELF`); được khoá tài khoản admin khác.
+5. Admin-web nhận 403 `AIOPS_QUARANTINED` thì hiện "IP bạn đang dùng bị khóa tạm thời đến …" theo ngôn ngữ đang chọn, ở mọi trang kể cả Đăng nhập (`api/axios-client.js`).
+6. **Miễn trừ môi trường phát triển:** khi `NODE_ENV === 'development'`, loopback không bị chặn. IP lấy bằng `req.ip` theo `trust proxy`, không đọc thô `X-Forwarded-For`.
+7. Hết hạn phiên chỉ trả 401; chỉ khi dùng lại refresh token đã thu hồi (`req.tokenReuseDetected`) mới tính là dấu hiệu chiếm phiên.
 
 ### 4.5. Định Danh Chuẩn Xác Tác Nhân & Phân Quyền 2 Tầng (Early Token Decoder & Role Resolution)
 Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu ("Khách vãng lai / Ẩn danh" và gán nhầm IP máy chủ):
@@ -211,25 +211,27 @@ Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu (
    - ⚙️ **Hệ thống (System):** Tiến trình lõi máy chủ Node.js & CSDL.
    - 🌐 **Khách vãng lai (Guest):** Client chưa định danh hoặc các luồng quét tự động chưa đăng nhập.
 
-### 4.6. Cơ Chế Tự Động Mở Khóa Khi Đếm Ngược Hoàn Thành (Auto-Expire & Real-Time Auto-Unblock)
-Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng IP hoặc Tài khoản bị giam giữ vô thời hạn sau khi đã hết thời gian phạt:
-1. **Frontend (Admin-web Client Real-Time Countdown):**
-   - Thiết lập ticker đếm ngược thời gian thực mỗi 5 giây (`setInterval(..., 5000)`).
-   - Khi thời gian còn lại đếm ngược về 0 (`diffMs <= 0` hoặc `effectiveMin <= 0`):
-     - Giao diện tự động chuyển trạng thái đối tượng sang ĐÃ MỞ KHÓA (`isIpUnlocked = true` / `isAccountUnlocked = true`).
-     - Thời gian khóa hiển thị tự động triệt tiêu và chuyển sang nhãn `--` (`IP: --` hoặc `TK: --`).
-     - Hàng thao tác tự động chuyển sang nút `Tạm khóa IP` / `Tạm khóa TK` (ẩn hoàn toàn các nút `Phong tỏa` và `Mở khóa`).
-2. **Backend Engine (`aiops.quarantine.js`):**
-   - Tích hợp bộ quét định kỳ ngầm `startAutoExpireTimer(15000)` chạy tự động mỗi 15 giây.
-   - Phương thức `sweepExpiredQuarantines()` rà soát cả RAM Cache $O(1)$ và CSDL:
-     - **Với IP hết hạn:** Chuyển `ipStatus = 'unlocked'`, `ipExpiresAt = null`, gỡ khỏi bộ nhớ chặn `_map` & `_byHash`, cập nhật trạng thái bảng CSDL `aiops_ip_quarantine` sang `UNLOCKED`.
-     - **Với Tài khoản hết hạn:** Chuyển `accountStatus = 'unlocked'`, `accountExpiresAt = null`, cập nhật CSDL `aiops_account_quarantine` sang `UNLOCKED`, đồng bộ bảng `account` Prisma về `status: 'Active', reason_inactive: null`.
-     - Tự động phát sự kiện Socket.io `admin.quarantine_updated` tới phòng `admin_room` để Admin-web đồng bộ tức thì mà không cần người dùng phải tải lại trang.
-3. **Database Repository (`aiops.quarantine.repository.js`):**
-   - Phương thức `autoExpireInDatabase()` chạy truy vấn tham số hóa giải phóng:
-     `UPDATE "aiops_ip_quarantine" SET "status" = 'UNLOCKED', "expires_at" = NULL, "unblocked_at" = NOW(), "unblocked_by" = 'AIOps Auto-Expire' WHERE "status" = 'TEMPORARY' AND "expires_at" <= NOW()` (tương tự cho bảng `aiops_account_quarantine`).
-   - Tích hợp vào `loadActiveQuarantines()` chạy giải phóng trước khi nạp dữ liệu.
-   - Phương thức `hydrateFromDatabase()`: Chỉ gán trạng thái `temporary` nếu `expires_at > nowTs`; nếu hết hạn hoặc không có bản ghi thì tự động gán `unlocked` với `expiresAt = null`, triệt tiêu hoàn toàn lỗi hiển thị thời gian còn lại của các bản ghi từ quá khứ.
+### 4.6. Tự mở khoá khi hết hạn
+- Bộ quét `sweepExpiredQuarantines()` chạy định kỳ (60 giây) và lúc khởi động (`_reconcileAutoLocks`): dòng `TEMPORARY` hết hạn trong `aiops_ip_quarantine` / `aiops_account_quarantine` chuyển `UNLOCKED` (dòng vẫn giữ), và tài khoản được trả về `Active`.
+- Chỉ mở `account` khi `Reason_Inactive` còn mang dấu khoá có thời hạn của AIOps: `[AIOPS_AUTO_QUARANTINE]` (AIOps tự khoá) hoặc `[AIOPS_ADMIN_TEMP]` (admin tạm khoá). Khoá vĩnh viễn `[AIOPS_ADMIN_BAN]` và khoá ở trang Người dùng (không có dấu) không bao giờ tự mở. Các dấu này bị bỏ khỏi lý do trả cho app (`lyDoChoNguoiDung`).
+- Sau mỗi thay đổi phát `admin.quarantine_updated` để Admin-web tải lại danh sách.
+
+### 4.7. Vòng đời khoá và danh sách khoá (2026-11-16)
+- **Tài khoản:** tạm khoá (mặc định 4 giờ, khoá tay chọn 1 / 4 / 12 / 24 giờ) → hết hạn tự mở; đang tạm khoá có thể nâng lên khoá vĩnh viễn; khoá vĩnh viễn chỉ admin mở. Khoá ghi `account.Status = 'Inactive'` (người dùng nhận `ACCOUNT_INACTIVE` khi đăng nhập / gọi API, phiên đang mở bị đẩy ra qua `account.force_logout`) và một dòng trong `aiops_account_quarantine`.
+- **IP:** chỉ tạm khoá; "Khóa thêm 4 giờ" gọi `POST /api/admin/aiops/quarantine/extend-ip` (route cũ `permanent-ip` trỏ cùng hàm, giữ cho tương thích).
+- **Danh sách** (`GET /api/admin/aiops/quarantine` → `listQuarantines()`) đọc từ CSDL, không phụ thuộc bộ nhớ: mọi IP và tài khoản từng bị khoá, kể cả đã mở (ghi người mở và thời điểm). Mỗi dòng là cặp (IP, tài khoản) theo lần vi phạm gần nhất; khoá tay một tài khoản không gắn IP thì là dòng chỉ có tài khoản.
+- Khoá lần đầu một tài khoản chưa từng có dòng thì tạo dòng mới (`upsertAccountLock`); mỗi tài khoản một dòng, khoá lại thì dòng đó trở lại trạng thái khoá. Mã dòng lấy theo đúng tên đăng nhập (dòng có sẵn) hoặc băm SHA-256 của cả tên; mã cũ chỉ phân biệt 16 ký tự đầu nên từng gộp nhầm hai tên trùng tiền tố.
+- Mở tài khoản ở trang Người dùng cũng chuyển dòng AIOps đang khoá của tài khoản đó sang `UNLOCKED` ("Mở từ trang Người dùng").
+- Danh sách chỉ gồm khoá do AIOps tạo (tự động và thủ công trên trang AIOps); vô hiệu hoá ở trang Người dùng vẫn chỉ hiện ở trang Người dùng.
+
+### 4.8. Tài khoản quản trị gốc (2026-11-16)
+- Một tài khoản duy nhất, email cố định `admin@wealthcommand.com` (`modules/auth/root-admin.js`, trùng trigger `database/56_root_admin_guard.sql`). Không thêm cột vào `account`.
+- **Không ai khoá được:** trigger `trg_protect_root_admin` chặn xoá vật lý, đổi Email / Username / Idrole, đưa khỏi `Active`, đặt `Delete_at`, và chặn tài khoản không phải admin dùng email này. Tầng dịch vụ báo 403 `ROOT_ACCOUNT_PROTECTED` trước khi chạm trigger (AIOps khoá tay); AIOps tự khoá bỏ qua tài khoản này. IP của nó vẫn có thể nằm trong danh sách khoá, nhưng request của tài khoản gốc đi qua lớp chặn IP (mục 4.3).
+- **Đăng nhập hai bước:** mật khẩu (bcrypt trong CSDL) + `rootKey` khớp `ROOT_ADMIN_SECOND_KEY` (biến môi trường, so bằng `timingSafeEqual`). Thiếu khoá → 401 `ROOT_KEY_REQUIRED`; sai → 401 `ROOT_KEY_INVALID`; máy chủ chưa đặt biến → 403 `ROOT_KEY_NOT_CONFIGURED`. Admin-web hiện thêm ô "Khoá quản trị gốc" khi nhận `ROOT_KEY_REQUIRED`.
+- **Cắt phiên khi bị lộ:** token mang `root: true` và `rkf` (HMAC của khoá thứ hai bằng bí mật JWT). Đổi `ROOT_ADMIN_SECOND_KEY` rồi khởi động lại → middleware, socket và `/auth/refresh` từ chối phiên cũ (401 `ROOT_SESSION_REVOKED`).
+- Mỗi lần đăng nhập thành công gửi email cảnh báo tới `ADMIN_ALERT_EMAIL`.
+- Tạo tài khoản: `node scripts/seed_root_admin.js --url=…` (đọc `ROOT_ADMIN_USERNAME / EMAIL / PASSWORD`; luỹ đẳng; `--reset-password` đặt lại mật khẩu). Lần đăng nhập đầu phải đổi mật khẩu và đặt PIN.
+- Giữ an toàn tài khoản này là trách nhiệm của admin đứng đầu nắm giữ nó.
 
 ---
 
@@ -245,15 +247,17 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
 
 Trang `AIOpsPage.jsx` chỉ ghép các khối; dữ liệu, socket và thao tác nằm ở `pages/system/aiops/useAIOps.js` (tham số tải đọc qua ref nên vòng làm mới định kỳ luôn dùng bộ lọc đang chọn). Thứ tự khối trên trang:
 
-1. **Tiêu đề và nút hành động:** Làm mới (tải lại trạng thái, xu hướng, nguồn bị chặn, sự cố); Hiệu chuẩn (hộp "Hiệu chuẩn ngưỡng" gồm 6 ô: đăng nhập sai / phút, lưu lượng đột biến / giây, yêu cầu độc hại / phút, CPU %, RAM %, độ trễ xử lý ms; ô để trống dùng giá trị gợi ý theo quy mô, gửi `POST /api/admin/aiops/calibrate`); Bảo trì khẩn cấp (chỉ hiện khi rủi ro tài nguyên vượt ngưỡng, nhập lý do, bật bảo trì khẩn cấp qua `setMaintenanceStatus`).
-2. **Quy mô người dùng (`ScaleSection`):** 4 mức có sẵn (500, 1.000, 5.000, 10.000) và ô nhập 100–50.000 (`POST /api/admin/aiops/scale`); 3 số liệu suy ra: lưu lượng nền = N × 10 yêu cầu / phút, trần an toàn = 3 × lưu lượng nền, ngưỡng chặn IP = max(150, round(20 + 50 · log10 N)) yêu cầu / 10 giây; khối kết quả hiệu chuẩn (số nhân CPU, RAM, CPU / RAM / độ trễ dự kiến).
-3. **Chỉ số (`SignalsSection`):** thẻ "Dấu hiệu tấn công" (đăng nhập sai, token bị dùng lại, yêu cầu độc hại, số IP khác nhau) và "Tải máy chủ" (độ trễ xử lý, CPU, RAM, lưu lượng kèm tỉ lệ 4xx / 5xx); cập nhật theo `admin.metrics_stream`.
-4. **Nhóm rủi ro (`VectorSection`):** 4 thẻ Xác thực, Lưu lượng, Khai thác, Tài nguyên với điểm /100, thanh mức độ, 2 chỉ số riêng và trạng thái phòng vệ. Công tắc bật / tắt phòng vệ phải xác nhận (`POST /api/admin/aiops/vectors/toggle`); tắt nghĩa là vẫn đo nhưng không tự chặn và không tính vào điểm rủi ro.
-5. **Xu hướng rủi ro (`TrendSection`):** tab theo nhóm, khoảng 10 phút / 1 giờ / 24 giờ / 7 ngày / 30 ngày hoặc khoảng tùy chọn Từ – Đến (`GET /api/admin/aiops/history?range=…` hoặc `?from=…&to=…`); vạch ngưỡng 70 và 85; rê chuột xem điểm từng nhóm tại mẫu đó; trục X ghi mốc tương đối; màu theo token chủ đề.
-6. **Sự cố (`IncidentsSection`):** lọc theo nhóm và trạng thái, tìm theo IP / tài khoản / mã, phân trang (`GET /api/admin/aiops/incidents`). Mỗi dòng: thời điểm, trạng thái, số lần lặp, đối tượng (tài khoản + IP đã che), chỉ số so với ngưỡng (vượt bao nhiêu lần), nguyên nhân, xử lý. Nút "Chặn" (hộp xác nhận, gửi `ipHash` của sự cố, không gửi IP đầy đủ, chặn 4 giờ); sự cố của hệ thống, của máy admin đang dùng hoặc IP được bảo vệ không có nút chặn; nguồn đã chặn có nút "Gỡ chặn". Không có xóa hàng loạt.
-7. **Nguồn bị chặn (`QuarantineSection`):** lọc theo IP và tài khoản; thời gian còn lại của IP và tài khoản; thao tác IP (Tạm khóa / Khóa thêm 4 giờ / Mở khóa) và tài khoản (Tạm khóa / Khóa vĩnh viễn / Mở khóa) đều qua hộp xác nhận chung (không dùng `window.confirm`); "Xem IP đầy đủ" bắt buộc PIN, ghi nhật ký (`POST /api/admin/aiops/quarantine/:hash/reveal-ip`); "Hồ sơ điều tra" theo IP hoặc tài khoản, có phân trang; "Tạm khóa thủ công" IP hoặc tài khoản trong 1 / 4 / 12 / 24 giờ.
+**Mọi thao tác ghi trên trang đều qua hộp PIN chung** (máy chủ kiểm, `pin` gửi trong body; thiếu / sai PIN thì không thay đổi gì): đổi quy mô, hiệu chuẩn, bật / tắt phòng vệ, chặn từ sự cố, khoá / mở / khoá thêm IP, tạm khoá / khoá vĩnh viễn / mở tài khoản, khoá thủ công, bảo trì khẩn cấp, xem IP đầy đủ. Thao tác chỉ đọc (xem, lọc, phân trang, đổi khung biểu đồ, Làm mới) không cần PIN.
+
+1. **Tiêu đề và nút hành động:** Làm mới (tải lại đúng trang và bộ lọc đang xem; lỗi thì báo lỗi); Hiệu chuẩn (6 ô ngưỡng; số mờ trong ô là ngưỡng đang hiệu lực do Backend trả; chỉ gửi ô đã nhập, ô trống giữ nguyên; nút "Về mặc định" qua PIN gửi `resetThresholds: true` để bỏ mọi ngưỡng tuỳ chỉnh; ngưỡng được lưu vào `aiops_setting`; kết quả là báo cáo năng lực theo Luật sử dụng, `POST /api/admin/aiops/calibrate`); Bảo trì khẩn cấp (chỉ hiện khi Backend đề xuất `EMERGENCY_MAINTENANCE` hoặc vectơ tài nguyên ở mức CRITICAL).
+2. **Quy mô người dùng (`ScaleSection`):** 4 mức có sẵn và ô nhập 100–50.000 (`POST /api/admin/aiops/scale`); ba thẻ Lưu lượng nền (kèm nguồn: từ lịch sử / 24 giờ gần nhất / ước tính), Ngưỡng cảnh báo lưu lượng, Ngưỡng chặn IP đều lấy nguyên từ `indicators` của Backend; Admin-web không tự tính (công thức: [AIOPS_CONG_THUC.md](../AIOps/AIOPS_CONG_THUC.md)).
+3. **Chỉ số (`SignalsSection`):** dấu hiệu tấn công và tải máy chủ; thẻ ghi "Gần ngưỡng" khi vượt mức chú ý A và "Vượt ngưỡng" khi chạm ngưỡng cảnh báo T (mốc do Backend trả); độ trễ là p99 vòng lặp sự kiện trong cửa sổ kèm giá trị cao nhất; RAM là RAM tiến trình (RSS / hạn mức); số hiện theo định dạng của ngôn ngữ đang chọn (vd. "0,15 nhân" / "0.15 cores").
+4. **Nhóm rủi ro (`VectorSection`):** 4 thẻ với điểm /100 và trạng thái phòng vệ; công tắc bật / tắt qua PIN (`POST /api/admin/aiops/vectors/toggle`).
+5. **Xu hướng rủi ro (`TrendSection`):** khoảng 10 phút / 1 giờ / 24 giờ / 7 ngày / 30 ngày hoặc Từ – Đến. Nhãn trục ngang đặt theo thời gian thật (7 ngày: −7…0); khoảng tự chọn ghi giờ (≤ 24 giờ), ngày + giờ (≤ 3 ngày) hoặc ngày, không trùng nhãn; đường ngắt ở quãng mất số liệu (cách nhau > 3 lần khoảng trung vị); bỏ điểm ngoài khung; trục dọc 0 / 50 / 100 và vạch ngưỡng 70, 85; số cạnh chú thích là điểm hiện tại, hoặc điểm của mẫu cuối khi xem khoảng tự chọn.
+6. **Sự cố (`IncidentsSection`):** lọc nhóm / trạng thái / từ khoá, phân trang. Sự kiện `admin.anomaly_detected`: sự cố đang hiện thì cập nhật tại chỗ; sự cố mới (lần đầu, đang diễn ra) chỉ tăng tổng khi khớp bộ lọc, chỉ chèn khi đang ở trang 1 và giữ đúng cỡ trang. Nút "Chặn" qua PIN (gửi `ipHash`, không gửi IP đầy đủ); sự cố của hệ thống hoặc loopback không có nút chặn.
+7. **Nguồn bị chặn (`QuarantineSection`):** lọc trạng thái (Tất cả / Đang khóa / Đã mở), IP, tài khoản; dòng đã mở ghi "Đã mở bởi … lúc …"; dòng chỉ có tài khoản không có cột / nút IP; tài khoản khoá vĩnh viễn có nút Mở khóa; "Xem IP đầy đủ" và "Hồ sơ điều tra" như trước; "Tạm khóa thủ công" IP hoặc tài khoản trong 1 / 4 / 12 / 24 giờ.
 8. **Realtime:** `admin.metrics_stream`, `admin.security_alert`, `admin.security_blocked`, `admin.quarantine_updated`, `admin.anomaly_detected`, `admin.maintenance_changed`, `admin.vector_config_changed`. Các sự kiện và phản hồi `/api/admin/aiops/*` không mang IP đầy đủ.
-9. **Kiểm thử:** `src/Admin-web/src/tests/aiops.test.jsx` (29 ca, gồm cả `ServerHealthPanel`).
+9. **Kiểm thử:** Admin-web `tests/aiops.test.jsx`, `aiops.trend.test.jsx`, `aiops.quarantined.message.test.js`, `auth.test.jsx`; Backend `tests/unit/aiops.lock_lifecycle.test.js`, `aiops.controller.pin_selflock.test.js`, `root_admin.test.js`, và hai test chạy trên CSDL thử khi có `TEST_DATABASE_URL`: `aiops.quarantine.repo.db.test.js`, `root_admin.trigger.db.test.js`.
 
 ---
 
@@ -386,19 +390,20 @@ Nhằm phục vụ phân tích xu hướng dài hạn (1h, 24h, 7 ngày, 30 ngà
 | `GET` | `/api/admin/aiops/status` | Lấy Threat Score, 4 điểm vectơ, trạng thái và phân tích | Admin |
 | `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử In-Memory phục vụ vẽ biểu đồ 10 phút | Admin |
 | `GET` | `/api/admin/aiops/vectors` | Cấu hình bật / tắt phòng vệ của 4 nhóm rủi ro | Admin |
-| `POST` | `/api/admin/aiops/vectors/toggle` | Bật / tắt phòng vệ một nhóm rủi ro | Admin |
-| `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP/Tài khoản đang bị phong tỏa | Admin |
-| `POST` | `/api/admin/aiops/quarantine` | Chủ động phong tỏa thủ công một nguồn IP/Tài khoản | Admin |
+| `POST` | `/api/admin/aiops/vectors/toggle` | Bật / tắt phòng vệ một nhóm rủi ro | Admin + PIN |
+| `GET` | `/api/admin/aiops/quarantine` | Danh sách khoá đọc từ CSDL: mọi IP / tài khoản từng bị khoá, kể cả đã mở (mục 4.7) | Admin |
+| `POST` | `/api/admin/aiops/quarantine` | Khoá thủ công một IP (kèm `username` thì kiểm không tự khoá / không khoá tài khoản gốc) | Admin + PIN |
 | ~~`DELETE`~~ | ~~`/api/admin/aiops/quarantine/:hash`~~ | Đã bỏ 2026-11-14 (gỡ chặn không qua xác nhận, không nơi gọi); dùng `unblock-ip` / `unblock-account` | — |
-| `POST` | `/api/admin/aiops/quarantine/unblock-ip` | Mở khóa địa chỉ IP và cập nhật CSDL `UNLOCKED` | Admin |
-| `POST` | `/api/admin/aiops/quarantine/permanent-ip` | Khóa vĩnh viễn IP và cập nhật CSDL `PERMANENT` | Admin |
-| `POST` | `/api/admin/aiops/quarantine/temporary-ip` | Tạm khóa IP 4 giờ | Admin |
-| `POST` | `/api/admin/aiops/quarantine/temporary-account` | Tạm khóa tài khoản | Admin |
-| `POST` | `/api/admin/aiops/quarantine/unblock-account` | Mở khóa tài khoản (đồng bộ CSDL account `Active`) | Admin |
-| `POST` | `/api/admin/aiops/quarantine/permanent-account` | Khóa vĩnh viễn tài khoản (đồng bộ CSDL account `Locked`) | Admin |
+| `POST` | `/api/admin/aiops/quarantine/unblock-ip` | Mở khóa IP, dòng chuyển `UNLOCKED` (vẫn giữ) | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/extend-ip` | Khóa thêm 4 giờ (IP chỉ có tạm khoá) | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/permanent-ip` | Tên cũ của `extend-ip`, giữ cho tương thích; không còn khoá vĩnh viễn IP | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/temporary-ip` | Tạm khóa IP (mặc định 4 giờ) | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/temporary-account` | Tạm khóa tài khoản, hết hạn tự mở (`[AIOPS_ADMIN_TEMP]`); 403 `CANNOT_LOCK_SELF` / `ROOT_ACCOUNT_PROTECTED` | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/unblock-account` | Mở khóa tài khoản (account `Active`, dòng `UNLOCKED`) | Admin + PIN |
+| `POST` | `/api/admin/aiops/quarantine/permanent-account` | Khóa vĩnh viễn tài khoản (`[AIOPS_ADMIN_BAN]`, không tự mở); 403 `CANNOT_LOCK_SELF` / `ROOT_ACCOUNT_PROTECTED` | Admin + PIN |
 | `GET` | `/api/admin/aiops/quarantine/forensics` | Truy vấn hồ sơ điều tra an ninh & liên kết N-N | Admin |
-| `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin |
-| `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin |
+| `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin + PIN |
+| `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin + PIN |
 | `GET` | `/api/admin/aiops/incidents` | Lấy danh sách nhật ký sự cố CSDL có phân trang và bộ lọc | Admin |
 | `POST` | `/api/admin/aiops/quarantine/:hash/reveal-ip` | Xem IP đầy đủ của nguồn bị cô lập; bắt buộc PIN (`REVEAL_IP`), ghi nhật ký không chứa IP (G4.1a, 2026-11-13) | Admin |
 

@@ -224,10 +224,12 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
 
     const scaleResult = detector.setConcurrencyScale(2000);
     assert.strictEqual(detector.targetConcurrency, 2000);
-    assert.strictEqual(scaleResult.expectedBaselineRPM, 20000);
-    assert.strictEqual(scaleResult.peakCeilingRPM, 50000);
+    // Đặc tả mới (B1): chưa có lịch sử → đường nền ước tính N × 2; ngưỡng cảnh báo = max(3 × nền, 300)
+    assert.strictEqual(scaleResult.indicators.traffic.baselineRpm, 4000);
+    assert.strictEqual(scaleResult.indicators.traffic.alertRpm, 12000);
+    assert.strictEqual(scaleResult.indicators.traffic.source, 'estimate');
 
-    // A sample of 15,000 RPM at 2000 users should be well within normal baseline (< 2.5x)
+    // 15.000 RPM hữu cơ (không có dấu hiệu tấn công) vượt ngưỡng: chỉ ELEVATED, không cảnh báo
     const highTrafficSample = {
       timestamp: new Date().toISOString(),
       requestsPerMin: 15000,
@@ -245,8 +247,10 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
     };
 
     const evalResult = detector.evaluate(highTrafficSample);
-    assert.strictEqual(evalResult.status, 'NORMAL', '15,000 RPM for 2000 users must stay NORMAL');
-    assert.ok(evalResult.threatScore < 50, `Threat score should stay low: ${evalResult.threatScore}`);
+    assert.ok(['NORMAL', 'ELEVATED'].includes(evalResult.status), `Không được cảnh báo: ${evalResult.status}`);
+    assert.ok(evalResult.threatScore < 70, `Threat score phải < 70: ${evalResult.threatScore}`);
+    assert.ok(evalResult.vectorScores.traffic <= 40, `Lưu lượng hữu cơ tối đa 40 điểm: ${evalResult.vectorScores.traffic}`);
+    assert.strictEqual(evalResult.anomalies.length, 0);
   });
 
   await t.test('9. Per-Vector Defense: Personalizes defense actions per vector without triggering broad EMERGENCY_MAINTENANCE', () => {
@@ -258,7 +262,7 @@ test('AIOps Hybrid Anomaly Detector Suite', async (t) => {
       requestsPerMin: 100,
       errorRate4xx: 0.1,
       errorRate5xx: 0,
-      failedLogins: 30, // Exceeds relaxed brute-force threshold (>= 25)
+      failedLogins: 20, // Vượt ngưỡng cảnh báo 15, chưa tới mức nghiêm trọng 30 → WARNING (80 điểm)
       tokenReuseAttacks: 0,
       malformedRequests: 0,
       eventLoopLagMs: 5,

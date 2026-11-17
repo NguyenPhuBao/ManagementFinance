@@ -9,8 +9,8 @@ import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
 import { useLanguageSafe } from '../../store/language.context';
 import { useSettingsSafe } from '../../store/settings.context';
-import { useAlertSafe } from '../../store/alert.context';
-import { Button, ConfirmModal, Icon } from '../ui';
+import { Button, Icon, SecurityConfirmModal } from '../ui';
+import { isAiopsEnabled } from '../../config/features';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 
@@ -37,7 +37,6 @@ const Toast = ({ tone, icon, title, onClose, closeLabel, children }) => (
 const AppLayout = () => {
   const { t } = useLanguageSafe();
   const settingsCtx = useSettingsSafe();
-  const notify = useAlertSafe();
   const socket = useSocket();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -51,7 +50,6 @@ const AppLayout = () => {
   const [threatAlert, setThreatAlert] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [mitigating, setMitigating] = useState(false);
   const [mitigatedSuccess, setMitigatedSuccess] = useState(false);
   const [maintenanceState, setMaintenanceState] = useState(null);
   const [restoredToast, setRestoredToast] = useState(false);
@@ -72,7 +70,7 @@ const AppLayout = () => {
   };
 
   const checkThreatStatus = async () => {
-    if (settingsCtx?.isLocked) return;
+    if (settingsCtx?.isLocked || !isAiopsEnabled()) return;
     try {
       const res = await aiopsApi.getStatus();
       const data = res?.data || res;
@@ -127,35 +125,33 @@ const AppLayout = () => {
       }
     };
 
-    socket.on('admin.security_alert', handleSecurityAlert);
-    socket.on('admin.security_blocked', handleSecurityBlocked);
+    const aiops = isAiopsEnabled();
+    if (aiops) {
+      socket.on('admin.security_alert', handleSecurityAlert);
+      socket.on('admin.security_blocked', handleSecurityBlocked);
+    }
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
     return () => {
-      socket.off('admin.security_alert', handleSecurityAlert);
-      socket.off('admin.security_blocked', handleSecurityBlocked);
+      if (aiops) {
+        socket.off('admin.security_alert', handleSecurityAlert);
+        socket.off('admin.security_blocked', handleSecurityBlocked);
+      }
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);
 
-  const handleQuickMitigation = async () => {
-    try {
-      setMitigating(true);
-      await adminApi.setMaintenanceStatus({
-        active: true,
-        reason: t('appLayout.emergencyReason'),
-        isEmergency: true,
-      });
-      setConfirmOpen(false);
-      setMitigatedSuccess(true);
-      setTimeout(() => setDismissed(true), 3000);
-    } catch (err) {
-      const message = err.response?.data?.message || err.message;
-      setConfirmOpen(false);
-      if (notify) notify.error(message, t('appLayout.activateFailed'));
-      else window.alert(`${t('appLayout.activateFailed')}: ${message}`);
-    } finally {
-      setMitigating(false);
-    }
+  // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, hiện trong hộp PIN.
+  const handleQuickMitigation = (credentials) =>
+    adminApi.setMaintenanceStatus({
+      active: true,
+      reason: t('appLayout.emergencyReason'),
+      isEmergency: true,
+      ...credentials,
+    });
+
+  const mitigated = () => {
+    setMitigatedSuccess(true);
+    setTimeout(() => setDismissed(true), 3000);
   };
 
   const isAlertVisible = isCriticalThreat(threatAlert) && !dismissed;
@@ -167,7 +163,6 @@ const AppLayout = () => {
       <AppSidebar
         collapsed={sidebarCollapsed}
         mobileOpen={mobileOpen}
-        onToggle={toggleSidebar}
         onCloseMobile={() => setMobileOpen(false)}
       />
 
@@ -226,15 +221,15 @@ const AppLayout = () => {
         </main>
       </div>
 
-      <ConfirmModal
-        open={confirmOpen}
+      <SecurityConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
         title={t('appLayout.confirmEmergencyTitle')}
-        message={t('appLayout.confirmEmergency')}
+        description={t('appLayout.confirmEmergency')}
         confirmText={t('appLayout.confirmEmergencyBtn')}
-        confirmDanger
-        loading={mitigating}
-        onConfirm={handleQuickMitigation}
-        onCancel={() => setConfirmOpen(false)}
+        dangerLevel="critical"
+        onVerify={handleQuickMitigation}
+        onConfirm={mitigated}
       />
 
       {restoredToast && (

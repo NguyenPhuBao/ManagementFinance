@@ -1,4 +1,5 @@
 const adminRepository = require('./admin.repository');
+const logger = require('../../core/logger');
 
 const PIN_MAX_FAILURES = 5;
 const PIN_WINDOW_MS = 15 * 60 * 1000;
@@ -30,6 +31,8 @@ function recordPinFailure(idaccount) {
   return next;
 }
 const permissionRepository = require('../payment/permission.repository');
+/** Hạn mức Backend viết cứng (gia đình: 6 thành viên, 10 ví chung), Admin-web không cho sửa số. */
+const FIXED_LIMIT_FEATURES = ['household_members', 'household_wallets'];
 const os = require('os');
 const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
 const { defaultDbBulkhead } = require('../../core/resilience/db-bulkhead');
@@ -205,7 +208,7 @@ const adminService = {
     };
   },
 
-  async updateStatus(iduser, data = {}) {
+  async updateStatus(iduser, data = {}, actor = null) {
     const u = await adminRepository.getUserById(iduser);
     if (!u) throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
 
@@ -263,6 +266,18 @@ const adminService = {
       await adminRepository.updateAccountStatus(iduser, 'Active', null);
       const { invalidateAccountCache } = require('../../middleware/auth');
       invalidateAccountCache(u.account.idaccount);
+
+      // Khoá AIOps (nếu có) của tài khoản này cũng coi như đã mở, để danh sách khoá trên trang AIOps khớp.
+      try {
+        const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');
+        await defaultAIOpsQuarantine.releaseAccountFromUserPage({
+          idaccount: u.account.idaccount,
+          username: u.account.username,
+          by: actor?.username || actor?.email || 'Admin',
+        });
+      } catch (err) {
+        logger.warn('Không cập nhật được dòng khoá AIOps khi mở tài khoản', { error: err.message });
+      }
 
       try {
         const { emitUserStatusChanged } = require('../../core/socket');
@@ -838,7 +853,7 @@ const adminService = {
 
     const results = [];
     for (const item of updates) {
-      const { account_type, feature_id, is_enabled, limit_value, scope_config, downgrade_policy } = item;
+      const { account_type, feature_id, is_enabled, limit_value, scope_config } = item;
       if (!['Basic', 'Premium'].includes(account_type)) {
         const err = new Error(`Loại tài khoản không hợp lệ: ${account_type}`);
         err.statusCode = 400;
@@ -850,11 +865,15 @@ const adminService = {
         throw err;
       }
 
+      // Chốt 2026-11-16: app viết cứng cách hạ cấp nên không ghi `downgrade_policy`; hạn mức gia đình Backend viết cứng
+      // (6 thành viên / 10 ví chung) nên không ghi `limit_value` của hai mã này. Các trường khác lưu như cũ.
+      const fixedLimit = FIXED_LIMIT_FEATURES.includes(feature_id);
       const updated = await permissionRepository.updatePermission(account_type, feature_id, {
-        is_enabled: is_enabled !== undefined ? Boolean(is_enabled) : true,
-        limit_value: limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,
+        is_enabled: fixedLimit ? undefined : is_enabled !== undefined ? Boolean(is_enabled) : true,
+        limit_value: fixedLimit
+          ? undefined
+          : limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,
         scope_config: scope_config !== undefined ? scope_config : undefined,
-        downgrade_policy: downgrade_policy !== undefined ? downgrade_policy : undefined,
       });
       results.push(updated);
     }

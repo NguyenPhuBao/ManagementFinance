@@ -6,9 +6,19 @@ import { useAlertSafe } from '../../../store/alert.context';
 import { useSettingsSafe } from '../../../store/settings.context';
 import { useLanguageSafe } from '../../../store/language.context';
 import useAuth from '../../../hooks/useAuth';
+import { formatNumber } from '../../../utils/format';
+import { maskIp } from './aiopsFormat';
 
 const SCALE_KEY = 'aiops_target_concurrency';
-const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+// Tiêu đề / nội dung / nút của hộp PIN cho từng thao tác trên dòng khoá (khoá trong locales aiopsPage.quarantine).
+const QUARANTINE_ACTIONS = {
+  blockIp: { title: 'blockIpTitle', msg: 'blockIpMsg', confirm: 'blockIpConfirm' },
+  extendIp: { title: 'extendIpTitle', msg: 'extendIpMsg', confirm: 'extendIpConfirm' },
+  unblockIp: { title: 'unblockIpTitle', msg: 'unblockIpMsg', confirm: 'unblockConfirm' },
+  blockAccount: { title: 'blockAccountTitle', msg: 'blockAccountMsg', confirm: 'blockIpConfirm' },
+  banAccount: { title: 'banAccountTitle', msg: 'banAccountMsg', confirm: 'banAccountConfirm', danger: true },
+  unblockAccount: { title: 'unblockAccountTitle', msg: 'unblockAccountMsg', confirm: 'unblockConfirm' },
+};
 const DEFAULT_SCORES = { auth: 0, traffic: 0, exploit: 0, resource: 0 };
 const EMPTY_THRESHOLDS = {
   authFailureThreshold: '',
@@ -41,6 +51,29 @@ const saveScale = (n) => {
   return undefined;
 };
 
+const endOfRange = (to) => {
+  const d = new Date(to);
+  if (typeof to === 'string' && to.length === 10) d.setHours(23, 59, 59, 999);
+  return d.getTime();
+};
+
+// Sự cố có thuộc trang đang xem không: cùng điều kiện lọc với Backend (aiops.repository.getIncidents).
+const matchesIncidentView = (incident, s) => {
+  if (s.incidentVector !== 'all' && incident.vector !== s.incidentVector) return false;
+  if (s.incidentStatus !== 'all' && incident.status !== s.incidentStatus) return false;
+  const q = String(s.incidentSearch || '').trim().toLowerCase();
+  if (q) {
+    const fields = [incident.actorIdentity ?? incident.actor_identity, incident.username, incident.code, incident.message];
+    if (!fields.some((f) => String(f || '').toLowerCase().includes(q))) return false;
+  }
+  const custom = s.customRange;
+  if (custom?.applied && custom.from && custom.to) {
+    const at = new Date(incident.firstDetectedAt ?? incident.first_detected_at).getTime();
+    if (Number.isNaN(at) || at < new Date(custom.from).getTime() || at > endOfRange(custom.to)) return false;
+  }
+  return true;
+};
+
 const isLoopback = (ip) => ['127.0.0.1', '::1', 'localhost'].includes(ip);
 const cleanIp = (ip) => String(ip || '').replace(/^::ffff:/, '').trim();
 
@@ -53,7 +86,7 @@ const useCurrentUser = () => {
 };
 
 const useAIOps = () => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const alert = useAlertSafe();
   const settingsCtx = useSettingsSafe();
   const currentUser = useCurrentUser();
@@ -82,7 +115,6 @@ const useAIOps = () => {
 
   const [showMitigationModal, setShowMitigationModal] = useState(false);
   const [mitigationReason, setMitigationReason] = useState(() => t('aiopsPage.mitigation.defaultReason'));
-  const [mitigating, setMitigating] = useState(false);
 
   const [incidents, setIncidents] = useState([]);
   const [incidentTotal, setIncidentTotal] = useState(0);
@@ -92,10 +124,15 @@ const useAIOps = () => {
   const [incidentStatus, setIncidentStatus] = useState('all');
   const [incidentSearch, setIncidentSearch] = useState('');
 
-  const [actionLoading, setActionLoading] = useState(null);
 
   const latest = useRef({});
   latest.current = { timePreset, customRange, incidentPage, incidentPageSize, incidentVector, incidentStatus, incidentSearch };
+  // Bản danh sách sự cố mới nhất, cập nhật ngay khi đổi (sự kiện realtime đến dồn trước khi kịp render).
+  const incidentsRef = useRef([]);
+  const applyIncidents = useCallback((next) => {
+    incidentsRef.current = next;
+    setIncidents(next);
+  }, []);
 
   const notify = useCallback(
     (ok, msg) => {
@@ -135,8 +172,9 @@ const useAIOps = () => {
       }
       if (Array.isArray(history)) setHistoryData(history);
       if (Array.isArray(quarantine)) setQuarantineList(quarantine);
+      return true;
     } catch (_) {
-      setLoading(false);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -173,13 +211,14 @@ const useAIOps = () => {
       );
       const list = data?.incidents || data?.data || (Array.isArray(data) ? data : null);
       if (Array.isArray(list)) {
-        setIncidents(list);
+        applyIncidents(list);
         setIncidentTotal(data.total ?? list.length);
       }
+      return true;
     } catch (_) {
-      setIncidents((prev) => prev);
+      return false;
     }
-  }, []);
+  }, [applyIncidents]);
 
   const metricsInterval = settingsCtx?.settings?.metricsInterval || 3;
   useEffect(() => {
@@ -229,6 +268,7 @@ const useAIOps = () => {
         vectorDefenses: d.vectorDefenses || prev?.vectorDefenses || {},
         anomalies: d.anomalies,
         recommendedAction: d.recommendedAction,
+        indicators: d.indicators || prev?.indicators,
         sample: d.sample || prev?.sample,
         lastEvaluatedAt: d.timestamp,
       }));
@@ -246,16 +286,29 @@ const useAIOps = () => {
         })
         .catch(() => undefined);
     };
+    // Backend phát cùng sự kiện cho sự cố mới (hits = 1, ACTIVE) và cho sự cố cũ đổi số lần / trạng thái.
+    // Chỉ sự cố mới khớp bộ lọc mới làm tăng tổng; chỉ chèn khi đang xem trang 1.
     const onAnomaly = (incident) => {
       if (!incident) return;
-      setIncidents((prev) => {
-        const i = prev.findIndex((x) => x.id === incident.id);
-        if (i < 0) return [incident, ...prev];
-        const next = [...prev];
-        next[i] = incident;
-        return next;
-      });
+      const view = latest.current;
+      const list = incidentsRef.current;
+      const i = list.findIndex((x) => x.id === incident.id);
+      const matches = matchesIncidentView(incident, view);
+      if (i >= 0) {
+        if (matches) {
+          const next = [...list];
+          next[i] = { ...list[i], ...incident };
+          applyIncidents(next);
+        } else {
+          applyIncidents(list.filter((x) => x.id !== incident.id));
+          setIncidentTotal((n) => Math.max(0, n - 1));
+        }
+        return;
+      }
+      const isNew = Number(incident.hits) === 1 && incident.status === 'ACTIVE';
+      if (!isNew || !matches) return;
       setIncidentTotal((n) => n + 1);
+      if (view.incidentPage === 1) applyIncidents([incident, ...list].slice(0, view.incidentPageSize));
     };
     const onMaintenance = (m) => m && setMaintenanceStatus(m);
     const onVectorConfig = (c) => c && setVectorConfig(c);
@@ -270,16 +323,13 @@ const useAIOps = () => {
     };
     Object.entries(handlers).forEach(([name, fn]) => socket.on(name, fn));
     return () => Object.entries(handlers).forEach(([name, fn]) => socket.off(name, fn));
-  }, [socket, notify, t]);
+  }, [socket, notify, t, applyIncidents]);
 
+  // Tải lại đúng trang và bộ lọc đang xem; báo theo kết quả thật của cả hai lần gọi.
   const handleManualRefresh = async () => {
-    try {
-      await fetchAIOpsData();
-      await fetchIncidents({ incidentPage: 1 });
-      notify(true, t('aiopsPage.feedback.refreshed'));
-    } catch (_) {
-      notify(false, t('aiopsPage.feedback.refreshFailed'));
-    }
+    const [okData, okIncidents] = await Promise.all([fetchAIOpsData(), fetchIncidents()]);
+    if (okData && okIncidents) notify(true, t('aiopsPage.feedback.refreshed'));
+    else notify(false, t('aiopsPage.feedback.refreshFailed'));
   };
 
   const handleSelectTimePreset = (preset) => {
@@ -312,25 +362,53 @@ const useAIOps = () => {
     fetchIncidents({ incidentPage: 1, customRange: custom });
   };
 
-  const handleApplyScale = async (value) => {
+  // ── Hộp PIN dùng chung: mọi thao tác ghi trên trang AIOps (mục 2.3) ──
+  // run(credentials) gọi API kèm PIN; lỗi ném lại để hộp PIN hiện, thành công thì hộp tự đóng.
+  const [pinRequest, setPinRequest] = useState(null);
+  const closePinRequest = useCallback(() => setPinRequest(null), []);
+  const friendlyError = (err, fallbackKey) => {
+    if (err?.response?.data?.code === 'CANNOT_LOCK_SELF') return new Error(t('aiopsPage.feedback.cannotLockSelf'));
+    if (err?.response?.data?.code === 'ROOT_ACCOUNT_PROTECTED') return new Error(t('aiopsPage.feedback.rootProtected'));
+    if (err?.response?.data?.message || err?.message) return err;
+    return new Error(t(fallbackKey));
+  };
+  const askPin = ({ run, errorKey, ...view }) =>
+    setPinRequest({
+      ...view,
+      run: async (credentials) => {
+        try {
+          await run(credentials);
+        } catch (err) {
+          throw friendlyError(err, errorKey);
+        }
+      },
+    });
+
+  const handleApplyScale = (value) => {
     const n = parseInt(value ?? customConcurrency, 10);
     if (!validScale(n)) {
       notify(false, t('aiopsPage.feedback.scaleInvalid'));
       return;
     }
-    setSavingScale(true);
-    try {
-      await aiopsApi.setScale(n);
-      setSelectedConcurrency(n);
-      setCustomConcurrency(String(n));
-      saveScale(n);
-      setStatusData((prev) => ({ ...prev, targetConcurrency: n }));
-      notify(true, t('aiopsPage.feedback.scaleSaved', { n: n.toLocaleString('vi-VN') }));
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.scaleFailed'));
-    } finally {
-      setSavingScale(false);
-    }
+    askPin({
+      title: t('aiopsPage.scale.pinTitle'),
+      description: t('aiopsPage.scale.pinDesc', { n: formatNumber(n, {}, language) }),
+      confirmText: t('aiopsPage.scale.apply'),
+      errorKey: 'aiopsPage.feedback.scaleFailed',
+      run: async (credentials) => {
+        setSavingScale(true);
+        try {
+          const scaled = unwrap(await aiopsApi.setScale(n, credentials));
+          setSelectedConcurrency(n);
+          setCustomConcurrency(String(n));
+          saveScale(n);
+          setStatusData((prev) => ({ ...prev, targetConcurrency: n, indicators: scaled?.indicators || prev?.indicators }));
+          notify(true, t('aiopsPage.feedback.scaleSaved', { n: formatNumber(n, {}, language) }));
+        } finally {
+          setSavingScale(false);
+        }
+      },
+    });
   };
 
   const vectorScores = statusData?.vectorScores || DEFAULT_SCORES;
@@ -339,74 +417,100 @@ const useAIOps = () => {
   const targetConcurrency = statusData?.targetConcurrency || selectedConcurrency || 1000;
   const myCurrentIp = cleanIp(statusData?.currentClientIp || currentUser?.currentClientIp);
 
-  const autoRecommendedThresholds = useMemo(() => {
-    const n = Math.max(100, Number(selectedConcurrency || statusData?.targetConcurrency || 1000));
-    return {
-      authFailureThreshold: Math.max(20, Math.round(15 + 10 * Math.log10(n / 100))),
-      trafficSpikeRps: Math.max(50, Math.round(n / 2)),
-      exploitLimit: 8,
-      resourceCpuPercent: 85,
-      resourceMemoryPercent: 85,
-      eventLoopLagMs: 100,
-    };
-  }, [selectedConcurrency, statusData?.targetConcurrency]);
+  const indicators = statusData?.indicators || null;
 
-  const handleCalibrate = async () => {
-    setCalibrating(true);
-    const pick = (value, fallback) => (value !== '' && Number(value) > 0 ? Number(value) : fallback);
-    try {
-      const res = await aiopsApi.calibrate({
+  // Ngưỡng đang hiệu lực (Backend) hiện làm gợi ý trong hộp Hiệu chuẩn; Admin-web không tự tính.
+  const currentThresholds = useMemo(() => {
+    if (!indicators) return {};
+    return {
+      authFailureThreshold: indicators.auth?.failedLogins?.alert,
+      trafficSpikeRps: indicators.traffic?.alertRpm ? Math.round(indicators.traffic.alertRpm / 60) : undefined,
+      exploitLimit: indicators.exploit?.malformed?.alert,
+      resourceCpuPercent: indicators.resource?.cpuPercent?.alert,
+      resourceMemoryPercent: indicators.resource?.ramPercent?.alert,
+      eventLoopLagMs: indicators.resource?.lagMs?.alert,
+    };
+  }, [indicators]);
+
+  // Gửi lệnh hiệu chuẩn qua hộp PIN; Backend trả { success, data: báo cáo, status } (báo cáo nằm trong data).
+  const runCalibrate = (payload, pinText) =>
+    askPin({
+      ...pinText,
+      errorKey: 'aiopsPage.feedback.calibrateFailed',
+      run: async (credentials) => {
+        setCalibrating(true);
+        try {
+          const result = unwrap(await aiopsApi.calibrate(payload, credentials));
+          const report = result?.data?.serverSpecs ? result.data : result?.serverSpecs ? result : null;
+          if (report) setCalibrationReport(report);
+          if (result?.status?.indicators) setStatusData((prev) => ({ ...prev, indicators: result.status.indicators }));
+          setCustomThresholdsInput(EMPTY_THRESHOLDS);
+          setShowCalibrateModal(false);
+          notify(true, t(payload.resetThresholds ? 'aiopsPage.feedback.thresholdsReset' : 'aiopsPage.feedback.calibrated'));
+          fetchAIOpsData();
+        } finally {
+          setCalibrating(false);
+        }
+      },
+    });
+
+  const handleCalibrate = () => {
+    // Chỉ gửi ô đã nhập; ô trống để Backend giữ ngưỡng đang dùng.
+    runCalibrate(
+      {
         targetConcurrency: selectedConcurrency || 1000,
         customThresholds: Object.fromEntries(
-          Object.keys(EMPTY_THRESHOLDS).map((key) => [key, pick(customThresholdsInput[key], autoRecommendedThresholds[key])])
+          Object.keys(EMPTY_THRESHOLDS)
+            .filter((key) => customThresholdsInput[key] !== '' && Number(customThresholdsInput[key]) > 0)
+            .map((key) => [key, Number(customThresholdsInput[key])])
         ),
-      });
-      const report = unwrap(res);
-      if (report?.serverSpecs) setCalibrationReport(report);
-      setShowCalibrateModal(false);
-      notify(true, t('aiopsPage.feedback.calibrated'));
-      await fetchAIOpsData();
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.calibrateFailed'));
-    } finally {
-      setCalibrating(false);
-    }
+      },
+      { title: t('aiopsPage.calibrate.pinTitle'), description: t('aiopsPage.calibrate.pinDesc'), confirmText: t('aiopsPage.calibrate.confirm') }
+    );
   };
 
-  const handleTriggerMitigation = async () => {
-    setMitigating(true);
-    try {
-      await adminApi.setMaintenanceStatus({ active: true, reason: mitigationReason.trim() || t('aiopsPage.mitigation.defaultReason'), isEmergency: true });
-      notify(true, t('aiopsPage.feedback.mitigationOn'));
-      setShowMitigationModal(false);
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.mitigationFailed'));
-    } finally {
-      setMitigating(false);
-    }
+  // Về mặc định: Backend xoá mọi ngưỡng tuỳ chỉnh (resetThresholds), lưu lại và trả ngưỡng mặc định.
+  const handleResetThresholds = () => {
+    runCalibrate(
+      { targetConcurrency: selectedConcurrency || 1000, resetThresholds: true },
+      { title: t('aiopsPage.calibrate.resetPinTitle'), description: t('aiopsPage.calibrate.resetPinDesc'), confirmText: t('aiopsPage.calibrate.reset') }
+    );
   };
 
+  // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, ném lại cho hộp PIN hiện.
+  const handleTriggerMitigation = async (credentials) => {
+    await adminApi.setMaintenanceStatus({
+      active: true,
+      reason: mitigationReason.trim() || t('aiopsPage.mitigation.defaultReason'),
+      isEmergency: true,
+      ...credentials,
+    });
+    notify(true, t('aiopsPage.feedback.mitigationOn'));
+    setShowMitigationModal(false);
+  };
+
+  // Theo kết luận của Backend: khuyến nghị bảo trì khẩn cấp hoặc vectơ tài nguyên ở mức CRITICAL.
+  const resourceDefenseStatus = statusData?.vectorDefenses?.resource?.status;
   const isEmergencyResourceRisk = useMemo(() => {
     if (vectorConfig.resource === false) return false;
-    return (
-      recommendedAction === 'EMERGENCY_MAINTENANCE' ||
-      vectorScores.resource >= 85 ||
-      (vectorScores.resource >= 70 && (sample.errorRate5xx || 0) >= 0.15 && (sample.eventLoopLagMs || 0) >= 250)
-    );
-  }, [recommendedAction, vectorScores.resource, sample.errorRate5xx, sample.eventLoopLagMs, vectorConfig.resource]);
+    return recommendedAction === 'EMERGENCY_MAINTENANCE' || resourceDefenseStatus === 'CRITICAL';
+  }, [recommendedAction, resourceDefenseStatus, vectorConfig.resource]);
 
-  const toggleVector = async (key, enabled) => {
+  const toggleVector = (key, enabled) => {
     const name = t(`aiopsPage.vector.${key}`);
-    try {
-      const data = unwrap(await aiopsApi.toggleVector(key, enabled));
-      setVectorConfig(data?.vectorConfig || { ...vectorConfig, [key]: enabled });
-      if (data?.currentStatus) setStatusData((prev) => ({ ...prev, ...data.currentStatus }));
-      notify(true, t(enabled ? 'aiopsPage.feedback.vectorOn' : 'aiopsPage.feedback.vectorOff', { name }));
-      return true;
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.vectorFailed'));
-      return false;
-    }
+    askPin({
+      title: t(enabled ? 'aiopsPage.vectorCard.enableTitle' : 'aiopsPage.vectorCard.disableTitle', { name }),
+      description: t(enabled ? 'aiopsPage.vectorCard.enableMsg' : 'aiopsPage.vectorCard.disableMsg'),
+      confirmText: t(enabled ? 'aiopsPage.vectorCard.enable' : 'aiopsPage.vectorCard.disable'),
+      danger: !enabled,
+      errorKey: 'aiopsPage.feedback.vectorFailed',
+      run: async (credentials) => {
+        const data = unwrap(await aiopsApi.toggleVector(key, enabled, credentials));
+        setVectorConfig((prev) => data?.vectorConfig || { ...prev, [key]: enabled });
+        if (data?.currentStatus) setStatusData((prev) => ({ ...prev, ...data.currentStatus }));
+        notify(true, t(enabled ? 'aiopsPage.feedback.vectorOn' : 'aiopsPage.feedback.vectorOff', { name }));
+      },
+    });
   };
 
   const searchIncidents = () => {
@@ -414,135 +518,102 @@ const useAIOps = () => {
     fetchIncidents({ incidentPage: 1 });
   };
 
-  const blockFromIncident = async (item) => {
+  const blockFromIncident = (item) => {
     const identity = item.actor?.identity || item.actor_identity || item.actorIdentity || '';
     const hash = item.actor?.ipHash || item.actor_hash || item.actorHash;
     const code = item.code || 'INCIDENT';
-    try {
-      const data = unwrap(
-        await aiopsApi.quarantineActor({
-          hash,
-          ip: identity && !identity.includes('xx') ? identity : null,
-          maskedIp: identity,
-          vector: item.vector || 'auth',
-          reason: `Admin quarantine (${code})`,
-          durationMinutes: 240,
-        })
-      );
-      notify(true, t('aiopsPage.feedback.blocked', { ip: identity || hash }));
-      setQuarantineList((prev) => {
-        const key = data?.hash || hash;
-        if (prev.some((x) => x.hash === key)) return prev;
-        return [
+    const label = identity ? maskIp(identity) : hash;
+    askPin({
+      title: t('aiopsPage.incidents.blockTitle', { ip: label }),
+      description: t('aiopsPage.incidents.blockMsg'),
+      confirmText: t('aiopsPage.incidents.block'),
+      danger: true,
+      errorKey: 'aiopsPage.feedback.blockFailed',
+      run: async (credentials) => {
+        await aiopsApi.quarantineActor(
           {
-            hash: key,
-            ipHash: key,
-            maskedIp: data?.maskedIp || identity,
-            vector: data?.vector || item.vector || 'auth',
-            reason: data?.reason || `Admin quarantine (${code})`,
-            bannedAt: data?.bannedAt || new Date().toISOString(),
-            ipStatus: 'temporary',
-            ipExpiresAt: new Date(Date.now() + FOUR_HOURS_MS).toISOString(),
-            hits: data?.hits || 1,
+            hash,
+            ip: identity && !identity.includes('xx') ? identity : null,
+            maskedIp: identity,
+            vector: item.vector || 'auth',
+            reason: `Admin quarantine (${code})`,
+            durationMinutes: 240,
           },
-          ...prev,
-        ];
-      });
-      return true;
-    } catch (err) {
-      notify(false, errorOf(err, 'aiopsPage.feedback.blockFailed'));
-      return false;
-    }
+          credentials
+        );
+        notify(true, t('aiopsPage.feedback.blocked', { ip: identity || hash }));
+        reloadQuarantine();
+      },
+    });
   };
 
-  const runAction = async (key, call, update, okMsg, errKey) => {
-    setActionLoading(key);
-    try {
-      await call();
-      setQuarantineList((prev) => prev.map(update));
-      notify(true, okMsg);
-      return true;
-    } catch (err) {
-      notify(false, errorOf(err, errKey));
-      return false;
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const reloadQuarantine = () =>
+    Promise.resolve(aiopsApi.getQuarantineList())
+      .then((res) => {
+        const list = unwrap(res);
+        if (Array.isArray(list)) setQuarantineList(list);
+      })
+      .catch(() => undefined);
 
-  const sameIp = (hash) => (item) => item.ipHash === hash || item.hash === hash;
-  const sameAccount = (username, idaccount) => (item) => item.username === username || (idaccount && item.idaccount === idaccount);
-  const lockIpUntil = () => ({ ipStatus: 'temporary', ipExpiresAt: new Date(Date.now() + FOUR_HOURS_MS).toISOString(), ipRemainingMinutes: 240 });
+  // Thao tác trên một dòng khoá: hỏi PIN, gọi API, rồi tải lại danh sách từ máy chủ (danh sách lấy từ CSDL).
+  const rowAction = (kind, target, call, okMsg, errorKey) => {
+    const meta = QUARANTINE_ACTIONS[kind];
+    askPin({
+      title: t(`aiopsPage.quarantine.${meta.title}`, { target }),
+      description: t(`aiopsPage.quarantine.${meta.msg}`),
+      confirmText: t(`aiopsPage.quarantine.${meta.confirm}`),
+      danger: Boolean(meta.danger),
+      errorKey,
+      run: async (credentials) => {
+        await call(credentials);
+        notify(true, okMsg);
+        await reloadQuarantine();
+      },
+    });
+  };
 
   const quarantineActions = {
     blockIp: (hash, masked) =>
-      runAction(`ip:${hash}`, () => aiopsApi.temporaryBlockIp({ ipHash: hash }), (x) => (sameIp(hash)(x) ? { ...x, ...lockIpUntil() } : x), t('aiopsPage.feedback.ipLocked', { ip: masked }), 'aiopsPage.feedback.ipFailed'),
+      rowAction('blockIp', masked, (c) => aiopsApi.temporaryBlockIp({ ipHash: hash }, c), t('aiopsPage.feedback.ipLocked', { ip: masked }), 'aiopsPage.feedback.ipFailed'),
     extendIp: (hash, masked) =>
-      runAction(`ip:${hash}`, () => aiopsApi.permanentBanIp({ ipHash: hash }), (x) => (sameIp(hash)(x) ? { ...x, ...lockIpUntil() } : x), t('aiopsPage.feedback.ipLocked', { ip: masked }), 'aiopsPage.feedback.ipFailed'),
+      rowAction('extendIp', masked, (c) => aiopsApi.extendIp({ ipHash: hash }, c), t('aiopsPage.feedback.ipLocked', { ip: masked }), 'aiopsPage.feedback.ipFailed'),
     unblockIp: (hash, masked) =>
-      runAction(
-        `ip:${hash}`,
-        () => aiopsApi.unblockIp({ ipHash: hash }),
-        (x) => (sameIp(hash)(x) ? { ...x, ipStatus: 'unlocked', ipExpiresAt: null, ipRemainingMinutes: null } : x),
-        t('aiopsPage.feedback.ipUnlocked', { ip: masked || '' }),
-        'aiopsPage.feedback.ipFailed'
-      ),
+      rowAction('unblockIp', masked, (c) => aiopsApi.unblockIp({ ipHash: hash }, c), t('aiopsPage.feedback.ipUnlocked', { ip: masked || '' }), 'aiopsPage.feedback.ipFailed'),
     blockAccount: (username, idaccount) =>
-      runAction(
-        `acc:${username || idaccount}`,
-        () => aiopsApi.temporaryBlockAccount({ username, idaccount }),
-        (x) => (sameAccount(username, idaccount)(x) ? { ...x, accountStatus: 'temporary', accountExpiresAt: new Date(Date.now() + FOUR_HOURS_MS).toISOString(), accountRemainingMinutes: 240 } : x),
-        t('aiopsPage.feedback.accountLocked', { name: username || idaccount }),
-        'aiopsPage.feedback.accountFailed'
-      ),
+      rowAction('blockAccount', username || idaccount, (c) => aiopsApi.temporaryBlockAccount({ username, idaccount }, c), t('aiopsPage.feedback.accountLocked', { name: username || idaccount }), 'aiopsPage.feedback.accountFailed'),
     banAccount: (username, idaccount) =>
-      runAction(
-        `acc:${username || idaccount}`,
-        () => aiopsApi.permanentBanAccount({ username, idaccount }),
-        (x) => (sameAccount(username, idaccount)(x) ? { ...x, accountStatus: 'permanent', accountExpiresAt: null, accountRemainingMinutes: null } : x),
-        t('aiopsPage.feedback.accountBanned', { name: username || idaccount }),
-        'aiopsPage.feedback.accountFailed'
-      ),
+      rowAction('banAccount', username || idaccount, (c) => aiopsApi.permanentBanAccount({ username, idaccount }, c), t('aiopsPage.feedback.accountBanned', { name: username || idaccount }), 'aiopsPage.feedback.accountFailed'),
     unblockAccount: (username, idaccount) =>
-      runAction(
-        `acc:${username || idaccount}`,
-        () => aiopsApi.unblockAccount({ username, idaccount }),
-        (x) => (sameAccount(username, idaccount)(x) ? { ...x, accountStatus: 'unlocked', accountExpiresAt: null, accountRemainingMinutes: null } : x),
-        t('aiopsPage.feedback.accountUnlocked', { name: username || idaccount }),
-        'aiopsPage.feedback.accountFailed'
-      ),
+      rowAction('unblockAccount', username || idaccount, (c) => aiopsApi.unblockAccount({ username, idaccount }, c), t('aiopsPage.feedback.accountUnlocked', { name: username || idaccount }), 'aiopsPage.feedback.accountFailed'),
   };
 
-  const manualQuarantine = async ({ targetType, ipValue, accountValue, reason, durationMinutes }) => {
+  // Khoá thủ công: kiểm dữ liệu nhập, hỏi PIN, rồi gọi API; onDone đóng hộp nhập khi thành công.
+  // Admin được khoá cả IP mình đang dùng (Chủ dự án chốt 2026-11-16); chỉ IP máy chủ là không khoá được.
+  const manualQuarantine = ({ targetType, ipValue, accountValue, reason, durationMinutes }, onDone) => {
     const minutes = parseInt(durationMinutes, 10) || 240;
-    try {
-      if (targetType === 'ip') {
-        const ip = cleanIp(ipValue);
-        if (!ip) {
-          notify(false, t('aiopsPage.feedback.ipRequired'));
-          return false;
+    const ip = cleanIp(ipValue);
+    const username = String(accountValue || '').trim();
+    if (targetType === 'ip' && !ip) return notify(false, t('aiopsPage.feedback.ipRequired'));
+    if (targetType === 'ip' && isLoopback(ip)) return notify(false, t('aiopsPage.feedback.protectedSelf'));
+    if (targetType !== 'ip' && !username) return notify(false, t('aiopsPage.feedback.accountRequired'));
+    askPin({
+      title: t('aiopsPage.manual.pinTitle'),
+      description: targetType === 'ip' ? ip : username,
+      confirmText: t('aiopsPage.manual.submit'),
+      danger: true,
+      errorKey: targetType === 'ip' ? 'aiopsPage.feedback.ipFailed' : 'aiopsPage.feedback.accountFailed',
+      run: async (credentials) => {
+        if (targetType === 'ip') {
+          await aiopsApi.quarantineActor({ ip, reason: reason || t('aiopsPage.manual.defaultReason'), durationMinutes: minutes, vector: 'auth' }, credentials);
+          notify(true, t('aiopsPage.feedback.ipLocked', { ip }));
+        } else {
+          await aiopsApi.temporaryBlockAccount({ username, durationMinutes: minutes }, credentials);
+          notify(true, t('aiopsPage.feedback.accountLocked', { name: username }));
         }
-        if (isLoopback(ip) || (myCurrentIp && ip === myCurrentIp)) {
-          notify(false, t('aiopsPage.feedback.protectedSelf'));
-          return false;
-        }
-        await aiopsApi.quarantineActor({ ip, reason: reason || t('aiopsPage.manual.defaultReason'), durationMinutes: minutes, vector: 'auth' });
-        notify(true, t('aiopsPage.feedback.ipLocked', { ip }));
-      } else {
-        const username = String(accountValue || '').trim();
-        if (!username) {
-          notify(false, t('aiopsPage.feedback.accountRequired'));
-          return false;
-        }
-        await aiopsApi.temporaryBlockAccount({ username, durationMinutes: minutes });
-        notify(true, t('aiopsPage.feedback.accountLocked', { name: username }));
-      }
-      await fetchAIOpsData();
-      return true;
-    } catch (err) {
-      notify(false, errorOf(err, targetType === 'ip' ? 'aiopsPage.feedback.ipFailed' : 'aiopsPage.feedback.accountFailed'));
-      return false;
-    }
+        if (typeof onDone === 'function') onDone();
+        fetchAIOpsData();
+      },
+    });
   };
 
   return {
@@ -576,15 +647,16 @@ const useAIOps = () => {
     setShowCalibrateModal,
     customThresholdsInput,
     setCustomThresholdsInput,
-    autoRecommendedThresholds,
+    currentThresholds,
+    indicators,
     calibrating,
     calibrationReport,
     handleCalibrate,
+    handleResetThresholds,
     showMitigationModal,
     setShowMitigationModal,
     mitigationReason,
     setMitigationReason,
-    mitigating,
     handleTriggerMitigation,
     isEmergencyResourceRisk,
     toggleVector,
@@ -602,9 +674,10 @@ const useAIOps = () => {
     setIncidentSearch,
     searchIncidents,
     blockFromIncident,
-    actionLoading,
     quarantineActions,
     manualQuarantine,
+    pinRequest,
+    closePinRequest,
   };
 };
 

@@ -1,7 +1,29 @@
 const logger = require('../../core/logger');
 const { ipLookupHash } = require('../../utils/ip-protection.util');
 const { defaultAIOpsQuarantineRepository } = require('./aiops.quarantine.repository');
-const { AIOPS_AUTO_REASON_PREFIX, lyDoChoNguoiDung } = require('./aiops.reason');
+const {
+  AIOPS_AUTO_REASON_PREFIX,
+  AIOPS_ADMIN_TEMP_PREFIX,
+  AIOPS_ADMIN_BAN_PREFIX,
+  AIOPS_EXPIRING_PREFIXES,
+  lyDoChoNguoiDung,
+} = require('./aiops.reason');
+
+// Điều kiện Prisma: lý do khoá mang dấu của khoá có thời hạn (AIOps tự khoá hoặc admin tạm khoá).
+const EXPIRING_REASON_WHERE = { OR: AIOPS_EXPIRING_PREFIXES.map((p) => ({ reason_inactive: { startsWith: p } })) };
+const IP_EXTEND_MS = 4 * 60 * 60 * 1000;
+const { ROOT_ADMIN_EMAIL } = require('../auth/root-admin');
+const NO_ACCOUNT = new Set(['', 'all', 'n/a']);
+
+const lockKind = (row, now) => {
+  if (!row) return 'unlocked';
+  if (row.status === 'PERMANENT') return 'permanent';
+  if (row.status === 'TEMPORARY' && row.expires_at && new Date(row.expires_at).getTime() > now) return 'temporary';
+  return 'unlocked';
+};
+const isoOf = (v) => (v ? new Date(v).toISOString() : null);
+const minutesLeft = (kind, expiresAt, now) =>
+  kind === 'temporary' && expiresAt ? Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 60000)) : null;
 
 /**
  * Che bớt thông tin IP để tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
@@ -63,7 +85,6 @@ class AIOpsQuarantine {
     this._map = new Map(); // key: normalizedIp -> record (tương thích legacy)
     this._byHash = new Map(); // key: hash -> record
     this._pairs = new Map(); // key: `${ipHash}:::${username || 'all'}` -> pairRecord (Ma trận Cặp IP - Tài khoản)
-    this._activeAdminSessions = new Map(); // key: normalizedIp -> { userId, username, expiresAt, registeredAt }
     this._expireTimer = null;
 
     // Tự động kích hoạt chu kỳ quét và tự động mở khóa khi hết hạn đếm ngược (mỗi 15s)
@@ -170,57 +191,7 @@ class AIOpsQuarantine {
     return hasChanged;
   }
 
-  /**
-   * Đăng ký bảo vệ động cho địa chỉ IP của Quản trị viên khi đăng nhập
-   * (Dynamic Admin Session Protection)
-   */
-  registerAdminSession(rawIp, { userId = null, username = null, ttlMs = 24 * 60 * 60 * 1000 } = {}) {
-    const ip = normalizeIp(rawIp);
-    if (!ip) return false;
-
-    const expiresAt = Date.now() + (ttlMs || 24 * 60 * 60 * 1000);
-    this._activeAdminSessions.set(ip, {
-      userId,
-      username,
-      expiresAt,
-      registeredAt: Date.now(),
-    });
-
-    // Nếu IP này từng bị phong tỏa trước đó, tự động gỡ phong tỏa ngay
-    this.unquarantine(ip);
-
-    logger.info(`[AIOps Quarantine] Đăng ký bảo vệ IP Admin động cho [${username || 'Admin'}] tại IP ${maskIp(ip)} (hết hạn sau ${Math.round((ttlMs || 86400000) / 60000)}p)`);
-    return true;
-  }
-
-  /**
-   * Hủy đăng ký bảo vệ động khi Quản trị viên đăng xuất (Logout)
-   */
-  unregisterAdminSession(rawIp) {
-    const ip = normalizeIp(rawIp);
-    if (!ip) return false;
-    const deleted = this._activeAdminSessions.delete(ip);
-    if (deleted) {
-      logger.info(`[AIOps Quarantine] Đã giải phóng bảo vệ IP Admin động tại IP ${maskIp(ip)}`);
-    }
-    return deleted;
-  }
-
-  /**
-   * Lấy danh sách toàn bộ các IP Admin đang hoạt động còn hiệu lực
-   */
-  getActiveAdminIps() {
-    const now = Date.now();
-    const active = [];
-    for (const [ip, session] of this._activeAdminSessions.entries()) {
-      if (session && session.expiresAt > now) {
-        active.push({ ip, ...session });
-      } else {
-        this._activeAdminSessions.delete(ip);
-      }
-    }
-    return active;
-  }
+  // Không có miễn khoá IP theo phiên admin: IP bị khoá thì chặn cả admin (mục 2.5, 2026-11-16).
 
   /**
    * Kiểm tra xem địa chỉ IP hoặc Actor Hash có thuộc vùng an toàn bất khả xâm phạm
@@ -240,23 +211,6 @@ class AIOpsQuarantine {
       if (str === hashIp(sip) || clean === hashIp(sip)) return true;
     }
     if (PROTECTED_ACTOR_HASHES.has(str) || PROTECTED_ACTOR_HASHES.has(clean)) return true;
-
-    // 3. Kiểm tra IP động theo phiên hoạt động của Admin
-    if (clean && this._activeAdminSessions.has(clean)) {
-      const session = this._activeAdminSessions.get(clean);
-      if (session && session.expiresAt > Date.now()) {
-        return true;
-      }
-      this._activeAdminSessions.delete(clean);
-    }
-
-    // 4. Kiểm tra Actor Hash của các IP Admin động
-    for (const [adminIp, session] of this._activeAdminSessions.entries()) {
-      if (session && session.expiresAt > Date.now()) {
-        const h = hashIp(adminIp);
-        if (str === h || clean === h) return true;
-      }
-    }
 
     return false;
   }
@@ -629,12 +583,8 @@ class AIOpsQuarantine {
    */
   async permanentBanIp(ipHashOrIp, { bannedBy = null } = {}) {
     if (!ipHashOrIp) return 0;
-    logger.warn(`[AIOps Quarantine] Chính sách an ninh PO: Chuyển yêu cầu khóa vĩnh viễn IP [${ipHashOrIp}] sang tạm khóa 4 giờ.`);
-    return this.temporaryBlockIp(ipHashOrIp, {
-      durationMs: 4 * 60 * 60 * 1000,
-      blockedBy: bannedBy,
-      reason: 'Admin tạm khóa IP 4 giờ (Chính sách không khóa vĩnh viễn IP)',
-    });
+    // Tên cũ giữ cho tương thích: IP không có khoá vĩnh viễn, nên đây chính là "Khóa thêm 4 giờ".
+    return this.extendIp(ipHashOrIp, { blockedBy: bannedBy });
   }
 
   /**
@@ -682,7 +632,7 @@ class AIOpsQuarantine {
 
         // Nếu là quét tự động hết hạn, chỉ mở khóa tài khoản do AIOps/Sentinel khóa, tránh can thiệp khóa do Admin thủ công (Task 58.5)
         if (options && options.onlyAIOpsLocked) {
-          andConditions.push({ reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } });
+          andConditions.push(EXPIRING_REASON_WHERE);
         }
       } else if (options.autoQuarantine) {
         // Khoá tự động chỉ đụng hàng đang Active: không ghi đè khoá của admin, không đụng PendingDelete / Deleted
@@ -691,6 +641,8 @@ class AIOpsQuarantine {
         // Khi khóa (Inactive): Tuyệt đối không ghi đè nếu tài khoản đang trong quy trình chờ xóa (PendingDelete)
         andConditions.push({ status: { not: 'PendingDelete' } });
       }
+      // Tài khoản quản trị gốc không bao giờ bị khoá (trigger CSDL 56 cũng chặn).
+      if (status !== 'Active') andConditions.push({ email: { not: ROOT_ADMIN_EMAIL } });
 
       const updateResult = await prisma.account.updateMany({
         where: { AND: andConditions },
@@ -732,7 +684,7 @@ class AIOpsQuarantine {
       const { prisma } = require('../../config/db');
       if (!prisma?.account?.findMany) return false;
       const locked = await prisma.account.findMany({
-        where: { status: 'Inactive', reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } },
+        where: { status: 'Inactive', ...EXPIRING_REASON_WHERE },
         select: { idaccount: true, username: true },
       });
       const now = Date.now();
@@ -776,11 +728,13 @@ class AIOpsQuarantine {
       }
     }
 
-    // Cập nhật CSDL bảng aiops_account_quarantine qua repository
+    const acc = await this._resolveAccount(usernameOrId);
+    // Cập nhật CSDL bảng aiops_account_quarantine qua repository (dòng vẫn giữ, trạng thái UNLOCKED)
     if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
       try {
         await this.repository.updateAccountStatus({
-          username: usernameOrId,
+          username: acc?.username || usernameOrId,
+          idaccount: acc?.idaccount || null,
           status: 'UNLOCKED',
           unblockedBy,
           unblockReason,
@@ -791,7 +745,7 @@ class AIOpsQuarantine {
     }
 
     // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Kích hoạt lại tài khoản
-    await this._syncAccountStatusToDatabase(usernameOrId, 'Active', null);
+    await this._syncAccountStatusToDatabase(acc?.idaccount || usernameOrId, 'Active', null, { idaccount: acc?.idaccount });
 
     this._emitUpdatedEvent();
     return count;
@@ -816,25 +770,10 @@ class AIOpsQuarantine {
       }
     }
 
-    // Cập nhật CSDL bảng aiops_account_quarantine qua repository
-    if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
-      try {
-        await this.repository.updateAccountStatus({
-          username: usernameOrId,
-          status: 'PERMANENT',
-          bannedBy,
-        });
-      } catch (err) {
-        logger.error('[AIOps Quarantine] Lỗi cập nhật status PERMANENT Tài khoản trong DB', { error: err.message });
-      }
-    }
-
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản thủ công bởi Admin
-    await this._syncAccountStatusToDatabase(
-      usernameOrId,
-      'Inactive',
-      'Quản trị viên vô hiệu hóa tài khoản thủ công do phát hiện vi phạm an ninh'
-    );
+    // Dấu ADMIN_BAN: không bao giờ tự mở, chỉ admin mở thủ công.
+    const reason = `${AIOPS_ADMIN_BAN_PREFIX} Quản trị viên khóa tài khoản do phát hiện vi phạm an ninh`;
+    const acc = await this._recordAccountLock(usernameOrId, { status: 'PERMANENT', reason, bannedBy });
+    await this._syncAccountStatusToDatabase(acc?.idaccount || usernameOrId, 'Inactive', reason, { idaccount: acc?.idaccount });
 
     this._emitUpdatedEvent();
     return count;
@@ -883,11 +822,15 @@ class AIOpsQuarantine {
   /**
    * Tạm khóa Tài khoản (3-12 tiếng, mặc định 4 tiếng theo yêu cầu PO)
    */
-  async temporaryBlockAccount(usernameOrId, { durationMs = null, blockedBy = null, reason = 'Admin tạm khóa Tài khoản' } = {}) {
+  async temporaryBlockAccount(usernameOrId, { durationMs = null, blockedBy = null } = {}) {
     if (!usernameOrId) return 0;
     const clean = String(usernameOrId).toLowerCase().trim();
     const dur = durationMs || this.defaultDurationMs;
     const exp = Date.now() + dur;
+    const minutes = Math.round(dur / 60000);
+    const span = minutes >= 60 ? `${Math.round(minutes / 60)} giờ` : `${Math.max(1, minutes)} phút`;
+    // Dấu ADMIN_TEMP: hết hạn thì bộ quét tự mở (account về Active).
+    const reason = `${AIOPS_ADMIN_TEMP_PREFIX} Quản trị viên tạm khóa tài khoản ${span}`;
     let count = 0;
     for (const [key, record] of this._pairs.entries()) {
       if (
@@ -902,28 +845,143 @@ class AIOpsQuarantine {
       }
     }
 
-    if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
-      try {
-        await this.repository.updateAccountStatus({
-          username: usernameOrId,
-          status: 'TEMPORARY',
-          bannedBy: blockedBy,
-          expiresAt: new Date(exp),
-        });
-      } catch (err) {
-        logger.error('[AIOps Quarantine] Lỗi cập nhật status TEMPORARY Tài khoản trong DB', { error: err.message });
-      }
-    }
-
+    const acc = await this._recordAccountLock(usernameOrId, { status: 'TEMPORARY', reason, bannedBy: blockedBy, expiresAt: new Date(exp) });
     // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản tạm thời bởi Admin
-    await this._syncAccountStatusToDatabase(
-      usernameOrId,
-      'Inactive',
-      reason || `Quản trị viên tạm khóa tài khoản (${Math.round(dur / 3600000)} giờ) thủ công`
-    );
+    await this._syncAccountStatusToDatabase(acc?.idaccount || usernameOrId, 'Inactive', reason, { idaccount: acc?.idaccount });
 
     this._emitUpdatedEvent();
     return count;
+  }
+
+  /**
+   * Admin mở tài khoản ở trang Người dùng: dòng khoá AIOps đang hiệu lực của tài khoản đó chuyển UNLOCKED
+   * (account.status đã được trang Người dùng đổi, ở đây không đụng).
+   */
+  async releaseAccountFromUserPage({ idaccount = null, username, by = 'Admin' } = {}) {
+    if (!username) return 0;
+    const clean = String(username).toLowerCase();
+    for (const record of this._pairs.values()) {
+      if ((record.username && record.username.toLowerCase() === clean) || (idaccount && Number(record.idaccount) === Number(idaccount))) {
+        record.accountStatus = 'unlocked';
+        record.accountExpiresAt = null;
+      }
+    }
+    if (!this.repository || typeof this.repository.getAccountByUsername !== 'function') return 0;
+    const row = await this.repository.getAccountByUsername(username);
+    if (!row || !['TEMPORARY', 'PERMANENT'].includes(row.status)) return 0;
+    await this.repository.updateAccountStatus({ username, idaccount, status: 'UNLOCKED', unblockedBy: by, unblockReason: 'Mở từ trang Người dùng' });
+    this._emitUpdatedEvent();
+    return 1;
+  }
+
+  /** Tài khoản đích theo tên đăng nhập hoặc mã (không phân biệt hoa thường với tên). */
+  async _resolveAccount(usernameOrId) {
+    if (usernameOrId === null || usernameOrId === undefined || NO_ACCOUNT.has(String(usernameOrId).trim().toLowerCase())) return null;
+    try {
+      const { prisma } = require('../../config/db');
+      if (!prisma?.account?.findFirst) return null;
+      const s = String(usernameOrId).trim();
+      const where = /^\d+$/.test(s)
+        ? { OR: [{ idaccount: Number(s) }, { username: s }] }
+        : { username: { equals: s, mode: 'insensitive' } };
+      return await prisma.account.findFirst({ where, select: { idaccount: true, username: true, idrole: true, email: true } });
+    } catch (err) {
+      logger.warn('[AIOps Quarantine] Không tra được tài khoản đích', { error: err.message });
+      return null;
+    }
+  }
+
+  /** Ghi dòng theo dõi khoá tài khoản (tạo mới nếu chưa có). Trả về tài khoản đích đã tra. */
+  async _recordAccountLock(usernameOrId, { status, reason, bannedBy = null, expiresAt = null }) {
+    const acc = await this._resolveAccount(usernameOrId);
+    if (this.repository && typeof this.repository.upsertAccountLock === 'function') {
+      try {
+        await this.repository.upsertAccountLock({
+          username: acc?.username || String(usernameOrId).trim(),
+          idaccount: acc?.idaccount || null,
+          status,
+          reason,
+          bannedBy,
+          expiresAt,
+        });
+      } catch (err) {
+        logger.error('[AIOps Quarantine] Lỗi ghi dòng khoá tài khoản', { error: err.message });
+      }
+    }
+    return acc;
+  }
+
+  /** "Khóa thêm 4 giờ" cho IP. IP chỉ có tạm khoá, không có khoá vĩnh viễn. */
+  async extendIp(ipHashOrIp, { blockedBy = null } = {}) {
+    return this.temporaryBlockIp(ipHashOrIp, { durationMs: IP_EXTEND_MS, blockedBy, reason: 'Admin khóa thêm 4 giờ' });
+  }
+
+  /**
+   * Danh sách khoá cho Admin-web, đọc từ kho lưu (không phụ thuộc bộ nhớ): mọi IP và tài khoản từng bị khoá,
+   * kể cả đã mở. Mỗi dòng là một cặp (IP, tài khoản) theo lần vi phạm gần nhất; IP hoặc tài khoản không có cặp
+   * thì đứng riêng một dòng. Kho lưu không đọc được thì dùng danh sách trong bộ nhớ.
+   */
+  async listQuarantines() {
+    const data = this.repository && typeof this.repository.listQuarantineRows === 'function'
+      ? await this.repository.listQuarantineRows()
+      : null;
+    if (!data) return this.getQuarantinedList();
+
+    const now = Date.now();
+    const ipByHash = new Map(data.ips.map((r) => [r.ip_hash, r]));
+    const accByName = new Map(
+      data.accounts.filter((r) => !NO_ACCOUNT.has(String(r.username || '').toLowerCase())).map((r) => [String(r.username).toLowerCase(), r])
+    );
+    const usedIps = new Set();
+    const usedAccounts = new Set();
+    const rows = [];
+
+    const push = (ipRow, accRow, link) => {
+      const ipStatus = ipRow ? lockKind(ipRow, now) : null;
+      const accountStatus = accRow ? lockKind(accRow, now) : null;
+      const ipExpiresAt = ipStatus === 'temporary' ? isoOf(ipRow.expires_at) : null;
+      const accountExpiresAt = accountStatus === 'temporary' ? isoOf(accRow.expires_at) : null;
+      const bannedAt = [ipRow?.banned_at, accRow?.banned_at, link?.detected_at].filter(Boolean).map((v) => new Date(v).getTime());
+      const ipRemainingMinutes = minutesLeft(ipStatus, ipRow?.expires_at, now);
+      const accountRemainingMinutes = minutesLeft(accountStatus, accRow?.expires_at, now);
+      rows.push({
+        id: `${ipRow?.ip_hash || 'none'}:::${accRow ? String(accRow.username).toLowerCase() : 'all'}`,
+        hash: ipRow?.ip_hash || null,
+        ipHash: ipRow?.ip_hash || null,
+        maskedIp: ipRow?.masked_ip || null,
+        username: accRow?.username || 'N/A',
+        idaccount: accRow?.idaccount || null,
+        vector: ipRow?.violation_vector || accRow?.violation_vector || 'auth',
+        ipStatus,
+        accountStatus,
+        reason: lyDoChoNguoiDung(link?.reason || accRow?.reason || ipRow?.reason || null),
+        bannedAt: bannedAt.length ? new Date(Math.max(...bannedAt)).toISOString() : null,
+        ipExpiresAt,
+        accountExpiresAt,
+        ipRemainingMinutes,
+        accountRemainingMinutes,
+        expiresAt: ipExpiresAt || accountExpiresAt,
+        remainingMinutes: ipRemainingMinutes || accountRemainingMinutes || null,
+        ipUnblockedBy: ipStatus === 'unlocked' ? ipRow?.unblocked_by || null : null,
+        ipUnblockedAt: ipStatus === 'unlocked' ? isoOf(ipRow?.unblocked_at) : null,
+        accountUnblockedBy: accountStatus === 'unlocked' ? accRow?.unblocked_by || null : null,
+        accountUnblockedAt: accountStatus === 'unlocked' ? isoOf(accRow?.unblocked_at) : null,
+        hits: Number(ipRow?.hits || accRow?.hits || 1),
+      });
+    };
+
+    for (const link of data.links) {
+      const ipRow = ipByHash.get(link.ip_hash);
+      const accRow = accByName.get(String(link.username || '').toLowerCase()) || null;
+      if (!ipRow) continue;
+      push(ipRow, accRow, link);
+      usedIps.add(link.ip_hash);
+      if (accRow) usedAccounts.add(String(accRow.username).toLowerCase());
+    }
+    for (const ipRow of data.ips) if (!usedIps.has(ipRow.ip_hash)) push(ipRow, null, null);
+    for (const [key, accRow] of accByName) if (!usedAccounts.has(key)) push(null, accRow, null);
+
+    return rows.sort((a, b) => new Date(b.bannedAt || 0) - new Date(a.bannedAt || 0));
   }
 
   /**
@@ -1226,11 +1284,12 @@ class AIOpsQuarantine {
    */
   createMiddleware() {
     return (req, res, next) => {
-      // Fast-lane: Miễn trừ cho request đã được SERVER XÁC THỰC là Admin thật
-      if (req.isAdmin === true) {
+      // Không miễn trừ admin: IP đang khoá thì chặn mọi request (mục 2.5 kế hoạch sửa trang AIOps).
+      // Ngoại lệ duy nhất: tài khoản quản trị gốc (token hợp lệ, hoặc request đăng nhập bằng tên tài khoản gốc).
+      const rootAdmin = require('../auth/root-admin');
+      if (rootAdmin.isRootTokenRequest(req) || rootAdmin.isRootLoginRequest(req)) {
         return next();
       }
-
       // Đọc IP an toàn tuân thủ app.set('trust proxy', 1)
       const clientIp = req.ip || req.socket?.remoteAddress;
       const check = this.isQuarantined(clientIp);

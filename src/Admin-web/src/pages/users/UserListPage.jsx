@@ -10,7 +10,6 @@ import {
   Badge,
   Button,
   Card,
-  ConfirmModal,
   DataTable,
   Modal,
   PageHeader,
@@ -69,7 +68,7 @@ const UserListPage = () => {
   const [inactivateError, setInactivateError] = useState('');
   const [activateTarget, setActivateTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [inactivatePinOpen, setInactivatePinOpen] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
 
   const fetchUsers = async () => {
@@ -186,48 +185,31 @@ const UserListPage = () => {
       setInactivateError(t('users.inactivateModal.reasonRequired'));
       return;
     }
-    if (!inactivateTarget || updatingStatus) return;
-    setUpdatingStatus(true);
-    try {
-      await adminApi.updateUserStatus(inactivateTarget.id, { status: 'Inactive', reason_inactive: reason });
-      setUsers((prev) => prev.map((u) => (u.id === inactivateTarget.id ? { ...u, status: 'inactive', reason_inactive: reason } : u)));
-      if (notify) notify.success(t('users.alerts.inactivatedSuccess', { name: displayName(inactivateTarget) }));
-      setInactivateTarget(null);
-    } catch (err) {
-      const message = err.response?.data?.message || err.message;
-      setInactivateError(message);
-      if (notify) notify.error(message, t('users.alerts.inactivatedFailed'));
-    } finally {
-      setUpdatingStatus(false);
-    }
+    if (!inactivateTarget) return;
+    setInactivatePinOpen(true);
   };
 
-  const confirmActivate = async () => {
-    if (!activateTarget || updatingStatus) return;
-    setUpdatingStatus(true);
-    try {
-      await adminApi.updateUserStatus(activateTarget.id, { status: 'Active' });
-      setUsers((prev) => prev.map((u) => (u.id === activateTarget.id ? { ...u, status: 'active', reason_inactive: null } : u)));
-      if (notify) notify.success(t('users.alerts.activatedSuccess', { name: displayName(activateTarget) }));
-      setActivateTarget(null);
-    } catch (err) {
-      if (notify) notify.error(err.response?.data?.message || err.message, t('users.alerts.activatedFailed'));
-    } finally {
-      setUpdatingStatus(false);
-    }
+  // Ba thao tác dưới đây gửi PIN kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, hiện trong hộp PIN.
+  const inactivated = () => {
+    const target = inactivateTarget;
+    const reason = inactivateReason.trim();
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, status: 'inactive', reason_inactive: reason } : u)));
+    if (notify) notify.success(t('users.alerts.inactivatedSuccess', { name: displayName(target) }));
+    setInactivateTarget(null);
   };
 
-  const confirmDelete = async () => {
+  const activated = () => {
+    const target = activateTarget;
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, status: 'active', reason_inactive: null } : u)));
+    if (notify) notify.success(t('users.alerts.activatedSuccess', { name: displayName(target) }));
+    setActivateTarget(null);
+  };
+
+  const deleted = () => {
     const target = deleteTarget;
-    if (!target) return;
-    try {
-      await adminApi.deleteUser(target.id);
-      setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, status: 'deleted', delete_at: new Date().toISOString() } : u)));
-      setFilter((prev) => (prev.statuses.includes('deleted') ? prev : { ...prev, statuses: [...ALL_STATUSES] }));
-      if (notify) notify.success(t('users.alerts.deletedSuccess', { name: displayName(target) }));
-    } catch (err) {
-      if (notify) notify.error(err.response?.data?.message || err.message, t('users.alerts.deletedFailed'));
-    }
+    setUsers((prev) => prev.map((u) => (u.id === target.id ? { ...u, status: 'deleted', delete_at: new Date().toISOString() } : u)));
+    setFilter((prev) => (prev.statuses.includes('deleted') ? prev : { ...prev, statuses: [...ALL_STATUSES] }));
+    if (notify) notify.success(t('users.alerts.deletedSuccess', { name: displayName(target) }));
   };
 
   const columns = [
@@ -419,18 +401,17 @@ const UserListPage = () => {
       </Modal>
 
       <Modal
-        open={Boolean(inactivateTarget)}
+        open={Boolean(inactivateTarget) && !inactivatePinOpen}
         onClose={() => setInactivateTarget(null)}
         size="sm"
-        closeDisabled={updatingStatus}
         title={t('users.inactivateModal.title')}
         description={inactivateTarget ? `${inactivateTarget.name} (@${inactivateTarget.username})` : undefined}
         footer={
           <>
-            <Button onClick={() => setInactivateTarget(null)} disabled={updatingStatus}>
+            <Button onClick={() => setInactivateTarget(null)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" form={`${reasonId}-form`} variant="danger" loading={updatingStatus} disabled={!inactivateReason.trim()}>
+            <Button type="submit" form={`${reasonId}-form`} variant="danger" disabled={!inactivateReason.trim()}>
               {t('users.inactivateModal.submitBtn')}
             </Button>
           </>
@@ -464,14 +445,29 @@ const UserListPage = () => {
         </form>
       </Modal>
 
-      <ConfirmModal
-        open={Boolean(activateTarget)}
+      <SecurityConfirmModal
+        isOpen={inactivatePinOpen}
+        onClose={() => setInactivatePinOpen(false)}
+        title={t('users.inactivateModal.title')}
+        description={t('users.inactivateModal.pinDesc', { reason: inactivateReason.trim() })}
+        confirmText={t('users.inactivateModal.submitBtn')}
+        targetLabel={inactivateTarget ? `@${inactivateTarget.username}` : ''}
+        dangerLevel="critical"
+        onVerify={(credentials) =>
+          adminApi.updateUserStatus(inactivateTarget.id, { status: 'Inactive', reason_inactive: inactivateReason.trim(), ...credentials })
+        }
+        onConfirm={inactivated}
+      />
+
+      <SecurityConfirmModal
+        isOpen={Boolean(activateTarget)}
+        onClose={() => setActivateTarget(null)}
         title={t('users.activateModal.title')}
-        message={activateTarget ? t('users.activateModal.message', { name: displayName(activateTarget) }) : ''}
+        description={activateTarget ? t('users.activateModal.message', { name: displayName(activateTarget) }) : ''}
         confirmText={t('users.activateModal.submitBtn')}
-        loading={updatingStatus}
-        onConfirm={confirmActivate}
-        onCancel={() => setActivateTarget(null)}
+        targetLabel={activateTarget ? `@${activateTarget.username}` : ''}
+        onVerify={(credentials) => adminApi.updateUserStatus(activateTarget.id, { status: 'Active', ...credentials })}
+        onConfirm={activated}
       />
 
       <SecurityConfirmModal
@@ -480,10 +476,10 @@ const UserListPage = () => {
         title={t('users.deleteModal.title')}
         description={t('users.deleteModal.warning')}
         confirmText={t('users.deleteModal.confirmBtn')}
-        actionType="DELETE_USER"
         targetLabel={deleteTarget ? `@${deleteTarget.username}` : ''}
         dangerLevel="critical"
-        onConfirm={confirmDelete}
+        onVerify={(credentials) => adminApi.deleteUser(deleteTarget.id, credentials)}
+        onConfirm={deleted}
       />
 
       {detailUserId && <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />}

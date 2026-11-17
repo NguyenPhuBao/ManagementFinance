@@ -94,7 +94,7 @@ describe('Hiển thị', () => {
     expect(card('Người dùng mới')).toHaveTextContent('39');
     expect(card('Người dùng mới')).toHaveTextContent('+12% so với kỳ trước');
     expect(card('Tổng danh mục')).toHaveTextContent('42');
-    await waitFor(() => expect(card('Độ khả dụng · Tháng 11/2026')).toHaveTextContent('99.98%'));
+    await waitFor(() => expect(card('Độ khả dụng · Tháng 11/2026')).toHaveTextContent('99,98%'));
     expect(card('Độ khả dụng · Tháng 11/2026')).toHaveTextContent('Chạy liên tục 3 ngày');
     expect(within(card('Độ khả dụng · Tháng 11/2026')).getByRole('button', { name: 'Xem chi tiết' })).toBeInTheDocument();
   });
@@ -183,7 +183,7 @@ describe('Phân trang và realtime', () => {
     await renderPage();
     emit('admin.metrics_stream', { runningFormatted: '2 giờ', availability: { period: 'month', year: 2026, month: 11, percent: 97.5 } });
     const card = screen.getByText('Độ khả dụng · Tháng 11/2026', { selector: 'div' }).parentElement;
-    await waitFor(() => expect(card).toHaveTextContent('97.50%'));
+    await waitFor(() => expect(card).toHaveTextContent('97,50%'));
     expect(card).toHaveTextContent('Chạy liên tục 2 giờ');
   });
 });
@@ -233,7 +233,7 @@ describe('Chi tiết độ khả dụng theo kỳ', () => {
   it('A3. Gọi API đúng tham số theo kỳ chọn; hiện %, "Dữ liệu từ", chia nhỏ và sự cố', async () => {
     const dialog = await openDetail();
     await waitFor(() => expect(adminApi.getAvailability).toHaveBeenCalledWith({ period: 'month', year: 2026, month: 11 }));
-    expect(await within(dialog).findByText('99.50%')).toBeInTheDocument();
+    expect(await within(dialog).findByText('99,50%')).toBeInTheDocument();
     expect(within(dialog).getByText('Dữ liệu từ 10/11/2026')).toBeInTheDocument();
     const line = (label) => within(dialog).getByText(label, { selector: 'span.text-ink-muted' }).parentElement;
     expect(line('Bảo trì có kế hoạch')).toHaveTextContent('30 phút');
@@ -246,13 +246,13 @@ describe('Chi tiết độ khả dụng theo kỳ', () => {
     fireEvent.click(within(dialog).getByRole('tab', { name: 'Quý' }));
     fireEvent.change(within(dialog).getByLabelText('Chọn năm'), { target: { value: '2025' } });
     await waitFor(() => expect(adminApi.getAvailability).toHaveBeenLastCalledWith({ period: 'quarter', year: 2025, quarter: 4 }));
-    expect(await within(dialog).findByText('98.25%')).toBeInTheDocument();
+    expect(await within(dialog).findByText('98,25%')).toBeInTheDocument();
   });
 
   it('A3b. Kỳ chưa có dữ liệu thì ghi rõ, không hiện 100%', async () => {
     adminApi.getAvailability.mockResolvedValue(AVAIL({ percent: null, measuredSeconds: 0, coverageFrom: null, incidents: [] }));
     const dialog = await openDetail();
     expect(await within(dialog).findByText('Chưa có dữ liệu cho kỳ này')).toBeInTheDocument();
-    expect(within(dialog).queryByText('100.00%')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('100,00%')).not.toBeInTheDocument();
   });
 });

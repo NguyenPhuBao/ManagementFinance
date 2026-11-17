@@ -140,4 +140,4 @@ Nếu người dùng đang tắt mạng hoặc không mở app tại thời đi�
   - `system.broadcast`: Gửi payload `{ title, message, level, timestamp }` tới toàn bộ thiết bị.
 - **Phát tán tới Admin-web (`admin_room`):**
   - `admin.notification`: Gửi cảnh báo hệ thống vào chuông Header của quản trị viên.
-  - `admin.security_alert`: Nhận cảnh báo tấn công an ninh từ module AIOps Sentinel.
+  - `admin.security_alert`: Nhận cảnh báo tấn công an ninh từ module AIOps Sentinel (không phát và không được đăng ký khi AIOps tạm dừng, mặc định từ 2026-11-17).

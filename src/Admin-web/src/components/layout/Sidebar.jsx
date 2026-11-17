@@ -3,10 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../store/auth.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { Icon } from '../ui';
+import { isAiopsEnabled } from '../../config/features';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: 'dashboard', key: 'nav.dashboard' },
-  { to: '/aiops', icon: 'security', key: 'nav.aiops' },
+  { to: '/aiops', icon: 'security', key: 'nav.aiops', feature: 'aiops' },
   { to: '/users', icon: 'group', key: 'nav.users' },
   { to: '/permissions', icon: 'admin_panel_settings', key: 'nav.permissions' },
   { to: '/payments', icon: 'receipt_long', key: 'nav.payments' },
@@ -17,7 +18,7 @@ const NAV_ITEMS = [
 
 const itemBase = 'flex h-10 items-center gap-3 rounded-lg px-3 text-sm transition-colors';
 
-const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => {
+const Sidebar = ({ collapsed, mobileOpen = false, onCloseMobile }) => {
   const navigate = useNavigate();
   const { logout } = useAuthContext();
   const { t } = useLanguageSafe();
@@ -47,7 +48,7 @@ const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => 
         </div>
 
         <nav aria-label={t('nav.mainMenu', 'Menu chính')} className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => item.feature !== 'aiops' || isAiopsEnabled()).map((item) => {
             const text = t(item.key);
             return (
               <NavLink
@@ -69,17 +70,6 @@ const Sidebar = ({ collapsed, mobileOpen = false, onToggle, onCloseMobile }) => 
         </nav>
 
         <div className="space-y-1 border-t border-line px-3 py-3">
-          <button
-            type="button"
-            onClick={onToggle}
-            title={collapsed ? t('nav.expand', 'Mở rộng menu') : undefined}
-            className={`${itemBase} hidden w-full cursor-pointer font-medium text-ink-muted hover:bg-muted hover:text-ink md:flex ${
-              collapsed ? 'md:justify-center md:px-0' : ''
-            }`}
-          >
-            <Icon name={collapsed ? 'chevron_right' : 'chevron_left'} className="shrink-0" />
-            {label(collapsed ? t('nav.expand', 'Mở rộng menu') : t('nav.collapse', 'Thu gọn menu'))}
-          </button>
           <button
             type="button"
             onClick={handleLogout}

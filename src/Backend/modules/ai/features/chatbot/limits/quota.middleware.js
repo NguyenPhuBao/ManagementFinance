@@ -51,9 +51,13 @@ function createDailyQuotaMiddleware({ quota, budget = null, permissionRepository
 
       const accountType = req.effectiveAccountType || req.user?.type || 'Basic';
       const { scopes } = await permissionRepository.getPermissionsByAccountType(accountType);
-      const configured = scopes?.[FEATURE_ID]?.daily_prompts;
-      req.aiContextWindowDays = scopes?.[FEATURE_ID]?.context_window_days;
-      const limit = Number.isFinite(configured) && configured >= 0 ? configured : getLimits().dailyPromptsDefault;
+      const limits = getLimits();
+      // Biến môi trường theo gói (nếu đặt) → số trong CSDL → mặc định.
+      const envDaily = limits.dailyPromptsByType?.[accountType];
+      const envWindow = limits.contextWindowDaysByType?.[accountType];
+      const configured = Number.isFinite(envDaily) ? envDaily : scopes?.[FEATURE_ID]?.daily_prompts;
+      req.aiContextWindowDays = Number.isFinite(envWindow) ? envWindow : scopes?.[FEATURE_ID]?.context_window_days;
+      const limit = Number.isFinite(configured) && configured >= 0 ? configured : limits.dailyPromptsDefault;
 
       const result = await quota.consume(req.user.idaccount, limit);
       res.setHeader('X-AI-Quota-Limit', limit);

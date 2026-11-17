@@ -1,5 +1,7 @@
 # 📋 KẾ HOẠCH CHI TIẾT TINH CHỈNH & CHUẨN HÓA TRANG AIOPS SENTINEL
 
+> **Ghi chú 2026-11-17:** kế hoạch lịch sử. AIOps hiện tạm dừng; công thức hiện hành ở `docs/AIOps/AIOPS_CONG_THUC.md`, trạng thái ở `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`.
+
 > **Tài liệu nguồn sự thật phục vụ thực thi:** `docs/AIOps/AIOPS_SENTINEL_REFINEMENT_PLAN.md`  
 > **Ngày lập:** 2026-10-23  
 > **Tác giả:** AI Assistant (Lead BA + Lead FullStack + Lead Tester)  

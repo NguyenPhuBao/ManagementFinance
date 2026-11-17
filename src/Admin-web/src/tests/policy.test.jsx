@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import BroadcastPage from '../pages/system/BroadcastPage';
+// Tab Chính sách đang ẩn trên trang Bảo trì & Thông báo (2026-11-16); dựng thẳng PolicyTab để giữ test cho lúc bật lại.
+import PolicyTab from '../pages/system/broadcast/PolicyTab';
 import adminApi from '../api/admin.api';
 
 vi.mock('../hooks/useSocket', () => ({ default: () => ({ on: () => {}, off: () => {} }) }));
@@ -33,8 +34,7 @@ const POLICIES = {
 };
 
 const openPolicyTab = async () => {
-  render(<BroadcastPage />);
-  fireEvent.click(await screen.findByRole('tab', { name: 'Chính sách' }));
+  render(<PolicyTab />);
   return screen.findByRole('region', { name: 'Chính sách đang sử dụng' });
 };
 const table = () => screen.getByRole('table', { name: 'Các chính sách' });
@@ -55,7 +55,6 @@ beforeEach(() => {
 describe('Tab Chính sách', () => {
   it('thẻ đầu tab liệt kê từng chính sách đang sử dụng kèm tỉ lệ đồng ý; nút Thêm chính sách', async () => {
     const current = await openPolicyTab();
-    expect(screen.getAllByRole('tab')).toHaveLength(3);
     expect(current).toHaveTextContent('Chính sách người dùng');
     expect(current).toHaveTextContent('v2');
     expect(current).toHaveTextContent('1 / 4 người dùng đã đồng ý');

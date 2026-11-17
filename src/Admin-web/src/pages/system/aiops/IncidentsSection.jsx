@@ -1,23 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
-import { formatDateTime } from '../../../utils/format';
-import { Badge, Button, Card, ConfirmModal, DataTable, Pagination, SearchInput, Tabs } from '../../../components/ui';
+import { formatDateTime, useNumberFormat } from '../../../utils/format';
+import { Badge, Button, Card, DataTable, Pagination, SearchInput, Tabs } from '../../../components/ui';
 import { VECTOR_TONE, incidentActor, maskIp } from './aiopsFormat';
 
 const IncidentsSection = ({ ops }) => {
   const { t } = useLanguageSafe();
-  const [target, setTarget] = useState(null);
-  const [blocking, setBlocking] = useState(false);
-  const { incidents, incidentTotal, quarantineList, myCurrentIp, actionLoading } = ops;
+  const nf = useNumberFormat();
+  const { incidents, incidentTotal, quarantineList, myCurrentIp } = ops;
 
-  const isBlocked = (actor) => Boolean(actor.hash) && quarantineList.some((q) => q.hash === actor.hash || q.ipHash === actor.hash);
-
-  const confirmBlock = async () => {
-    setBlocking(true);
-    const ok = await ops.blockFromIncident(target);
-    setBlocking(false);
-    if (ok) setTarget(null);
-  };
+  // Danh sách khoá giữ cả dòng đã mở: chỉ tính IP đang khoá.
+  const isBlocked = (actor) =>
+    Boolean(actor.hash) && quarantineList.some((q) => (q.hash === actor.hash || q.ipHash === actor.hash) && (q.ipStatus === 'temporary' || q.ipStatus === 'permanent'));
 
   const columns = [
     {
@@ -63,9 +57,9 @@ const IncidentsSection = ({ ops }) => {
         const ratio = baseline > 0 ? Number(current) / Number(baseline) : 0;
         return (
           <div className="flex flex-col items-start gap-0.5">
-            <span className="font-semibold tabular-nums text-danger">{current} {unit}</span>
-            <span className="text-xs text-ink-faint">{t('aiopsPage.incidents.threshold', { v: `${baseline} ${unit}`.trim() })}</span>
-            {ratio > 1 && <Badge tone="danger">{t('aiopsPage.incidents.exceeded', { r: Number(ratio.toFixed(1)).toLocaleString('vi-VN') })}</Badge>}
+            <span className="font-semibold tabular-nums text-danger">{nf.number(current)} {unit}</span>
+            <span className="text-xs text-ink-faint">{t('aiopsPage.incidents.threshold', { v: `${nf.number(baseline)} ${unit}`.trim() })}</span>
+            {ratio > 1 && <Badge tone="danger">{t('aiopsPage.incidents.exceeded', { r: nf.number(ratio, { maxFrac: 1 }) })}</Badge>}
           </div>
         );
       },
@@ -88,7 +82,7 @@ const IncidentsSection = ({ ops }) => {
           return (
             <div className="flex flex-col items-start gap-1">
               <Badge tone="danger">{t('aiopsPage.incidents.blocked')}</Badge>
-              <Button size="sm" variant="ghost" loading={actionLoading === `ip:${actor.hash}`} onClick={() => ops.quarantineActions.unblockIp(actor.hash, maskIp(actor.identity))}>
+              <Button size="sm" variant="ghost" onClick={() => ops.quarantineActions.unblockIp(actor.hash, maskIp(actor.identity))}>
                 {t('aiopsPage.incidents.unblock')}
               </Button>
             </div>
@@ -98,7 +92,7 @@ const IncidentsSection = ({ ops }) => {
           return <span className="text-sm text-success">{actor.system ? t('aiopsPage.incidents.system') : actor.mine ? t('aiopsPage.incidents.mine') : t('aiopsPage.incidents.protected')}</span>;
         }
         return (
-          <Button size="sm" variant="danger-ghost" icon="shield" onClick={() => setTarget(item)}>
+          <Button size="sm" variant="danger-ghost" icon="shield" onClick={() => ops.blockFromIncident(item)}>
             {t('aiopsPage.incidents.block')}
           </Button>
         );
@@ -112,7 +106,6 @@ const IncidentsSection = ({ ops }) => {
     { key: 'ACTIVE', label: t('aiopsPage.incidents.active') },
     { key: 'MITIGATED', label: t('aiopsPage.incidents.mitigated') },
   ];
-  const targetIp = target ? maskIp(incidentActor(target, myCurrentIp).identity) : '';
 
   return (
     <Card title={t('aiopsPage.incidents.title')} actions={<Badge tone="neutral">{t('aiopsPage.incidents.count', { n: incidentTotal })}</Badge>}>
@@ -147,16 +140,6 @@ const IncidentsSection = ({ ops }) => {
           itemLabel={t('aiopsPage.incidents.itemLabel')}
         />
       )}
-      <ConfirmModal
-        open={Boolean(target)}
-        onCancel={() => setTarget(null)}
-        onConfirm={confirmBlock}
-        loading={blocking}
-        confirmDanger
-        title={t('aiopsPage.incidents.blockTitle', { ip: targetIp })}
-        message={t('aiopsPage.incidents.blockMsg')}
-        confirmText={t('aiopsPage.incidents.block')}
-      />
     </Card>
   );
 };

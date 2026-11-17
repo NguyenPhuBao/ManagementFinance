@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
+import { useNumberFormat } from '../../utils/format';
 import { Link } from 'react-router-dom';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
-import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { Badge, Button, Icon, SecurityConfirmModal, Spinner } from '../ui';
 
@@ -53,7 +53,7 @@ const formatStart = (iso) =>
 
 const ServerHealthPanel = ({ uptimeData }) => {
   const { t } = useLanguageSafe();
-  const notify = useAlertSafe();
+  const nf = useNumberFormat();
   const reasonId = useId();
   const [health, setHealth] = useState(null);
   const [healthError, setHealthError] = useState(false);
@@ -61,7 +61,6 @@ const ServerHealthPanel = ({ uptimeData }) => {
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState(false);
-  const [toggling, setToggling] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
 
   const fetchMaintenance = useCallback(async () => {
@@ -149,17 +148,12 @@ const ServerHealthPanel = ({ uptimeData }) => {
     setPinOpen(true);
   };
 
-  const activate = async () => {
-    setToggling(true);
-    try {
-      await adminApi.setMaintenanceStatus({ active: true, reason: reason.trim(), isEmergency: true });
-      setMaintenance((prev) => ({ ...prev, active: true, isEmergency: true, reason: reason.trim(), activatedAt: new Date().toISOString() }));
-      await fetchMaintenance();
-    } catch (err) {
-      if (notify) notify.error(err?.response?.data?.message || err?.message || t('serverHealth.toggleFailed'));
-    } finally {
-      setToggling(false);
-    }
+  // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, hiện trong hộp PIN.
+  const activate = (credentials) => adminApi.setMaintenanceStatus({ active: true, reason: reason.trim(), isEmergency: true, ...credentials });
+
+  const activated = async () => {
+    setMaintenance((prev) => ({ ...prev, active: true, isEmergency: true, reason: reason.trim(), activatedAt: new Date().toISOString() }));
+    await fetchMaintenance();
   };
 
   const env = health?.environment;
@@ -197,14 +191,14 @@ const ServerHealthPanel = ({ uptimeData }) => {
         <>
           <div className="flex flex-col gap-3">
             <Gauge label="CPU" pct={cpu?.percent ?? 0} detail={`${cpu?.percent ?? 0}%${cpu?.cores ? ` · ${t('serverHealth.cores', { n: cpu.cores })}` : ''}`} warnAt={70} critAt={85} />
-            <Gauge label="RAM" pct={ramPct} detail={ram?.totalMb ? `${Number(ram.usedMb).toLocaleString('vi-VN')} / ${Number(ram.totalMb).toLocaleString('vi-VN')} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
+            <Gauge label={t('serverHealth.ram')} pct={ramPct} detail={ram?.totalMb ? `${nf.number(ram.usedMb, { maxFrac: 0 })} / ${nf.number(ram.totalMb, { maxFrac: 0 })} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
             <Gauge label={t('serverHealth.lag')} pct={(lag / 200) * 100} detail={`${lag} ms`} warnAt={25} critAt={50} />
           </div>
 
           <div className="flex flex-col gap-1.5 rounded-lg bg-muted p-3">
             <Row
               label={t('serverHealth.availability')}
-              value={availPct === null ? '--' : `${availPct.toFixed(2)}%`}
+              value={availPct === null ? '--' : nf.percent(availPct, 2)}
               valueClass={availPct === null ? 'text-ink' : TEXT[availPct >= 99.5 ? 'success' : availPct >= 95 ? 'warning' : 'danger']}
             />
             {uptime?.runningFormatted && <Row label={t('serverHealth.runtime')} value={uptime.runningFormatted} />}
@@ -238,7 +232,7 @@ const ServerHealthPanel = ({ uptimeData }) => {
             aria-checked={active}
             aria-labelledby={`${reasonId}-switch`}
             onClick={handleToggle}
-            disabled={active || toggling || maintenanceLoading}
+            disabled={active || maintenanceLoading}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'bg-danger' : 'bg-line'}`}
           >
             <span className={`inline-block h-5 w-5 rounded-full bg-card shadow transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -291,12 +285,12 @@ const ServerHealthPanel = ({ uptimeData }) => {
       <SecurityConfirmModal
         isOpen={pinOpen}
         onClose={() => setPinOpen(false)}
-        actionType="EMERGENCY_MAINTENANCE"
         dangerLevel="critical"
         title={t('serverHealth.pinTitle')}
         description={t('serverHealth.pinDesc')}
         confirmText={t('serverHealth.pinConfirm')}
-        onConfirm={activate}
+        onVerify={activate}
+        onConfirm={activated}
       />
     </section>
   );

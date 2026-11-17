@@ -92,33 +92,31 @@ test('AIOps Service Suite', async (t) => {
     assert.ok(emittedData.anomalies.length > 0);
   });
 
-  await t.test('4. calibrate() resets or updates baseline settings', async () => {
+  await t.test('4. calibrate() không ghi đè đường nền bằng tham số tuỳ ý (đặc tả 2026-11-17)', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();
-    const service = new AIOpsService({ collector, detector });
+    const service = new AIOpsService({ collector, detector, repository: { async setSetting() {} } });
 
+    const before = detector.getBaselineMetric('requestsPerMin');
     const result = await service.calibrate({ requestsPerMin: 200 });
     assert.strictEqual(result.success, true);
-    assert.strictEqual(detector.getBaselineMetric('requestsPerMin'), 200);
+    assert.strictEqual(detector.getBaselineMetric('requestsPerMin'), before);
   });
 
-  await t.test('4b. calibrate() calculates real server hardware baselines and capacity assessment for N users', async () => {
+  await t.test('4b. calibrate() đặt quy mô N và trả báo cáo năng lực theo Luật sử dụng', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector({ targetConcurrency: 500 });
-    const service = new AIOpsService({ collector, detector });
+    const service = new AIOpsService({ collector, detector, repository: { async setSetting() {} } });
 
     const result = await service.calibrate({ targetConcurrency: 2000 });
     assert.strictEqual(result.success, true);
     assert.ok(result.data, 'Phải trả về data report');
     assert.strictEqual(result.data.targetConcurrency, 2000);
-    assert.ok(result.data.serverSpecs.cpuCores >= 1, 'Phải nhận diện số nhân CPU');
-    assert.ok(result.data.serverSpecs.totalRamMb >= 512, 'Phải nhận diện tổng RAM');
-    assert.strictEqual(result.data.calculatedMetrics.baselineRpm, 20000);
-    assert.strictEqual(result.data.calculatedMetrics.safePeakRpm, 60000);
-    assert.ok(result.data.calculatedMetrics.expectedCpuPercent >= 5);
-    assert.ok(result.data.calculatedMetrics.expectedRamPercent >= 10);
+    assert.ok(result.data.serverSpecs.effectiveCores > 0 && result.data.serverSpecs.effectiveCores <= 1, 'Node một tiến trình dùng tối đa 1 nhân');
+    assert.strictEqual(result.data.trafficBaseline.baselineRpm, 4000, 'Chưa có lịch sử: ước tính N × 2');
+    assert.ok(result.data.capacity, 'Phải có mục năng lực');
     assert.ok(result.data.capacityAssessment.status, 'Phải có trạng thái đánh giá năng lực');
-    assert.ok(result.data.capacityAssessment.recommendation, 'Phải có khuyến nghị thực tế');
+    assert.ok(result.data.capacityAssessment.recommendation, 'Phải có khuyến nghị');
   });
 
   await t.test('5. toggleVector() toggles vector in detector, persists to repository and emits admin.vector_config_changed', async () => {

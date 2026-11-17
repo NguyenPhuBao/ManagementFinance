@@ -1,6 +1,7 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
-import { Button, Modal } from '../../../components/ui';
+import { Button, Modal, SecurityConfirmModal } from '../../../components/ui';
+import { formatNumber } from '../../../utils/format';
 
 const fieldClass =
   'w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -15,15 +16,16 @@ const THRESHOLDS = [
 ];
 
 export const CalibrateModal = ({ ops }) => {
-  const { t } = useLanguageSafe();
+  const { t, language } = useLanguageSafe();
   const ids = useId();
   const {
     showCalibrateModal,
     setShowCalibrateModal,
     customThresholdsInput,
     setCustomThresholdsInput,
-    autoRecommendedThresholds,
+    currentThresholds,
     handleCalibrate,
+    handleResetThresholds,
     calibrating,
     targetConcurrency,
   } = ops;
@@ -35,9 +37,10 @@ export const CalibrateModal = ({ ops }) => {
       closeDisabled={calibrating}
       size="lg"
       title={t('aiopsPage.calibrate.title')}
-      description={t('aiopsPage.calibrate.desc', { n: Number(targetConcurrency).toLocaleString('vi-VN') })}
+      description={t('aiopsPage.calibrate.desc', { n: formatNumber(targetConcurrency, {}, language) })}
       footer={
         <>
+          <Button variant="ghost" onClick={handleResetThresholds} disabled={calibrating}>{t('aiopsPage.calibrate.reset')}</Button>
           <Button onClick={() => setShowCalibrateModal(false)} disabled={calibrating}>{t('common.cancel', 'Hủy bỏ')}</Button>
           <Button variant="primary" loading={calibrating} onClick={handleCalibrate}>{t('aiopsPage.calibrate.confirm')}</Button>
         </>
@@ -56,7 +59,7 @@ export const CalibrateModal = ({ ops }) => {
               min="1"
               max={max}
               value={customThresholdsInput[key]}
-              placeholder={String(autoRecommendedThresholds[key])}
+              placeholder={currentThresholds[key] === undefined ? '' : String(currentThresholds[key])}
               onChange={(e) => setCustomThresholdsInput((prev) => ({ ...prev, [key]: e.target.value }))}
               className={`${fieldClass} h-10 tabular-nums`}
             />
@@ -70,24 +73,37 @@ export const CalibrateModal = ({ ops }) => {
 export const MitigationModal = ({ ops }) => {
   const { t } = useLanguageSafe();
   const reasonId = useId();
-  const { showMitigationModal, setShowMitigationModal, mitigationReason, setMitigationReason, handleTriggerMitigation, mitigating } = ops;
+  const { showMitigationModal, setShowMitigationModal, mitigationReason, setMitigationReason, handleTriggerMitigation } = ops;
+  // Nhập lý do xong thì hỏi PIN; huỷ PIN quay lại hộp lý do.
+  const [pinOpen, setPinOpen] = useState(false);
 
   return (
-    <Modal
-      open={showMitigationModal}
-      onClose={() => setShowMitigationModal(false)}
-      closeDisabled={mitigating}
-      title={t('aiopsPage.mitigation.title')}
-      description={t('aiopsPage.mitigation.desc')}
-      footer={
-        <>
-          <Button onClick={() => setShowMitigationModal(false)} disabled={mitigating}>{t('common.cancel', 'Hủy bỏ')}</Button>
-          <Button variant="danger" icon="lock" loading={mitigating} onClick={handleTriggerMitigation}>{t('aiopsPage.mitigation.confirm')}</Button>
-        </>
-      }
-    >
-      <label htmlFor={reasonId} className="mb-1 block text-sm font-medium text-ink">{t('aiopsPage.mitigation.reason')}</label>
-      <textarea id={reasonId} rows={3} value={mitigationReason} onChange={(e) => setMitigationReason(e.target.value)} className={`${fieldClass} py-2`} />
-    </Modal>
+    <>
+      <Modal
+        open={showMitigationModal && !pinOpen}
+        onClose={() => setShowMitigationModal(false)}
+        title={t('aiopsPage.mitigation.title')}
+        description={t('aiopsPage.mitigation.desc')}
+        footer={
+          <>
+            <Button onClick={() => setShowMitigationModal(false)}>{t('common.cancel', 'Hủy bỏ')}</Button>
+            <Button variant="danger" icon="lock" onClick={() => setPinOpen(true)}>{t('aiopsPage.mitigation.confirm')}</Button>
+          </>
+        }
+      >
+        <label htmlFor={reasonId} className="mb-1 block text-sm font-medium text-ink">{t('aiopsPage.mitigation.reason')}</label>
+        <textarea id={reasonId} rows={3} value={mitigationReason} onChange={(e) => setMitigationReason(e.target.value)} className={`${fieldClass} py-2`} />
+      </Modal>
+
+      <SecurityConfirmModal
+        isOpen={showMitigationModal && pinOpen}
+        onClose={() => setPinOpen(false)}
+        title={t('aiopsPage.mitigation.title')}
+        description={t('aiopsPage.mitigation.desc')}
+        confirmText={t('aiopsPage.mitigation.confirm')}
+        dangerLevel="critical"
+        onVerify={handleTriggerMitigation}
+      />
+    </>
   );
 };

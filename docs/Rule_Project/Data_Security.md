@@ -171,6 +171,7 @@ Cập nhật 2026-11-13 theo `Khao_sat_phap_ly_2026-11.md` (nguồn thứ cấp,
 * **OWASP Top 10:**
   * Phòng chống Cryptographic Failures: Mật khẩu băm bằng Argon2id hoặc bcrypt (cost $\ge$ 12); OTP và Refresh Token băm 1 chiều bằng SHA-256; dữ liệu nhạy cảm mã hóa AES-256-GCM với khóa mã hóa quản lý độc lập.
   * Chống dò mã PIN quản trị: sai 5 lần trong 15 phút thì khóa xác thực 15 phút theo tài khoản admin (`verifySecurityAction`).
+  * Thao tác nhạy cảm của Admin-web (bảo trì, chính sách, khóa / mở / xóa người dùng, danh mục, phân quyền, xem IP, hoàn tiền, đóng sự cố) gửi PIN kèm chính lệnh và Backend kiểm trước khi làm (từ 2026-11-16 cho bảo trì, người dùng, danh mục, phân quyền); lộ token admin mà không có PIN vẫn không làm được. Danh sách: `docs/Admin-web/01-authentication-and-authorization.md` mục 7.
   * PIN hệ thống dự phòng (quản trị viên chưa có `pin_hash` riêng) lấy từ `ADMIN_SECURITY_PIN`. Production thiếu biến thì không PIN dự phòng nào khớp (từ 2026-11-14, `systemPinMatches` trong `admin.service.js`); chỉ dev mới dùng mặc định `123456`.
 * **Tham chiếu quốc tế về IP:** IP là dữ liệu cá nhân (phán quyết Breyer C-582/14); xử lý vì an ninh mạng là lợi ích chính đáng nếu cần thiết, tương xứng (GDPR Recital 49).
 
@@ -337,3 +338,11 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Quy tắc ở Backend: báo sau 72 giờ bắt buộc `late_reason`; đóng bắt buộc `root_cause` và (đã báo cơ quan hoặc `report_not_required` + `no_report_reason`), xác thực PIN (`CLOSE_DATA_INCIDENT`); sự cố đã đóng không sửa (409).
 * Trigger `trg_protect_data_incident` chặn DELETE: sổ là hồ sơ pháp lý. Mọi thao tác ghi nhật ký kiểm toán; sự kiện `admin.data_incident_changed` cập nhật màn hình theo thời gian thực.
 * Quy trình: `Quy_trinh_su_co_du_lieu.md`.
+
+### 10.13. Khoá Truy Cập Trên Trang AIOps Và Tài Khoản Quản Trị Gốc (Migration 56, 2026-11-16)
+* **Trạng thái (2026-11-17):** AIOps tạm dừng, mặc định tắt bằng công tắc `AIOPS_ENABLED` / `VITE_AIOPS_ENABLED`. Khi tắt: không thu thập chỉ số, không tự khoá IP / tài khoản, `/admin/aiops/*` trả 404; các bảng `aiops_*` và thời hạn lưu IP (mục 10.8) giữ nguyên, job xoá IP quá hạn vẫn chạy. Khoá tạm đang có vẫn tự mở đúng hạn. Xem `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`, mục "Trạng thái: tạm dừng".
+* **Hiện IP cho admin theo dõi:** danh sách khoá hiện tên tài khoản và IP đã che; IP đầy đủ chỉ xem khi nhập PIN, mỗi lần xem ghi nhật ký (giữ cơ chế mục 10.8). Căn cứ: IP gắn tài khoản là dữ liệu cá nhân, được xử lý vì an ninh mạng ở mức cần thiết (`Khao_sat_phap_ly_2026-11.md` L13); hiện IP đầy đủ thường trực trong danh sách là vượt mức cần thiết.
+* **PIN cho mọi thao tác ghi AIOps:** khoá / mở IP và tài khoản, khoá thủ công, bật / tắt phòng vệ, hiệu chuẩn, đổi quy mô, bảo trì khẩn cấp. Máy chủ kiểm PIN (`adminService.verifySecurityAction`), nhật ký thao tác ghi mọi lệnh không phải `GET`.
+* **Khoá IP chặn cả admin:** không còn miễn khoá theo phiên admin (kẻ chiếm tài khoản admin không tự gỡ khoá IP được). Admin không tự khoá tài khoản của mình; khoá được admin khác.
+* **Tài khoản quản trị gốc:** một tài khoản, email cố định `admin@wealthcommand.com`; trigger `trg_protect_root_admin` chặn xoá, khoá, đổi định danh / vai và chặn người dùng thường chiếm email này. Đăng nhập hai bước: mật khẩu (bcrypt) + khoá `ROOT_ADMIN_SECOND_KEY` trong biến môi trường; thiếu biến thì không đăng nhập được. Bị lộ: đổi `ROOT_ADMIN_SECOND_KEY` và khởi động lại, mọi phiên cũ bị cắt (token mang vân tay HMAC của khoá). Mỗi lần đăng nhập gửi email cảnh báo tới `ADMIN_ALERT_EMAIL`. Mật khẩu khởi tạo `ROOT_ADMIN_PASSWORD` chỉ dùng một lần; lần đăng nhập đầu phải đổi mật khẩu và đặt PIN.
+* **Trách nhiệm:** giữ an toàn tài khoản quản trị gốc (mật khẩu, khoá thứ hai, quyền sửa biến môi trường máy chủ) là trách nhiệm của admin đứng đầu nắm giữ tài khoản này.

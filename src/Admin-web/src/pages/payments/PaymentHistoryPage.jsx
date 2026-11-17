@@ -9,7 +9,8 @@ import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, St
 import OrderDetailModal from './components/OrderDetailModal';
 import RefundModal from './components/RefundModal';
 import SampleOrderModal from './components/SampleOrderModal';
-import { STATUSES, STATUS_TONE, effectiveStatus, formatDate, formatVnd, packageLabel } from './paymentFormat';
+import { STATUSES, STATUS_TONE, effectiveStatus, formatDate, packageLabel } from './paymentFormat';
+import { useNumberFormat } from '../../utils/format';
 
 const EMPTY_FILTERS = { search: '', status: 'ALL', packageType: 'ALL', fromDate: '', toDate: '', excludeTemplate: false };
 
@@ -26,7 +27,6 @@ const buildParams = (f) => ({
 });
 
 const unwrap = (res) => res?.data?.data || res?.data || res;
-const num = (v) => Number(v || 0).toLocaleString('vi-VN');
 
 /** Hai cột nhỏ dưới số tổng của thẻ: phần từ đơn người dùng và phần từ đơn thử nghiệm. */
 const SplitLine = ({ t, user, test, prefix }) => (
@@ -51,6 +51,7 @@ const timestamp = () => {
 
 const PaymentHistoryPage = () => {
   const { t } = useLanguageSafe();
+  const { currency: money, number: fmtNum } = useNumberFormat();
   const notify = useAlertSafe();
   const socket = useSocket();
   const ids = useId();
@@ -311,9 +312,9 @@ const PaymentHistoryPage = () => {
       title: t('payments.table.amount'),
       render: (o) => (
         <div className="tabular-nums">
-          <div className="font-medium text-ink">{formatVnd(o.amount)}</div>
+          <div className="font-medium text-ink">{money(o.amount)}</div>
           {Number(o.amount_received) > 0 && Number(o.amount_received) !== Number(o.amount) && (
-            <div className="text-xs text-ink-faint">{t('payments.table.received', { amount: formatVnd(o.amount_received) })}</div>
+            <div className="text-xs text-ink-faint">{t('payments.table.received', { amount: money(o.amount_received) })}</div>
           )}
         </div>
       ),
@@ -376,18 +377,18 @@ const PaymentHistoryPage = () => {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label={t('payments.stats.totalRevenue')}
-          value={stats?.revenue ? formatVnd(stats.revenue.total) : '—'}
-          action={stats?.revenue && <SplitLine t={t} user={formatVnd(stats.revenue.user)} test={formatVnd(stats.revenue.template)} />}
+          value={stats?.revenue ? money(stats.revenue.total) : '—'}
+          action={stats?.revenue && <SplitLine t={t} user={money(stats.revenue.user)} test={money(stats.revenue.template)} />}
         />
         <StatCard
           label={t('payments.stats.totalOrders')}
-          value={stats?.orders ? num(stats.orders.total) : '—'}
-          action={stats?.orders && <SplitLine t={t} user={num(stats.orders.user)} test={num(stats.orders.template)} />}
+          value={stats?.orders ? fmtNum(stats.orders.total) : '—'}
+          action={stats?.orders && <SplitLine t={t} user={fmtNum(stats.orders.user)} test={fmtNum(stats.orders.template)} />}
         />
         <StatCard
           label={t('payments.stats.paidOrders')}
-          value={stats?.paid ? num(stats.paid.total) : '—'}
-          action={stats?.paid && <SplitLine t={t} user={num(stats.paid.user)} test={num(stats.paid.template)} />}
+          value={stats?.paid ? fmtNum(stats.paid.total) : '—'}
+          action={stats?.paid && <SplitLine t={t} user={fmtNum(stats.paid.user)} test={fmtNum(stats.paid.template)} />}
         />
         <StatCard
           label={t('payments.stats.refundPending')}
@@ -395,11 +396,11 @@ const PaymentHistoryPage = () => {
             stats?.refundPending ? (
               <div data-testid="refund-pending" className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col">
-                  <span>{num(stats.refundPending.user)}</span>
+                  <span>{fmtNum(stats.refundPending.user)}</span>
                   <span className="text-xs font-normal text-ink-faint">{t('payments.stats.fromUser')}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-warning">{num(stats.refundPending.template)}</span>
+                  <span className="text-warning">{fmtNum(stats.refundPending.template)}</span>
                   <span className="text-xs font-normal text-ink-faint">{t('payments.stats.fromTest')}</span>
                 </div>
               </div>
@@ -410,7 +411,7 @@ const PaymentHistoryPage = () => {
           action={
             stats?.refunded && (
               <div data-testid="refund-done">
-                <SplitLine t={t} prefix={t('payments.stats.refundedPrefix')} user={num(stats.refunded.user)} test={num(stats.refunded.template)} />
+                <SplitLine t={t} prefix={t('payments.stats.refundedPrefix')} user={fmtNum(stats.refunded.user)} test={fmtNum(stats.refunded.template)} />
               </div>
             )
           }

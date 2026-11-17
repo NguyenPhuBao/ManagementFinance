@@ -10,6 +10,7 @@ import SettingsModal from './SettingsModal';
 import LanguageToggle from '../common/LanguageToggle';
 import RealtimeStatusBadge from '../common/RealtimeStatusBadge';
 import { Button, Icon, Spinner, EmptyState } from '../ui';
+import { isAiopsEnabled } from '../../config/features';
 
 const LEVELS = {
   CRITICAL: { icon: 'error', tone: 'bg-danger-soft text-danger' },
@@ -94,10 +95,11 @@ const Header = ({ onMenuToggle, sidebarCollapsed }) => {
     };
 
     socket.on('admin.notification', handleAdminNotification);
-    socket.on('admin.security_alert', handleSecurityAlert);
+    const aiops = isAiopsEnabled();
+    if (aiops) socket.on('admin.security_alert', handleSecurityAlert);
     return () => {
       socket.off('admin.notification', handleAdminNotification);
-      socket.off('admin.security_alert', handleSecurityAlert);
+      if (aiops) socket.off('admin.security_alert', handleSecurityAlert);
     };
   }, [socket, settings?.soundEnabled]);
 

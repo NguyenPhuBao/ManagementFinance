@@ -10,6 +10,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const settingsCtx = useSettingsSafe();
+  const setActiveAccount = settingsCtx?.setActiveAccount;
+
+  // Cài đặt riêng từng tài khoản: đăng nhập / mở lại trang / đổi tài khoản thì nạp cài đặt của đúng tài khoản đó.
+  useEffect(() => {
+    if (isAuthenticated && user?.idaccount && setActiveAccount) setActiveAccount(user.idaccount);
+  }, [isAuthenticated, user?.idaccount, setActiveAccount]);
 
   // Initialize auth state from localStorage and softly verify session with backend
   useEffect(() => {
@@ -116,6 +122,8 @@ export const AuthProvider = ({ children }) => {
     if (settingsCtx?.resetLockState) {
       settingsCtx.resetLockState();
     }
+    // Không mang cài đặt của tài khoản vừa đăng xuất sang người dùng kế tiếp trên cùng trình duyệt
+    if (settingsCtx?.setActiveAccount) settingsCtx.setActiveAccount(null);
     setUser(null);
     setIsAuthenticated(false);
   }, [settingsCtx]);

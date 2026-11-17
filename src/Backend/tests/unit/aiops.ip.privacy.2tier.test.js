@@ -6,6 +6,10 @@ const { AIOpsQuarantine, hashIp } = require('../../modules/aiops/aiops.quarantin
 const { FeatureCollector } = require('../../modules/aiops/feature.collector');
 const { AIOpsService } = require('../../modules/aiops/aiops.service');
 const { AIOpsQuarantineRepository } = require('../../modules/aiops/aiops.quarantine.repository');
+
+// Từ 2026-11-16 mọi thao tác ghi AIOps đòi PIN (máy chủ kiểm). Tệp này kiểm hành vi khác nên giả lập PIN hợp lệ;
+// kiểm PIN thật nằm ở tests/unit/aiops.controller.pin_selflock.test.js.
+require('../../modules/admin/admin.service').verifySecurityAction = async () => ({ verified: true });
 const aiopsController = require('../../modules/aiops/aiops.controller');
 const adminService = require('../../modules/admin/admin.service');
 
@@ -93,14 +97,14 @@ describe('Tầng 2: IP đầy đủ không ra khỏi Backend qua API / socket AI
     assert.ok(!hasRawIp(events.map((e) => e.payload)));
   });
 
-  it('chặn thủ công bằng IP: phản hồi chỉ có bản che và ipHash, không trả lại IP đầy đủ', () => {
+  it('chặn thủ công bằng IP: phản hồi chỉ có bản che và ipHash, không trả lại IP đầy đủ', async () => {
     const { defaultAIOpsQuarantine } = require('../../modules/aiops/aiops.quarantine');
     const origRepo = defaultAIOpsQuarantine.repository;
     defaultAIOpsQuarantine.repository = null;
     try {
       const req = { body: { ip: '198.51.100.51', reason: 'thử', durationMinutes: 5 } };
       const res = fakeRes();
-      aiopsController.quarantineActor(req, res);
+      await aiopsController.quarantineActor(req, res);
       assert.strictEqual(res.statusCode, 200);
       assert.ok(!JSON.stringify(res.body).includes('198.51.100.51'));
       assert.strictEqual(res.body.data.maskedIp, '198.51.xxx.xxx');
@@ -120,9 +124,13 @@ describe('Tầng 2: IP đầy đủ không ra khỏi Backend qua API / socket AI
     res.json({ success: true, data: { anomalies: [{ actor: { rawIp: '203.0.113.9', maskedIp: '203.0.xxx.xxx' } }] } });
     assert.ok(!hasRawIp(res.body));
     assert.strictEqual(res.body.data.anomalies[0].actor.maskedIp, '203.0.xxx.xxx');
-    const src = require('fs').readFileSync(require.resolve('../../api/admin.routes'), 'utf8');
-    assert.match(src, /router\.use\('\/aiops', stripRawIpResponse\)/);
-    assert.ok(src.indexOf("router.use('/aiops', stripRawIpResponse)") < src.indexOf("router.get('/aiops/status'"), 'bộ lọc phải gắn trước các route AIOps');
+    // Kiểm trên router thật (2026-11-17: trước bộ lọc có thêm cổng AIOPS_ENABLED, nên không so chuỗi mã nguồn nữa).
+    const router = require('../../api/admin.routes');
+    const idxFilter = router.stack.findIndex((l) => l.handle === stripRawIpResponse);
+    const idxStatus = router.stack.findIndex((l) => l.route && l.route.path === '/aiops/status');
+    assert.ok(idxFilter >= 0, 'phải gắn bộ lọc rawIp');
+    assert.ok(router.stack[idxFilter].regexp.test('/aiops/status'), 'bộ lọc áp cho /aiops/*');
+    assert.ok(idxFilter < idxStatus, 'bộ lọc phải gắn trước các route AIOps');
   });
 });
 

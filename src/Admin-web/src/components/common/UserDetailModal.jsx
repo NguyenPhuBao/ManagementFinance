@@ -45,41 +45,6 @@ const DataExportStatus = ({ userId }) => {
   return <Badge tone={EXPORT_TONE[latest.status] || 'neutral'}>{label}</Badge>;
 };
 
-const PolicyStatus = ({ userId }) => {
-  const { t } = useLanguageSafe();
-  const [state, setState] = useState(null);
-
-  useEffect(() => {
-    adminApi
-      .getUserPolicy(userId)
-      .then((res) => setState(res?.data || null))
-      .catch(() => setState({ error: true }));
-  }, [userId]);
-
-  if (!state) return <span className="text-ink-faint">…</span>;
-  if (state.error) return <span className="text-ink-faint">—</span>;
-  const active = state.activePolicies || [];
-  if (active.length === 0) return <span className="text-ink-muted">{t('users.detail.policyNone')}</span>;
-  // Mỗi chính sách đang dùng: đã đồng ý đúng phiên bản đang dùng (mã nội bộ `version`) hay chưa
-  const acceptedAt = new Map((state.acceptances || []).map((a) => [a.policy_version, a.accepted_at]));
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {active.map((p) => {
-        const name = `${p.title} v${p.docVersion}`;
-        return acceptedAt.has(p.version) ? (
-          <Badge key={p.version} tone="success">
-            {t('users.detail.policyAccepted', { policy: name, time: formatDateTime(acceptedAt.get(p.version)) })}
-          </Badge>
-        ) : (
-          <Badge key={p.version} tone="warning">
-            {t('users.detail.policyPending', { policy: name })}
-          </Badge>
-        );
-      })}
-    </div>
-  );
-};
-
 const UserDetailModal = ({ userId, onClose }) => {
   const { t } = useLanguageSafe();
   const [user, setUser] = useState(null);
@@ -143,9 +108,6 @@ const UserDetailModal = ({ userId, onClose }) => {
                 </Row>
               )}
               <Row label={t('users.detail.createdAt')}>{user.created_at ? formatDateTime(user.created_at) : '—'}</Row>
-              <Row label={t('users.detail.policy')}>
-                <PolicyStatus userId={userId} />
-              </Row>
               <Row label={t('users.detail.dataExport')}>
                 <DataExportStatus userId={userId} />
               </Row>

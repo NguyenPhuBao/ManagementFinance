@@ -18,25 +18,33 @@ const SERIES = [
 ];
 
 const PRESETS = ['10m', '1h', '24h', '7d', '30d'];
-const WINDOW_MS = { '10m': 10 * 60e3, '1h': 60 * 60e3, '24h': 24 * 3600e3, '7d': 7 * 24 * 3600e3, '30d': 30 * 24 * 3600e3 };
+const MINUTE = 60e3;
+const HOUR = 3600e3;
+const DAY = 24 * HOUR;
+const WINDOW_MS = { '10m': 10 * MINUTE, '1h': HOUR, '24h': DAY, '7d': 7 * DAY, '30d': 30 * DAY };
 const RELATIVE_TICKS = {
-  '10m': { values: [-10, -8, -6, -4, -2, 0], unit: 'unitMinute' },
-  '1h': { values: [-60, -45, -30, -15, 0], unit: 'unitMinute' },
-  '24h': { values: [-24, -20, -16, -12, -8, -4, 0], unit: 'unitHour' },
-  '7d': { values: [-6, -5, -4, -3, -2, -1, 0], unit: 'unitDay' },
-  '30d': { values: [-30, -24, -18, -12, -6, 0], unit: 'unitDay' },
+  '10m': { values: [-10, -8, -6, -4, -2, 0], unit: 'unitMinute', unitMs: MINUTE },
+  '1h': { values: [-60, -45, -30, -15, 0], unit: 'unitMinute', unitMs: MINUTE },
+  '24h': { values: [-24, -20, -16, -12, -8, -4, 0], unit: 'unitHour', unitMs: HOUR },
+  '7d': { values: [-7, -6, -5, -4, -3, -2, -1, 0], unit: 'unitDay', unitMs: DAY },
+  '30d': { values: [-30, -24, -18, -12, -6, 0], unit: 'unitDay', unitMs: DAY },
 };
+const Y_TICKS = [0, 50, 100];
+// Hai mẫu liền nhau cách nhau quá GAP_FACTOR lần khoảng cách trung vị thì coi là mất số liệu: ngắt đường.
+const GAP_FACTOR = 3;
 
 const yOf = (score) => BASE - (Math.min(100, Math.max(0, Number(score) || 0)) / 100) * SPAN;
 const xAt = (ratio) => PAD_X + Math.min(1, Math.max(0, ratio)) * (W - 2 * PAD_X);
 
+// Chỉ dùng điểm vectơ Backend đã tính; mẫu thiếu điểm thì null (ngắt đường), không quy đổi chỉ số thô sang thang khác.
 const scoreOf = (d, key) => {
-  const vs = d.vectorScores || {};
-  if (vs[key] !== undefined) return vs[key];
-  if (key === 'auth') return d.failedLogins ? Math.min(100, d.failedLogins * 10) : 0;
-  if (key === 'traffic') return d.requestsPerMin ? Math.min(100, Math.round(d.requestsPerMin / 30)) : 0;
-  if (key === 'exploit') return d.malformedRequests ? Math.min(100, d.malformedRequests * 25) : 0;
-  return Math.max(d.cpuPercent || 0, d.ramPercent || 0);
+  const v = d.vectorScores?.[key];
+  return v === undefined || v === null ? null : v;
+};
+
+const median = (values) => {
+  const s = [...values].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
 };
 
 const buildChart = (history, range) => {
@@ -44,35 +52,55 @@ const buildChart = (history, range) => {
   const start = range.from ? new Date(range.from).getTime() : now - (WINDOW_MS[range.preset] || WINDOW_MS['10m']);
   const end = range.to ? new Date(range.to).getTime() : now;
   const total = Math.max(1000, end - start);
-  const sorted = [...history].sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
-  const samples = sorted.map((d, i) => {
-    const ts = d.timestamp ? new Date(d.timestamp).getTime() : NaN;
-    const x = Number.isNaN(ts) ? xAt(sorted.length > 1 ? i / (sorted.length - 1) : 0.5) : xAt((ts - start) / total);
-    const scores = Object.fromEntries(SERIES.map((s) => [s.key, scoreOf(d, s.key)]));
-    return { x, time: d.timestamp, scores };
-  });
+  // Chỉ vẽ mẫu có thời điểm hợp lệ nằm trong khung; mẫu ngoài khung bỏ đi thay vì dồn vào mép.
+  const samples = history
+    .map((d) => ({ d, ts: d.timestamp ? new Date(d.timestamp).getTime() : NaN }))
+    .filter(({ ts }) => !Number.isNaN(ts) && ts >= start && ts <= end)
+    .sort((a, b) => a.ts - b.ts)
+    .map(({ d, ts }) => ({
+      ts,
+      x: xAt((ts - start) / total),
+      time: d.timestamp,
+      scores: Object.fromEntries(SERIES.map((s) => [s.key, scoreOf(d, s.key)])),
+    }));
+  const gaps = samples.slice(1).map((p, i) => p.ts - samples[i].ts);
+  const maxGap = gaps.length >= 2 ? GAP_FACTOR * median(gaps) : Infinity;
   const paths = Object.fromEntries(
-    SERIES.map((s) => [s.key, samples.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${yOf(p.scores[s.key]).toFixed(1)}`).join(' ')])
+    SERIES.map((s) => [
+      s.key,
+      samples
+        .map((p, i) => {
+          if (p.scores[s.key] === null) return null;
+          const prev = samples[i - 1];
+          const breakLine = i === 0 || prev.scores[s.key] === null || p.ts - prev.ts > maxGap;
+          return `${breakLine ? 'M' : 'L'} ${p.x.toFixed(1)} ${yOf(p.scores[s.key]).toFixed(1)}`;
+        })
+        .filter(Boolean)
+        .join(' '),
+    ])
   );
   return { samples, paths, start, total };
 };
 
+const pad2 = (n) => String(n).padStart(2, '0');
+const hhmm = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const ddmm = (d) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+
 const buildTicks = (range, chart, t) => {
   if (range.from && range.to) {
-    const long = chart.total > 24 * 3600e3;
-    return {
-      unit: long ? t('aiopsPage.trend.unitDay') : t('aiopsPage.trend.unitHour'),
-      ticks: [0, 0.2, 0.4, 0.6, 0.8, 1].map((r) => {
-        const d = new Date(chart.start + r * chart.total);
-        const label = long ? `${d.getDate()}/${d.getMonth() + 1}` : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-        return { x: xAt(r), label };
-      }),
-    };
+    const fmt = chart.total <= DAY ? hhmm : chart.total <= 3 * DAY ? (d) => `${ddmm(d)} ${hhmm(d)}` : ddmm;
+    const ticks = [];
+    [0, 0.2, 0.4, 0.6, 0.8, 1].forEach((r) => {
+      const label = fmt(new Date(chart.start + r * chart.total));
+      if (ticks.length === 0 || ticks[ticks.length - 1].label !== label) ticks.push({ x: xAt(r), label });
+    });
+    return { unit: '', ticks };
   }
   const cfg = RELATIVE_TICKS[range.preset] || RELATIVE_TICKS['10m'];
+  const windowMs = WINDOW_MS[range.preset] || WINDOW_MS['10m'];
   return {
     unit: t(`aiopsPage.trend.${cfg.unit}`),
-    ticks: cfg.values.map((v, i) => ({ x: xAt(i / (cfg.values.length - 1)), label: String(v) })),
+    ticks: cfg.values.map((v) => ({ x: xAt((windowMs + v * cfg.unitMs) / windowMs), label: String(v) })),
   };
 };
 
@@ -105,7 +133,9 @@ const TrendSection = ({ ops }) => {
   const axis = buildTicks(range, chart, t);
   const visible = SERIES.filter((s) => activeVectorTab === 'all' || activeVectorTab === s.key);
   const hovered = hover !== null ? chart.samples[hover] : null;
-  const empty = !historyData || historyData.length === 0;
+  const empty = chart.samples.length === 0;
+  // Xem khoảng tự chọn (quá khứ): chú thích hiện điểm của mẫu cuối trong khoảng; còn lại là điểm hiện tại.
+  const legendScores = rangeFrom ? chart.samples[chart.samples.length - 1]?.scores || {} : vectorScores;
 
   const tabs = [
     { key: 'all', label: t('aiopsPage.vector.all') },
@@ -148,7 +178,7 @@ const TrendSection = ({ ops }) => {
           <li key={s.key} className="flex items-center gap-2 text-ink-muted">
             <span className={`h-2.5 w-2.5 rounded-full bg-current ${s.tone}`} />
             {t(`aiopsPage.vector.${s.key}`)}
-            <span className="font-semibold tabular-nums text-ink">{vectorScores[s.key] ?? 0}</span>
+            <span data-testid={`trend-legend-${s.key}`} className="font-semibold tabular-nums text-ink">{legendScores[s.key] ?? 0}</span>
           </li>
         ))}
         {fetchingHistory && (
@@ -181,16 +211,19 @@ const TrendSection = ({ ops }) => {
                 </g>
               ))}
               <line x1={PAD_X} y1={BASE} x2={W - PAD_X} y2={BASE} className="stroke-line" />
-              {axis.ticks.map((tick) => (
-                <text key={`${tick.x}-${tick.label}`} x={tick.x} y={BASE + 18} fontSize="11" textAnchor="middle" className="fill-ink-faint tabular-nums">{tick.label}</text>
+              {Y_TICKS.map((v) => (
+                <text key={`y-${v}`} data-testid="trend-y-tick" x={PAD_X - 6} y={yOf(v) + 4} fontSize="11" textAnchor="end" className="fill-ink-faint tabular-nums">{v}</text>
               ))}
-              <text x={W - PAD_X} y={BASE - 6} fontSize="11" textAnchor="end" className="fill-ink-faint">{axis.unit}</text>
+              {axis.ticks.map((tick) => (
+                <text key={`${tick.x}-${tick.label}`} data-testid="trend-x-tick" x={tick.x} y={BASE + 18} fontSize="11" textAnchor="middle" className="fill-ink-faint tabular-nums">{tick.label}</text>
+              ))}
+              {axis.unit && <text x={W - PAD_X} y={BASE - 6} fontSize="11" textAnchor="end" className="fill-ink-faint">{axis.unit}</text>}
 
               {visible.map((s) => (
                 <g key={s.key} className={s.tone}>
-                  <path d={chart.paths[s.key]} fill="none" stroke="currentColor" strokeWidth={activeVectorTab === s.key ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round" />
+                  <path data-testid={`trend-path-${s.key}`} d={chart.paths[s.key]} fill="none" stroke="currentColor" strokeWidth={activeVectorTab === s.key ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round" />
                   {chart.samples.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={yOf(p.scores[s.key])} r={hover === i ? 4.5 : p.scores[s.key] >= 70 ? 3.5 : 2} fill="currentColor" className="stroke-card" strokeWidth="1" />
+                    p.scores[s.key] === null ? null : <circle key={i} cx={p.x} cy={yOf(p.scores[s.key])} r={hover === i ? 4.5 : p.scores[s.key] >= 70 ? 3.5 : 2} fill="currentColor" className="stroke-card" strokeWidth="1" />
                   ))}
                 </g>
               ))}
@@ -216,7 +249,7 @@ const TrendSection = ({ ops }) => {
                       <span className={`h-2 w-2 rounded-full bg-current ${s.tone}`} />
                       {t(`aiopsPage.vector.${s.key}`)}
                     </span>
-                    <span className="font-semibold tabular-nums text-ink">{hovered.scores[s.key]}</span>
+                    <span className="font-semibold tabular-nums text-ink">{hovered.scores[s.key] ?? '--'}</span>
                   </div>
                 ))}
               </div>

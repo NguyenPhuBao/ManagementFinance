@@ -29,6 +29,8 @@ test('AIOps Feature Collector Suite', async (t) => {
 
   await t.test('2. Middleware correctly records requests, error rates and distinct IPs', () => {
     const collector = new FeatureCollector({ windowSeconds: 10 });
+    // RPM tính theo số giây thực của cửa sổ: dựng cửa sổ đã trôi đúng 10 giây
+    collector._windowStartedAt = Date.now() - 10000;
     const mw = collector.createMiddleware();
 
     // Mock request 1: normal 200 OK from IP 1.2.3.4

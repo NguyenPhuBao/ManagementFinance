@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { STORAGE_KEYS } from '../utils/constants';
 import authApi from '../api/auth.api';
+import adminApi from '../api/admin.api';
 
 const DEFAULT_SETTINGS = {
   theme: 'light', // 'light' | 'dark'
@@ -12,19 +13,47 @@ const DEFAULT_SETTINGS = {
   autoLockMinutes: 30, // minutes: 15 | 30 | 60 | 0
 };
 
+/**
+ * Cài đặt riêng từng tài khoản quản trị (2026-11-16): bản chính trên máy chủ (GET / PUT /admin/me/settings), trình duyệt
+ * giữ bản sao theo khoá riêng `admin_system_settings:<idaccount>` để áp ngay khi tải trang và quyết tự khoá trước khi máy
+ * chủ trả lời. Khoá chung cũ `admin_system_settings` chỉ còn để chuyển lên máy chủ một lần rồi xoá.
+ */
 const SETTINGS_STORAGE_KEY = 'admin_system_settings';
+const cacheKey = (id) => `${SETTINGS_STORAGE_KEY}:${id}`;
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
+
+const readJson = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+};
+const pickKnown = (obj) => Object.fromEntries(Object.entries(obj && typeof obj === 'object' ? obj : {}).filter(([k]) => SETTING_KEYS.includes(k)));
+const accountIdFromStorage = () => {
+  const u = readJson(STORAGE_KEYS.USER) || readJson(STORAGE_KEYS.LOCKED_USER);
+  return u?.idaccount ?? null;
+};
+/** Bản sao của tài khoản; chưa có thì dùng khoá chung cũ (để giao diện không nháy khi vừa chuyển đổi), rồi mặc định. */
+const cachedSettingsFor = (id) => {
+  const cached = (id && readJson(cacheKey(id))) || readJson(SETTINGS_STORAGE_KEY);
+  return { ...DEFAULT_SETTINGS, ...pickKnown(cached) };
+};
+const writeCache = (id, value) => {
+  if (!id) return;
+  try {
+    localStorage.setItem(cacheKey(id), JSON.stringify(value));
+  } catch (_) {}
+};
 
 const SettingsContext = createContext(null);
 
 export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
-    } catch (_) {
-      return DEFAULT_SETTINGS;
-    }
-  });
+  const activeIdRef = useRef(accountIdFromStorage());
+  const loadedForRef = useRef(null);
+  const [settings, setSettings] = useState(() => cachedSettingsFor(activeIdRef.current));
+  const [settingsSyncFailed, setSettingsSyncFailed] = useState(false);
 
   const [isLocked, setIsLocked] = useState(() => {
     try {
@@ -34,8 +63,7 @@ export const SettingsProvider = ({ children }) => {
         return true;
       }
       // 2. Kiểm tra nếu thời gian offline/nhàn rỗi vượt quá ngưỡng autoLockMinutes
-      const savedSettingsRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      const currentAutoLock = savedSettingsRaw ? JSON.parse(savedSettingsRaw).autoLockMinutes : DEFAULT_SETTINGS.autoLockMinutes;
+      const currentAutoLock = cachedSettingsFor(accountIdFromStorage()).autoLockMinutes;
       const lastActive = Number(localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_AT) || 0);
       const hasTokens = Boolean(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) || localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN));
 
@@ -73,6 +101,7 @@ export const SettingsProvider = ({ children }) => {
           if (rawUser) {
             const u = JSON.parse(rawUser);
             localStorage.setItem(STORAGE_KEYS.LOCKED_USER, JSON.stringify({
+              idaccount: u.idaccount,
               fullname: u.fullname,
               username: u.username,
               email: u.email,
@@ -94,24 +123,78 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [isLocked]);
 
-  // 1. Cập nhật một cấu hình cài đặt đơn lẻ
-  const updateSetting = useCallback((key, value) => {
-    setSettings((prev) => {
-      const updated = { ...prev, [key]: value };
+  // 0. Nạp cài đặt của tài khoản đang đăng nhập (AuthProvider gọi khi đăng nhập / mở lại trang; null khi đăng xuất)
+  const setActiveAccount = useCallback(async (id) => {
+    const next = id ?? null;
+    if (next && next === activeIdRef.current && loadedForRef.current === next) return;
+    activeIdRef.current = next;
+    if (!next) {
+      loadedForRef.current = null;
+      setSettings(DEFAULT_SETTINGS);
+      setSettingsSyncFailed(false);
+      return;
+    }
+    setSettings(cachedSettingsFor(next));
+    // Đang khoá màn hình (token đã bị huỷ) thì chỉ dùng bản sao, không gọi máy chủ.
+    if (!localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)) return;
+    try {
+      const res = await adminApi.getMySettings();
+      if (activeIdRef.current !== next) return;
+      const data = res?.data?.data || res?.data || {};
+      let remote = data.settings || {};
+      const legacy = pickKnown(readJson(SETTINGS_STORAGE_KEY));
+      if (!data.saved && Object.keys(legacy).length > 0) {
+        try {
+          const up = await adminApi.updateMySettings(legacy);
+          remote = up?.data?.data?.settings || { ...remote, ...legacy };
+        } catch (_) {}
+      }
       try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+        localStorage.removeItem(SETTINGS_STORAGE_KEY);
       } catch (_) {}
-      return updated;
-    });
+      if (activeIdRef.current !== next) return;
+      const merged = { ...DEFAULT_SETTINGS, ...pickKnown(remote) };
+      loadedForRef.current = next;
+      setSettings(merged);
+      writeCache(next, merged);
+      setSettingsSyncFailed(false);
+    } catch (_) {
+      // Không gọi được máy chủ: giữ bản sao của tài khoản, lần sau thử lại.
+    }
   }, []);
 
-  // 2. Khôi phục toàn bộ cài đặt về mặc định chuẩn
+  // Mở lại trang khi đã đăng nhập: nạp ngay cài đặt của tài khoản trong trình duyệt.
+  useEffect(() => {
+    if (activeIdRef.current) setActiveAccount(activeIdRef.current);
+  }, [setActiveAccount]);
+
+  const pushRemote = useCallback((body) => {
+    if (!activeIdRef.current) return;
+    Promise.resolve()
+      .then(() => adminApi.updateMySettings(body))
+      .then(() => setSettingsSyncFailed(false))
+      .catch(() => setSettingsSyncFailed(true));
+  }, []);
+
+  // 1. Cập nhật một cấu hình cài đặt đơn lẻ: áp ngay, lưu bản sao của tài khoản, gửi lên máy chủ
+  const updateSetting = useCallback(
+    (key, value) => {
+      setSettings((prev) => {
+        const updated = { ...prev, [key]: value };
+        writeCache(activeIdRef.current, updated);
+        return updated;
+      });
+      pushRemote({ [key]: value });
+    },
+    [pushRemote]
+  );
+
+  // 2. Khôi phục cài đặt CỦA TÀI KHOẢN NÀY về mặc định
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(DEFAULT_SETTINGS));
-    } catch (_) {}
-  }, []);
+    writeCache(activeIdRef.current, DEFAULT_SETTINGS);
+    pushRemote({ ...DEFAULT_SETTINGS });
+  }, [pushRemote]);
 
   // 3. Side-effect: Áp dụng Theme Mode (Sáng / Tối)
   useEffect(() => {
@@ -148,6 +231,7 @@ export const SettingsProvider = ({ children }) => {
         try {
           const u = JSON.parse(rawUser);
           localStorage.setItem(STORAGE_KEYS.LOCKED_USER, JSON.stringify({
+            idaccount: u.idaccount,
             fullname: u.fullname,
             username: u.username,
             email: u.email,
@@ -375,6 +459,12 @@ export const SettingsProvider = ({ children }) => {
       if (val !== null) backup[key] = val;
     });
 
+    // Bản sao cài đặt của từng tài khoản cũng được giữ
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(`${SETTINGS_STORAGE_KEY}:`)) backup[key] = localStorage.getItem(key);
+    }
+
     localStorage.clear();
 
     Object.entries(backup).forEach(([key, val]) => {
@@ -403,6 +493,8 @@ export const SettingsProvider = ({ children }) => {
     settings,
     updateSetting,
     resetSettings,
+    setActiveAccount,
+    settingsSyncFailed,
     isLocked,
     lockedAt,
     lockScreen,

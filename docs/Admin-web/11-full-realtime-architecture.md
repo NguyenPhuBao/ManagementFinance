@@ -109,6 +109,8 @@ Token truy cập của admin chỉ sống 15 phút, nên một trang để yên 
 | **`admin.anomaly_detected`** | `admin_room` | `{ incidentId, code, vector, severity, message, timestamp }` | `AIOpsPage` | Tự động chèn sự cố mới vào đầu Bảng Bóc Tách Nguyên Nhân Gốc Rễ (RCA) trong CSDL PostgreSQL. |
 | **`admin.vector_config_changed`** | `admin_room` | `{ thresholds, updatedBy, updatedAt }` | `AIOpsPage` | Đồng bộ các vạch ngưỡng cảnh báo & khẩn cấp của 4 vectơ trên biểu đồ SVG khi có Quản trị viên thay đổi cấu hình. |
 
+> **AIOps tạm dừng (2026-11-17):** khi công tắc `AIOPS_ENABLED` tắt (mặc định), Backend không phát `admin.security_alert`, `admin.security_blocked`, `admin.quarantine_updated`, `admin.anomaly_detected`, `admin.vector_config_changed`; trong `admin.metrics_stream` các trường điểm đe doạ nhận giá trị mặc định (0 / `NORMAL`). Admin-web cũng không đăng ký hai sự kiện `admin.security_alert`, `admin.security_blocked`. Xem `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`, mục "Trạng thái: tạm dừng".
+
 ---
 
 ## 🛡️ 4. CƠ CHẾ TRIỆT TIÊU TOAST LẶP LẠI 3 TẦNG (3-TIER TOAST DE-DUPLICATION)
