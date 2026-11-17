@@ -1096,7 +1096,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   Future<void> _tinhGoiYChuyen(DienSanBienDong d, int id) async {
     try {
       final cho = await _nguon.hangBienDongCho(id);
-      final gy = goiYChuyenKhoan(d, cho);
+      final gy = goiYChuyenKhoan(d, cho, tenChuTaiKhoan: _nguonRieng.tenChuTaiKhoan());
       if (gy == null) return;
       Future<String?> nho(String nguon, String? duoi) async {
         final v = await _nguon.viTheoNguon(id, nguon, duoi);

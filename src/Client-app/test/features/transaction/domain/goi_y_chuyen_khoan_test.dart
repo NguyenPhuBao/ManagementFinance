@@ -60,9 +60,38 @@ void main() {
     });
   });
 
+  group('tenNguoiGuiLaChu — tên người gửi trong tin là chủ tài khoản FlowMoney (2026-11-17)', () {
+    test('mọi chữ của tên tài khoản có trong tin (bỏ dấu, không xét thứ tự) → đúng', () {
+      expect(tenNguoiGuiLaChu(quaMomo, 'Trần Quang Đạt'), isTrue);
+      expect(tenNguoiGuiLaChu('1573-NGUYEN PHU BAO chuyen tien qua MoMo', 'Phú Bảo'), isTrue);
+      expect(tenNguoiGuiLaChu('1573-NGUYEN PHU BAO chuyen tien qua MoMo', 'Bảo Nguyễn'), isTrue);
+    });
+    test('⭐ ca người dùng báo: MoMo của TRAN QUANG DAT vào MB của Nguyễn Phú Bảo → sai', () {
+      expect(tenNguoiGuiLaChu(quaMomo, 'Nguyễn Phú Bảo'), isFalse);
+    });
+    test('thiếu một chữ → sai; tên một chữ / rỗng / null → sai (dễ trùng người khác)', () {
+      expect(tenNguoiGuiLaChu('1573-TRAN VAN BAO chuyen tien qua MoMo', 'Phú Bảo'), isFalse);
+      expect(tenNguoiGuiLaChu('1573-NGUYEN PHU BAO chuyen tien qua MoMo', 'Bảo'), isFalse);
+      expect(tenNguoiGuiLaChu(quaMomo, '  '), isFalse);
+      expect(tenNguoiGuiLaChu(quaMomo, null), isFalse);
+    });
+    test('so trọn chữ: "an" không khớp "quang"', () {
+      expect(tenNguoiGuiLaChu(quaMomo, 'Đạt An'), isFalse);
+    });
+  });
+
   group('goiYChuyenKhoan — luật nội dung', () {
+    test('⭐ tiền vào từ MoMo của NGƯỜI KHÁC (tên tài khoản Nguyễn Phú Bảo) → không gợi ý', () {
+      expect(goiYChuyenKhoan(h(ghiChu: quaMomo), const [], tenChuTaiKhoan: 'Nguyễn Phú Bảo'), isNull);
+    });
+    test('tiền vào mà chưa biết tên tài khoản → không gợi ý (gợi ý sai ví tệ hơn không gợi ý)', () {
+      expect(goiYChuyenKhoan(h(ghiChu: quaMomo), const []), isNull);
+    });
+    test('chiều chi không xét tên (tin chiều trừ không mang tên người)', () {
+      expect(goiYChuyenKhoan(h(ghiChu: 'chuyen sang MoMo', chieu: 'chi'), const []), isNotNull);
+    });
     test('⭐ thu ở MB nhắc MoMo → từ MoMo sang MB Bank, đuôi theo MB', () {
-      final g = goiYChuyenKhoan(h(ghiChu: quaMomo), const [])!;
+      final g = goiYChuyenKhoan(h(ghiChu: quaMomo), const [], tenChuTaiKhoan: 'Trần Quang Đạt')!;
       expect((g.nguonTu, g.duoiTu, g.nguonDen, g.duoiDen, g.khoaCap), (kNguonMomo, null, kNguonMb, '262', null));
     });
     test('chi ở MB nhắc MoMo → từ MB Bank sang MoMo', () {

@@ -71,6 +71,9 @@ class AddTransactionPage extends StatefulWidget {
   /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
   /// `null` và suy từ phiên đăng nhập; xem [_AddTransactionPageState._accountId].
   final int? idaccount;
+
+  /// Tiêm cho test khi không có `AuthBloc` — xem [_AddTransactionPageState._tenChuTaiKhoan].
+  final String? tenChuTaiKhoan;
   final CategoryManagementRepository? categoryRepository;
   final List<WalletEntity>? wallets;
   /// Bảng `categoryId → walletId` học từ lịch sử (`domain/vi_hay_dung.dart`).
@@ -172,6 +175,7 @@ class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({
     super.key,
     this.idaccount,
+    this.tenChuTaiKhoan,
     this.categoryRepository,
     this.wallets,
     this.suggestionEngine = const CategorySuggestionEngine(),
@@ -270,6 +274,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         xoaBienDong: widget.xoaBienDong,
         khoanTrongSo: widget.khoanTrongSo,
         hangBienDongCho: widget.hangBienDongCho,
+        tenChuTaiKhoan: _tenChuTaiKhoan,
         khoBienLai: widget.khoBienLai,
         khoAnhQuet: widget.khoAnhQuet,
         traNganSach: widget.budgetLookup,
@@ -404,6 +409,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// rồi đẩy lên và vỡ "Ownership mismatch" — đúng kịch bản mà docstring
   /// `features/auth/presentation/bloc/current_account.dart` mô tả khi G4 được đóng. Nó lọt lưới quét
   /// `?? 1` vì biểu thức viết là `?? widget.idaccount`.
+  /// Họ tên tài khoản của phiên — gợi ý Chuyển khoản chỉ hiện khi người gửi trong tin là chính chủ (2026-11-17).
+  /// Không có phiên (test chạy riêng) → [AddTransactionPage.tenChuTaiKhoan].
+  String? _tenChuTaiKhoan() {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthSuccess) {
+        final ten = authState.user?.name.trim() ?? '';
+        if (ten.isNotEmpty) return ten;
+      }
+    } catch (_) {
+      // Ca test chạy riêng không dựng AuthBloc.
+    }
+    return widget.tenChuTaiKhoan;
+  }
+
   int? _accountId() {
     try {
       final authState = context.read<AuthBloc>().state;

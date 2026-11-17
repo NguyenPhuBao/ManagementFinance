@@ -195,7 +195,16 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    ví duy nhất trùng tên nguồn → trống. Lưu: nhớ ví **theo phía** (tin thu thì ví của nguồn tin là ví ĐÍCH — nhớ
    `viNguon` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
    chuyển **sang** MoMo không nhận ra (3/5 hàng thật được gợi ý). Ca test `goi_y_chuyen_khoan_test.dart`,
-   `goi_y_chuyen_khoan_form_test.dart`.
+   `goi_y_chuyen_khoan_form_test.dart`. ✅ **2026-11-17 — luật nội dung chiều THU xét tên người gửi** (người dùng báo:
+   MoMo của Trần Quang Đạt chuyển vào MB của Nguyễn Phú Bảo, máy Bảo hiện *"Có vẻ là chuyển khoản · Từ MoMo sang MB
+   Bank"* — bấm là trừ ví MoMo của Bảo dù ví ấy không chi gì). Luật cũ chỉ xét **tên nguồn** trong tin, ngầm coi ví MoMo
+   là của chủ tài khoản (mẫu đo 2026-09-30 là Đạt tự chuyển cho mình). Nay chỉ gợi ý khi **mọi chữ (≥ 2) của họ tên tài
+   khoản FlowMoney** đứng trọn chữ trong tin, bỏ dấu, không xét thứ tự — `tenNguoiGuiLaChu` (*"Phú Bảo"* khớp *"NGUYEN PHU
+   BAO"*; tên một chữ / chưa biết tên → không gợi ý). Họ tên đi: trang `_tenChuTaiKhoan` (đọc `AuthSuccess.user.name`,
+   tức `fullname`, mỗi lần gọi) → `ThemGiaoDichNguonThat(tenChuTaiKhoan:)` → cubit hỏi **`_nguonRieng`**.tenChuTaiKhoan()
+   (cố ý không qua `_nguon` — nguồn của nhà trả `null`). Đo Supabase 2026-11-17: 5 người dùng, 1 người họ tên một chữ →
+   người ấy không còn được gợi ý chiều thu (người dùng duyệt). Chiều chi và luật cặp không đổi (tin chiều trừ không mang
+   tên người; cặp là hai tin trên chính máy mình). ⚠️ `them_giao_dich_cubit.dart` đang 1.199 / 1.200 dòng (quét 23).
 3. ✅ **Chia sẻ biên lai** vào FlowMoney → đọc chữ trên máy → điền sẵn — **mã xong Task 1–10, nghiệm thu Realme với
    biên lai MB Bank thật (2026-10-02); Task 11 xong 2026-10-03** (debug + release trên Realme, mục **7.7**; còn mở:
    mẫu riêng MoMo / ZaloPay khi có biên lai thật); chi tiết ở mục **7**. Tách khỏi C4 và làm trước vì người dùng báo chuyển khoản

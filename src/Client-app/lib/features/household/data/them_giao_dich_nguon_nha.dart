@@ -109,6 +109,9 @@ class ThemGiaoDichNguonNha implements ThemGiaoDichNguon {
   Future<List<DienSanBienDong>> hangBienDongCho(int idaccount) async => const <DienSanBienDong>[];
 
   @override
+  String? tenChuTaiKhoan() => null;
+
+  @override
   Future<List<KhoanSo>> khoanTrongSo(int idaccount) async => const <KhoanSo>[];
 
   @override

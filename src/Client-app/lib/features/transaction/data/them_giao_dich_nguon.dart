@@ -84,6 +84,10 @@ abstract class ThemGiaoDichNguon {
   Future<void> nhoViTheoNguon(int idaccount, String nguon, String? duoi, String walletId);
 
   Future<List<DienSanBienDong>> hangBienDongCho(int idaccount);
+
+  /// Họ tên tài khoản của phiên — gợi ý Chuyển khoản chiều thu chỉ hiện khi người gửi trong tin là chính chủ
+  /// (`tenNguoiGuiLaChu`, 2026-11-17). `null` = chưa biết → không gợi ý.
+  String? tenChuTaiKhoan();
   Future<List<KhoanSo>> khoanTrongSo(int idaccount);
 
   /// Xoá cứng hàng loại 20 (ngoại lệ có chủ ý — spec D1 §3.3). Không bao giờ ném.
@@ -114,6 +118,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     Future<void> Function(int idaccount, String khoa)? xoaBienDong,
     Future<List<KhoanSo>> Function(int idaccount)? khoanTrongSo,
     Future<List<DienSanBienDong>> Function(int idaccount)? hangBienDongCho,
+    String? Function()? tenChuTaiKhoan,
     KhoBienLai? khoBienLai,
     KhoAnhQuet? khoAnhQuet,
     BudgetLookup? traNganSach,
@@ -129,6 +134,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
         _xoaBienDongTiem = xoaBienDong,
         _khoanTrongSoTiem = khoanTrongSo,
         _hangBienDongChoTiem = hangBienDongCho,
+        _tenChuTaiKhoan = tenChuTaiKhoan,
         _khoBienLaiTiem = khoBienLai,
         _khoAnhQuetTiem = khoAnhQuet,
         _traNganSachTiem = traNganSach;
@@ -145,6 +151,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   final Future<void> Function(int idaccount, String khoa)? _xoaBienDongTiem;
   final Future<List<KhoanSo>> Function(int idaccount)? _khoanTrongSoTiem;
   final Future<List<DienSanBienDong>> Function(int idaccount)? _hangBienDongChoTiem;
+  final String? Function()? _tenChuTaiKhoan;
   final KhoBienLai? _khoBienLaiTiem;
   final KhoAnhQuet? _khoAnhQuetTiem;
   final BudgetLookup? _traNganSachTiem;
@@ -321,6 +328,9 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   @override
   Future<void> nhoViTheoNguon(int idaccount, String nguon, String? duoi, String walletId) async =>
       _viTheoNguon?.ghi(idaccount, nguon, duoi, walletId);
+
+  @override
+  String? tenChuTaiKhoan() => _tenChuTaiKhoan?.call();
 
   /// Từ `_hangChoMacDinh` của trang.
   @override
