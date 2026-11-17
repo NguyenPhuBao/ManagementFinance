@@ -23,8 +23,9 @@ export const CalibrateModal = ({ ops }) => {
     setShowCalibrateModal,
     customThresholdsInput,
     setCustomThresholdsInput,
-    autoRecommendedThresholds,
+    currentThresholds,
     handleCalibrate,
+    handleResetThresholds,
     calibrating,
     targetConcurrency,
   } = ops;
@@ -39,6 +40,7 @@ export const CalibrateModal = ({ ops }) => {
       description={t('aiopsPage.calibrate.desc', { n: formatNumber(targetConcurrency, {}, language) })}
       footer={
         <>
+          <Button variant="ghost" onClick={handleResetThresholds} disabled={calibrating}>{t('aiopsPage.calibrate.reset')}</Button>
           <Button onClick={() => setShowCalibrateModal(false)} disabled={calibrating}>{t('common.cancel', 'Hủy bỏ')}</Button>
           <Button variant="primary" loading={calibrating} onClick={handleCalibrate}>{t('aiopsPage.calibrate.confirm')}</Button>
         </>
@@ -57,7 +59,7 @@ export const CalibrateModal = ({ ops }) => {
               min="1"
               max={max}
               value={customThresholdsInput[key]}
-              placeholder={String(autoRecommendedThresholds[key])}
+              placeholder={currentThresholds[key] === undefined ? '' : String(currentThresholds[key])}
               onChange={(e) => setCustomThresholdsInput((prev) => ({ ...prev, [key]: e.target.value }))}
               className={`${fieldClass} h-10 tabular-nums`}
             />

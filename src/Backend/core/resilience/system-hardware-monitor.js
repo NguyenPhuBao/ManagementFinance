@@ -21,6 +21,9 @@ class SystemHardwareMonitor {
     this.currentRamTotalMb = 0;
     this.currentRamFreeMb = 0;
     this.currentRamRssMb = 0;
+    this.currentHostRamPercent = 0;
+    this.specsProvider = options.specsProvider || getRuntimeHardwareSpecs;
+    this.memoryUsage = options.memoryUsage || (() => process.memoryUsage());
     this.timer = null;
     this.running = false;
   }
@@ -54,31 +57,24 @@ class SystemHardwareMonitor {
     this.running = false;
   }
 
+  /**
+   * RAM tiến trình = RSS / hạn mức bộ nhớ × 100.
+   * Hạn mức = quota container nếu có, ngược lại = tổng RAM máy (specs.ramTotalMb).
+   * RAM toàn máy giữ ở currentHostRamPercent để tham khảo, không dùng để chấm điểm.
+   */
   _sampleRam() {
     try {
-      const specs = getRuntimeHardwareSpecs();
-      const rssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+      const specs = this.specsProvider();
+      const rssMb = Math.round(this.memoryUsage().rss / 1024 / 1024);
+      const totalMb = specs.ramTotalMb || Math.round(os.totalmem() / 1024 / 1024);
+      const usedMb = Math.min(totalMb, rssMb);
       this.currentRamRssMb = rssMb;
-
-      if (specs.isContainer) {
-        // Trong môi trường Cloud Container: Đo lường dựa trên RAM Quota của Container
-        const totalMb = specs.ramTotalMb;
-        const usedMb = Math.min(totalMb, rssMb);
-        const freeMb = Math.max(0, totalMb - usedMb);
-        this.currentRamTotalMb = totalMb;
-        this.currentRamUsedMb = usedMb;
-        this.currentRamFreeMb = freeMb;
-        this.currentRamPercent = totalMb > 0 ? Math.min(100, Math.round((usedMb / totalMb) * 100)) : 0;
-      } else {
-        // Trong môi trường Local Workstation hoặc Bare-metal Host vật lý
-        const total = os.totalmem();
-        const free = os.freemem();
-        const used = Math.max(0, total - free);
-        this.currentRamTotalMb = Math.round(total / 1024 / 1024);
-        this.currentRamFreeMb = Math.round(free / 1024 / 1024);
-        this.currentRamUsedMb = Math.round(used / 1024 / 1024);
-        this.currentRamPercent = total > 0 ? Math.round((used / total) * 100) : 0;
-      }
+      this.currentRamTotalMb = totalMb;
+      this.currentRamUsedMb = usedMb;
+      this.currentRamFreeMb = Math.max(0, totalMb - usedMb);
+      this.currentRamPercent = totalMb > 0 ? Math.min(100, Math.round((usedMb / totalMb) * 100)) : 0;
+      const hostTotal = os.totalmem();
+      this.currentHostRamPercent = hostTotal > 0 ? Math.round(((hostTotal - os.freemem()) / hostTotal) * 100) : 0;
     } catch (_) {}
   }
 
@@ -196,6 +192,7 @@ class SystemHardwareMonitor {
         freeMb: this.currentRamFreeMb,
         percent: this.currentRamPercent,
         rssMb: this.currentRamRssMb,
+        hostPercent: this.currentHostRamPercent,
       },
       process: {
         uptimeSeconds: Math.floor(process.uptime()),

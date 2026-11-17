@@ -268,6 +268,7 @@ const useAIOps = () => {
         vectorDefenses: d.vectorDefenses || prev?.vectorDefenses || {},
         anomalies: d.anomalies,
         recommendedAction: d.recommendedAction,
+        indicators: d.indicators || prev?.indicators,
         sample: d.sample || prev?.sample,
         lastEvaluatedAt: d.timestamp,
       }));
@@ -397,11 +398,11 @@ const useAIOps = () => {
       run: async (credentials) => {
         setSavingScale(true);
         try {
-          await aiopsApi.setScale(n, credentials);
+          const scaled = unwrap(await aiopsApi.setScale(n, credentials));
           setSelectedConcurrency(n);
           setCustomConcurrency(String(n));
           saveScale(n);
-          setStatusData((prev) => ({ ...prev, targetConcurrency: n }));
+          setStatusData((prev) => ({ ...prev, targetConcurrency: n, indicators: scaled?.indicators || prev?.indicators }));
           notify(true, t('aiopsPage.feedback.scaleSaved', { n: formatNumber(n, {}, language) }));
         } finally {
           setSavingScale(false);
@@ -416,44 +417,64 @@ const useAIOps = () => {
   const targetConcurrency = statusData?.targetConcurrency || selectedConcurrency || 1000;
   const myCurrentIp = cleanIp(statusData?.currentClientIp || currentUser?.currentClientIp);
 
-  const autoRecommendedThresholds = useMemo(() => {
-    const n = Math.max(100, Number(selectedConcurrency || statusData?.targetConcurrency || 1000));
-    return {
-      authFailureThreshold: Math.max(20, Math.round(15 + 10 * Math.log10(n / 100))),
-      trafficSpikeRps: Math.max(50, Math.round(n / 2)),
-      exploitLimit: 8,
-      resourceCpuPercent: 85,
-      resourceMemoryPercent: 85,
-      eventLoopLagMs: 100,
-    };
-  }, [selectedConcurrency, statusData?.targetConcurrency]);
+  const indicators = statusData?.indicators || null;
 
-  const handleCalibrate = () => {
-    const pick = (value, fallback) => (value !== '' && Number(value) > 0 ? Number(value) : fallback);
-    const payload = {
-      targetConcurrency: selectedConcurrency || 1000,
-      customThresholds: Object.fromEntries(
-        Object.keys(EMPTY_THRESHOLDS).map((key) => [key, pick(customThresholdsInput[key], autoRecommendedThresholds[key])])
-      ),
+  // Ngưỡng đang hiệu lực (Backend) hiện làm gợi ý trong hộp Hiệu chuẩn; Admin-web không tự tính.
+  const currentThresholds = useMemo(() => {
+    if (!indicators) return {};
+    return {
+      authFailureThreshold: indicators.auth?.failedLogins?.alert,
+      trafficSpikeRps: indicators.traffic?.alertRpm ? Math.round(indicators.traffic.alertRpm / 60) : undefined,
+      exploitLimit: indicators.exploit?.malformed?.alert,
+      resourceCpuPercent: indicators.resource?.cpuPercent?.alert,
+      resourceMemoryPercent: indicators.resource?.ramPercent?.alert,
+      eventLoopLagMs: indicators.resource?.lagMs?.alert,
     };
+  }, [indicators]);
+
+  // Gửi lệnh hiệu chuẩn qua hộp PIN; Backend trả { success, data: báo cáo, status } (báo cáo nằm trong data).
+  const runCalibrate = (payload, pinText) =>
     askPin({
-      title: t('aiopsPage.calibrate.pinTitle'),
-      description: t('aiopsPage.calibrate.pinDesc'),
-      confirmText: t('aiopsPage.calibrate.confirm'),
+      ...pinText,
       errorKey: 'aiopsPage.feedback.calibrateFailed',
       run: async (credentials) => {
         setCalibrating(true);
         try {
-          const report = unwrap(await aiopsApi.calibrate(payload, credentials));
-          if (report?.serverSpecs) setCalibrationReport(report);
+          const result = unwrap(await aiopsApi.calibrate(payload, credentials));
+          const report = result?.data?.serverSpecs ? result.data : result?.serverSpecs ? result : null;
+          if (report) setCalibrationReport(report);
+          if (result?.status?.indicators) setStatusData((prev) => ({ ...prev, indicators: result.status.indicators }));
+          setCustomThresholdsInput(EMPTY_THRESHOLDS);
           setShowCalibrateModal(false);
-          notify(true, t('aiopsPage.feedback.calibrated'));
+          notify(true, t(payload.resetThresholds ? 'aiopsPage.feedback.thresholdsReset' : 'aiopsPage.feedback.calibrated'));
           fetchAIOpsData();
         } finally {
           setCalibrating(false);
         }
       },
     });
+
+  const handleCalibrate = () => {
+    // Chỉ gửi ô đã nhập; ô trống để Backend giữ ngưỡng đang dùng.
+    runCalibrate(
+      {
+        targetConcurrency: selectedConcurrency || 1000,
+        customThresholds: Object.fromEntries(
+          Object.keys(EMPTY_THRESHOLDS)
+            .filter((key) => customThresholdsInput[key] !== '' && Number(customThresholdsInput[key]) > 0)
+            .map((key) => [key, Number(customThresholdsInput[key])])
+        ),
+      },
+      { title: t('aiopsPage.calibrate.pinTitle'), description: t('aiopsPage.calibrate.pinDesc'), confirmText: t('aiopsPage.calibrate.confirm') }
+    );
+  };
+
+  // Về mặc định: Backend xoá mọi ngưỡng tuỳ chỉnh (resetThresholds), lưu lại và trả ngưỡng mặc định.
+  const handleResetThresholds = () => {
+    runCalibrate(
+      { targetConcurrency: selectedConcurrency || 1000, resetThresholds: true },
+      { title: t('aiopsPage.calibrate.resetPinTitle'), description: t('aiopsPage.calibrate.resetPinDesc'), confirmText: t('aiopsPage.calibrate.reset') }
+    );
   };
 
   // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, ném lại cho hộp PIN hiện.
@@ -468,14 +489,12 @@ const useAIOps = () => {
     setShowMitigationModal(false);
   };
 
+  // Theo kết luận của Backend: khuyến nghị bảo trì khẩn cấp hoặc vectơ tài nguyên ở mức CRITICAL.
+  const resourceDefenseStatus = statusData?.vectorDefenses?.resource?.status;
   const isEmergencyResourceRisk = useMemo(() => {
     if (vectorConfig.resource === false) return false;
-    return (
-      recommendedAction === 'EMERGENCY_MAINTENANCE' ||
-      vectorScores.resource >= 85 ||
-      (vectorScores.resource >= 70 && (sample.errorRate5xx || 0) >= 0.15 && (sample.eventLoopLagMs || 0) >= 250)
-    );
-  }, [recommendedAction, vectorScores.resource, sample.errorRate5xx, sample.eventLoopLagMs, vectorConfig.resource]);
+    return recommendedAction === 'EMERGENCY_MAINTENANCE' || resourceDefenseStatus === 'CRITICAL';
+  }, [recommendedAction, resourceDefenseStatus, vectorConfig.resource]);
 
   const toggleVector = (key, enabled) => {
     const name = t(`aiopsPage.vector.${key}`);
@@ -628,10 +647,12 @@ const useAIOps = () => {
     setShowCalibrateModal,
     customThresholdsInput,
     setCustomThresholdsInput,
-    autoRecommendedThresholds,
+    currentThresholds,
+    indicators,
     calibrating,
     calibrationReport,
     handleCalibrate,
+    handleResetThresholds,
     showMitigationModal,
     setShowMitigationModal,
     mitigationReason,

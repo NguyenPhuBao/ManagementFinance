@@ -5,28 +5,34 @@ import { lockState } from './aiopsFormat';
 import { useNumberFormat } from '../../../utils/format';
 
 const BAR = { danger: 'bg-danger', warning: 'bg-warning', info: 'bg-info', success: 'bg-success', neutral: 'bg-ink-faint' };
-const barTone = (score) => (score >= 80 ? 'danger' : score >= 60 ? 'warning' : score >= 30 ? 'info' : 'success');
+const DEFAULT_BANDS = { elevated: 40, warning: 70, critical: 85 };
+// Màu thanh điểm theo băng điểm Backend trả (indicators.scoreBands).
+const barTone = (score, bands = DEFAULT_BANDS) =>
+  score >= bands.critical ? 'danger' : score >= bands.warning ? 'warning' : score >= bands.elevated ? 'info' : 'success';
 
-const statusOf = (key, score, ops, t, num) => {
+// Trạng thái từng nhóm lấy từ vectorDefenses của Backend, không tự suy từ điểm.
+const statusOf = (key, ops, t, num) => {
+  const backend = ops.statusData?.vectorDefenses?.[key]?.status || 'NORMAL';
+  const alerting = backend === 'ALERT' || backend === 'WARNING' || backend === 'CRITICAL';
   if (key === 'auth') {
     const n = ops.quarantineList.filter((item) => {
       const s = lockState(item);
       return (s.ip && s.ip.kind !== 'unlocked') || (s.account && s.account.kind !== 'unlocked');
     }).length;
     if (n > 0) return { tone: 'danger', text: t('aiopsPage.vectorCard.blocking', { n }) };
-    if (score >= 70) return { tone: 'danger', text: t('aiopsPage.vectorCard.blockingOn') };
+    if (alerting) return { tone: 'danger', text: t('aiopsPage.vectorCard.blockingOn') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.ready') };
   }
   if (key === 'traffic') {
-    if (score >= 70) return { tone: 'info', text: t('aiopsPage.vectorCard.throttling') };
+    if (alerting) return { tone: 'info', text: t('aiopsPage.vectorCard.throttling') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.trafficOk', { n: num(ops.targetConcurrency) }) };
   }
   if (key === 'exploit') {
-    if (score >= 70) return { tone: 'danger', text: t('aiopsPage.vectorCard.exploitBlocked') };
+    if (alerting) return { tone: 'danger', text: t('aiopsPage.vectorCard.exploitBlocked') };
     return { tone: 'success', text: t('aiopsPage.vectorCard.ready') };
   }
   if (ops.isEmergencyResourceRisk) return { tone: 'danger', text: t('aiopsPage.vectorCard.needMaintenance') };
-  if (score >= 60) return { tone: 'warning', text: t('aiopsPage.vectorCard.shedding') };
+  if (alerting) return { tone: 'warning', text: t('aiopsPage.vectorCard.shedding') };
   return { tone: 'success', text: t('aiopsPage.vectorCard.stable') };
 };
 
@@ -44,8 +50,8 @@ const VectorCard = ({ vectorKey, ops, onToggle }) => {
   const name = t(`aiopsPage.vector.${vectorKey}`);
   const score = Number(ops.vectorScores[vectorKey] || 0);
   const enabled = ops.vectorConfig[vectorKey] !== false;
-  const status = enabled ? statusOf(vectorKey, score, ops, t, num) : { tone: 'neutral', text: t('aiopsPage.vectorCard.measureOnly') };
-  const tone = enabled ? barTone(score) : 'neutral';
+  const status = enabled ? statusOf(vectorKey, ops, t, num) : { tone: 'neutral', text: t('aiopsPage.vectorCard.measureOnly') };
+  const tone = enabled ? barTone(score, ops.indicators?.scoreBands) : 'neutral';
 
   return (
     <div className={`flex flex-col gap-3 rounded-xl border border-line p-4 ${enabled ? 'bg-card' : 'bg-muted'}`}>

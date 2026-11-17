@@ -762,3 +762,12 @@ Kế hoạch: `docs/superpowers/specs/2026-11-16-aiops-sua-loi-design.md`. Đặ
 - Tài khoản quản trị gốc: `modules/auth/root-admin.js`, migration `56_root_admin_guard.sql` (trigger), `scripts/seed_root_admin.js`, đăng nhập hai bước, cắt phiên khi đổi `ROOT_ADMIN_SECOND_KEY`, email cảnh báo.
 - `admin.service.js` thiếu import `logger` (lỗi tiềm ẩn ở nhánh `catch`), đã thêm.
 - Migration 56 đã áp Supabase 2026-11-16 (Chủ dự án xác nhận; tài khoản `admin` Active, vai quản trị trước khi áp; `db:verify-indexes` đạt). Client-app không phải đổi gì.
+
+## 28. AIOps: chuẩn hoá công thức và đo lường (2026-11-17)
+Kế hoạch: `docs/superpowers/plans/2026-11-17-aiops-cong-thuc-va-do-luong.md`. Đặc tả: [AIOPS_CONG_THUC.md](../AIOps/AIOPS_CONG_THUC.md).
+- Mọi ngưỡng / số dẫn xuất do Backend trả (`indicators` trong `/admin/aiops/status`, `admin.security_alert`, `scale`, `calibrate`); Admin-web bỏ công thức tự tính (N × 10, × 3, log10 N, ngưỡng gợi ý).
+- Đường nền lưu lượng = trung vị snapshot sạch 7 ngày theo giờ (thiếu lịch sử: N × 2, ghi "ước tính"); ngưỡng = max(3 × nền, 1,5 × P95, 300); bỏ EWMA, bỏ hệ số đêm.
+- Điểm rủi ro liên tục 0 → 70 → 100 theo mốc A / T / T_nặng (điểm ≥ 70 ⇔ vượt ngưỡng); dấu hiệu tấn công lưu lượng theo thị phần IP lớn nhất; ngưỡng 5xx 10%; ngưỡng chặn IP cố định 150 / 10 giây (`AIOPS_IP_BURST_PER_10S`).
+- Đo: `peekSample()` (đọc trạng thái không xoá cửa sổ), RPM theo giây thực, độ trễ p99 / max bằng `monitorEventLoopDelay`, RAM = RSS / hạn mức (cả bảng điều khiển), cờ `cpuQuotaHard`.
+- Hiệu chuẩn: báo cáo năng lực theo Luật sử dụng (C = C₀ + S × R) thay hằng số 1,8 ms / 0,5 MB; lưu `custom_vector_thresholds`, `target_concurrency`, `capacity_estimate` vào `aiops_setting` (không migration). Sửa lỗi Admin-web không hiện báo cáo hiệu chuẩn (đọc sai tầng `data`). Nút "Về mặc định" (`resetThresholds: true`, PIN) bỏ mọi ngưỡng tuỳ chỉnh và lưu lại.
+- Test: `aiops.formulas.test.js`, `aiops.detector.formulas.test.js`, `aiops.measurement.test.js`, `aiops.service.formulas.test.js` (mới); Admin-web `aiops.test.jsx`, `aiops.trend.test.jsx`. Client-app không phải đổi gì.

@@ -126,6 +126,7 @@ function getRuntimeHardwareSpecs(options = {}) {
       ...envInfo,
       cpuCores: envCores,
       ramTotalMb: envRam,
+      cpuQuotaHard: true,
       source: 'env_config',
     };
   }
@@ -135,6 +136,8 @@ function getRuntimeHardwareSpecs(options = {}) {
     let cpuCores = null;
     let ramTotalMb = null;
     let source = null;
+    // Chỉ cpu.max / cfs_quota_us là giới hạn cứng; shares / weight chỉ là trọng số chia phần tương đối.
+    let cpuQuotaHard = false;
 
     // Tìm subpath từ /proc/self/cgroup nếu có cấu trúc lồng nhau (nested cgroup)
     const selfCgroup = readFile('/proc/self/cgroup') || '';
@@ -172,6 +175,7 @@ function getRuntimeHardwareSpecs(options = {}) {
         const period = parseInt(parts[1], 10);
         if (period > 0 && quota > 0) {
           cpuCores = parseFloat((quota / period).toFixed(2));
+          cpuQuotaHard = true;
           source = 'cgroup_v2';
         }
       }
@@ -212,6 +216,7 @@ function getRuntimeHardwareSpecs(options = {}) {
         const period = parseInt(periodStr, 10);
         if (quota > 0 && period > 0) {
           cpuCores = parseFloat((quota / period).toFixed(2));
+          cpuQuotaHard = true;
           source = 'cgroup_v1';
         }
       }
@@ -260,6 +265,7 @@ function getRuntimeHardwareSpecs(options = {}) {
         ...envInfo,
         cpuCores: cpuCores !== null ? cpuCores : defaultHostCores,
         ramTotalMb: ramTotalMb !== null ? ramTotalMb : defaultHostRam,
+        cpuQuotaHard,
         source: source || 'cgroup_detected',
       };
     }
@@ -273,6 +279,7 @@ function getRuntimeHardwareSpecs(options = {}) {
     ...envInfo,
     cpuCores: hostCpus.length || 1,
     ramTotalMb: hostTotalRamMb,
+    cpuQuotaHard: false,
     source: 'os_host',
   };
 }

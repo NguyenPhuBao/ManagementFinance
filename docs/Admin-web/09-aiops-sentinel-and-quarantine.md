@@ -46,10 +46,9 @@ graph TD
     end
 
     subgraph "Tầng 3: Bộ Điều Khiển Quy Mô Dung Lượng (Target Concurrency Scaler)"
-        SC["Admin tùy chỉnh N = 500 - 5,000 CCU"]
-        SC -->|"Baseline RPM = N * 10"| V2
-        SC -->|"Safe Peak = N * 30 RPM (N / 2 RPS)"| V2
-        SC -->|"Ngưỡng cách ly IP = 20 + 50*log10(N)"| V2
+        SC["Đường nền lưu lượng theo giờ (trung vị snapshot 7 ngày; thiếu lịch sử: N × 2)"]
+        SC -->|"Ngưỡng cảnh báo = max(3 × nền, 1,5 × P95, 300)"| V2
+        SC -->|"Ngưỡng chặn IP = 150 yêu cầu/10 giây (cố định)"| V2
     end
 
     F1 --> V1
@@ -138,16 +137,8 @@ Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm 
   + Ví dụ: Nếu mỗi vector chỉ biến động nhẹ $20 - 30$ điểm (hoàn toàn bình thường trong vận hành thực tế), công thức tổng hợp có thể đẩy điểm số lên mức báo động đỏ, gây kích hoạt chế độ bảo trì khẩn cấp ngoài ý muốn.
   + Việc loại bỏ Threat Score tổng giúp đội ngũ Quản trị viên và hệ thống phòng vệ phản ứng chính xác đúng nơi có sự cố: chỉ cách ly IP vi phạm nếu rủi ro thuộc $S_{\text{auth}}$ / $S_{\text{exploit}}$, chỉ điều chỉnh phân luồng nếu thuộc $S_{\text{traffic}}$, và chỉ bảo trì khi có nguy cơ sập phần cứng từ $S_{\text{resource}}$.
 
-### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (EWMA Anti-Poisoning Guard)
-```javascript
-// Chỉ cập nhật baseline khi không có vector nào vượt ngưỡng cảnh báo (Hệ thống an toàn)
-const isSafe = Object.values(vectorScores).every(score => score < 70);
-if (isSafe) {
-  this._updateHourlyBaseline(sample);
-} else {
-  logger.warn('[AIOps] Anti-Poisoning kích hoạt: Tạm dừng cập nhật Baseline khi có vector vượt ngưỡng rủi ro');
-}
-```
+### 3.5. Chống đầu độc đường nền (cập nhật 2026-11-17)
+Bỏ EWMA cập nhật mỗi 10 giây. Đường nền lưu lượng là **trung vị** snapshot có `is_anomaly = false` trong 7 ngày, tính lại mỗi giờ. Trung vị không bị một đợt tấn công kéo lệch, và mẫu bất thường bị loại khỏi tập học. Công thức đầy đủ (điểm liên tục, ngưỡng, năng lực theo Luật sử dụng): [AIOPS_CONG_THUC.md](../AIOps/AIOPS_CONG_THUC.md).
 
 ---
 
@@ -236,9 +227,9 @@ Trang `AIOpsPage.jsx` chỉ ghép các khối; dữ liệu, socket và thao tác
 
 **Mọi thao tác ghi trên trang đều qua hộp PIN chung** (máy chủ kiểm, `pin` gửi trong body; thiếu / sai PIN thì không thay đổi gì): đổi quy mô, hiệu chuẩn, bật / tắt phòng vệ, chặn từ sự cố, khoá / mở / khoá thêm IP, tạm khoá / khoá vĩnh viễn / mở tài khoản, khoá thủ công, bảo trì khẩn cấp, xem IP đầy đủ. Thao tác chỉ đọc (xem, lọc, phân trang, đổi khung biểu đồ, Làm mới) không cần PIN.
 
-1. **Tiêu đề và nút hành động:** Làm mới (tải lại đúng trang và bộ lọc đang xem; lỗi thì báo lỗi); Hiệu chuẩn (6 ô ngưỡng, ô trống dùng gợi ý, `POST /api/admin/aiops/calibrate`); Bảo trì khẩn cấp (chỉ hiện khi rủi ro tài nguyên vượt ngưỡng).
-2. **Quy mô người dùng (`ScaleSection`):** 4 mức có sẵn và ô nhập 100–50.000 (`POST /api/admin/aiops/scale`); lưu lượng nền = N × 10 yêu cầu / phút, trần an toàn = 3 × lưu lượng nền, ngưỡng chặn IP = max(150, round(20 + 50 · log10 N)) yêu cầu / 10 giây.
-3. **Chỉ số (`SignalsSection`):** dấu hiệu tấn công và tải máy chủ; số hiện theo định dạng của ngôn ngữ đang chọn (vd. "0,15 nhân" / "0.15 cores").
+1. **Tiêu đề và nút hành động:** Làm mới (tải lại đúng trang và bộ lọc đang xem; lỗi thì báo lỗi); Hiệu chuẩn (6 ô ngưỡng; số mờ trong ô là ngưỡng đang hiệu lực do Backend trả; chỉ gửi ô đã nhập, ô trống giữ nguyên; nút "Về mặc định" qua PIN gửi `resetThresholds: true` để bỏ mọi ngưỡng tuỳ chỉnh; ngưỡng được lưu vào `aiops_setting`; kết quả là báo cáo năng lực theo Luật sử dụng, `POST /api/admin/aiops/calibrate`); Bảo trì khẩn cấp (chỉ hiện khi Backend đề xuất `EMERGENCY_MAINTENANCE` hoặc vectơ tài nguyên ở mức CRITICAL).
+2. **Quy mô người dùng (`ScaleSection`):** 4 mức có sẵn và ô nhập 100–50.000 (`POST /api/admin/aiops/scale`); ba thẻ Lưu lượng nền (kèm nguồn: từ lịch sử / 24 giờ gần nhất / ước tính), Ngưỡng cảnh báo lưu lượng, Ngưỡng chặn IP đều lấy nguyên từ `indicators` của Backend; Admin-web không tự tính (công thức: [AIOPS_CONG_THUC.md](../AIOps/AIOPS_CONG_THUC.md)).
+3. **Chỉ số (`SignalsSection`):** dấu hiệu tấn công và tải máy chủ; thẻ ghi "Gần ngưỡng" khi vượt mức chú ý A và "Vượt ngưỡng" khi chạm ngưỡng cảnh báo T (mốc do Backend trả); độ trễ là p99 vòng lặp sự kiện trong cửa sổ kèm giá trị cao nhất; RAM là RAM tiến trình (RSS / hạn mức); số hiện theo định dạng của ngôn ngữ đang chọn (vd. "0,15 nhân" / "0.15 cores").
 4. **Nhóm rủi ro (`VectorSection`):** 4 thẻ với điểm /100 và trạng thái phòng vệ; công tắc bật / tắt qua PIN (`POST /api/admin/aiops/vectors/toggle`).
 5. **Xu hướng rủi ro (`TrendSection`):** khoảng 10 phút / 1 giờ / 24 giờ / 7 ngày / 30 ngày hoặc Từ – Đến. Nhãn trục ngang đặt theo thời gian thật (7 ngày: −7…0); khoảng tự chọn ghi giờ (≤ 24 giờ), ngày + giờ (≤ 3 ngày) hoặc ngày, không trùng nhãn; đường ngắt ở quãng mất số liệu (cách nhau > 3 lần khoảng trung vị); bỏ điểm ngoài khung; trục dọc 0 / 50 / 100 và vạch ngưỡng 70, 85; số cạnh chú thích là điểm hiện tại, hoặc điểm của mẫu cuối khi xem khoảng tự chọn.
 6. **Sự cố (`IncidentsSection`):** lọc nhóm / trạng thái / từ khoá, phân trang. Sự kiện `admin.anomaly_detected`: sự cố đang hiện thì cập nhật tại chỗ; sự cố mới (lần đầu, đang diễn ra) chỉ tăng tổng khi khớp bộ lọc, chỉ chèn khi đang ở trang 1 và giữ đúng cỡ trang. Nút "Chặn" qua PIN (gửi `ipHash`, không gửi IP đầy đủ); sự cố của hệ thống hoặc loopback không có nút chặn.

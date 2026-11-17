@@ -1,5 +1,6 @@
 const os = require('os');
 const { ipLookupHash } = require('../../utils/ip-protection.util');
+const { ipBurstPer10s } = require('./aiops.formulas');
 const jwt = require('jsonwebtoken');
 let config;
 try {
@@ -24,6 +25,15 @@ class FeatureCollector {
     this._ipStats = new Map();
     this.targetConcurrency = options.targetConcurrency || 1000;
     this._startupTime = Date.now();
+    this._eventLoopMonitor = options.eventLoopMonitor || null;
+    this._warmupMs = options.warmupMs !== undefined ? options.warmupMs : (process.env.NODE_ENV === 'test' ? 0 : 45000);
+    this._resetWindow();
+  }
+
+  _resetWindow() {
+    this._windowStartedAt = Date.now();
+    this._completed = 0;
+    this._cpuStart = process.cpuUsage();
   }
 
   /**
@@ -52,8 +62,9 @@ class FeatureCollector {
     this.targetConcurrency = Math.max(100, Number(n || 1000));
   }
 
+  /** Ngưỡng chặn một IP (yêu cầu / 10 giây): cố định, không phụ thuộc quy mô N. */
   _getBurstThreshold() {
-    return Math.max(150, Math.round(20 + 50 * Math.log10(this.targetConcurrency || 1000)));
+    return ipBurstPer10s();
   }
 
   /**
@@ -195,6 +206,7 @@ class FeatureCollector {
       }
 
       res.on('finish', () => {
+        this._completed += 1;
         const status = res.statusCode || 200;
         if (status >= 400 && status < 500) {
           this._errors4xx += 1;
@@ -257,21 +269,22 @@ class FeatureCollector {
   }
 
   /**
-   * Đọc chỉ số lag của Event Loop từ monitor hệ thống
+   * Độ trễ vòng lặp sự kiện trong cửa sổ: p99 và max (ms).
+   * reset = true thì chốt cửa sổ đo của histogram (chỉ getSample gọi).
    */
-  _getEventLoopLag() {
+  _readEventLoopLag(reset) {
     try {
-      // Warmup 45s đầu khởi động máy chủ: bỏ qua giật lag do nạp module/kết nối ban đầu
-      const warmupMs = process.env.NODE_ENV === 'test' ? 0 : 45000;
-      if (Date.now() - this._startupTime < warmupMs) {
-        return 10;
+      let monitor = this._eventLoopMonitor;
+      if (!monitor) {
+        monitor = require('../../core/resilience/event-loop-monitor').defaultEventLoopMonitor;
       }
-      const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
-      if (defaultEventLoopMonitor && typeof defaultEventLoopMonitor.getLag === 'function') {
-        return defaultEventLoopMonitor.getLag();
+      const read = reset ? monitor.getWindowLag : monitor.peekWindowLag;
+      if (typeof read === 'function') {
+        const { p99Ms, maxMs } = read.call(monitor);
+        return { p99Ms: Number(p99Ms) || 0, maxMs: Number(maxMs) || 0 };
       }
     } catch (_) {}
-    return 0;
+    return { p99Ms: 0, maxMs: 0 };
   }
 
   /**
@@ -309,10 +322,10 @@ class FeatureCollector {
       }
     } catch (_) {}
     try {
+      // Dự phòng: cùng định nghĩa RAM tiến trình = RSS / tổng RAM
       const total = os.totalmem();
-      const free = os.freemem();
       if (total <= 0) return 0;
-      return Math.round(((total - free) / total) * 100);
+      return Math.round((process.memoryUsage().rss / total) * 100);
     } catch (_) {
       return 0;
     }
@@ -328,18 +341,19 @@ class FeatureCollector {
         return defaultSystemHardwareMonitor.getMetrics();
       }
     } catch (_) {}
+    // Dự phòng: RAM tiến trình = RSS / tổng RAM (cùng định nghĩa với SystemHardwareMonitor)
     const total = os.totalmem();
-    const free = os.freemem();
-    const used = total - free;
+    const rss = process.memoryUsage().rss;
+    const used = Math.min(total, rss);
     const percent = total > 0 ? Math.round((used / total) * 100) : 0;
     return {
       cpu: { cores: os.cpus()?.length || 1, percent: this._getCpuPercent() },
       ram: {
         totalMb: Math.round(total / (1024 * 1024)),
-        freeMb: Math.round(free / (1024 * 1024)),
+        freeMb: Math.round((total - used) / (1024 * 1024)),
         usedMb: Math.round(used / (1024 * 1024)),
         percent,
-        rssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+        rssMb: Math.round(rss / (1024 * 1024)),
       },
     };
   }
@@ -372,12 +386,38 @@ class FeatureCollector {
   }
 
   /**
-   * Trích xuất mẫu 12 chỉ số chuẩn hóa cho chu kỳ vừa qua và làm mới bộ đếm sliding window
+   * Đọc mẫu của cửa sổ đang chạy, KHÔNG xoá bộ đếm (dùng cho đọc trạng thái, hiệu chuẩn).
+   */
+  peekSample() {
+    return this._buildSample(false);
+  }
+
+  /**
+   * Chốt cửa sổ: trả mẫu rồi xoá bộ đếm. Chỉ chu kỳ tick() của AIOpsService được gọi.
    */
   getSample() {
+    const sample = this._buildSample(true);
+    this._requests = 0;
+    this._errors4xx = 0;
+    this._errors5xx = 0;
+    this._failedLogins = 0;
+    this._tokenReuseAttacks = 0;
+    this._malformedRequests = 0;
+    this._ipHashes.clear();
+    this._ipStats.clear();
+    this._resetWindow();
+    return sample;
+  }
+
+  _buildSample(closeWindow) {
     const totalReq = this._requests;
-    const windowFactor = 60 / this.windowSeconds;
-    const requestsPerMin = Math.round(totalReq * windowFactor);
+    // RPM quy đổi theo số giây thực đã trôi của cửa sổ (không giả định đủ 10 giây)
+    const windowSeconds = Math.max(0.001, (Date.now() - this._windowStartedAt) / 1000);
+    const requestsPerMin = Math.round((totalReq * 60) / Math.max(1, windowSeconds));
+    const cpu = process.cpuUsage(this._cpuStart);
+    const cpuMs = Math.round((cpu.user + cpu.system) / 100) / 10;
+    const lag = this._readEventLoopLag(closeWindow);
+    const warmingUp = Date.now() - this._startupTime < this._warmupMs;
     const errorRate4xx = totalReq > 0 ? Number((this._errors4xx / totalReq).toFixed(2)) : 0;
     const errorRate5xx = totalReq > 0 ? Number((this._errors5xx / totalReq).toFixed(2)) : 0;
 
@@ -485,13 +525,19 @@ class FeatureCollector {
 
     const sample = {
       timestamp: new Date().toISOString(),
+      windowSeconds: Math.round(windowSeconds * 10) / 10,
+      requestCount: totalReq,
+      completedCount: this._completed,
+      cpuMs,
       requestsPerMin,
       errorRate4xx,
       errorRate5xx,
       failedLogins: this._failedLogins,
       tokenReuseAttacks: this._tokenReuseAttacks,
       malformedRequests: this._malformedRequests,
-      eventLoopLagMs: this._getEventLoopLag(),
+      eventLoopLagMs: lag.p99Ms,
+      eventLoopLagMaxMs: lag.maxMs,
+      warmingUp,
       cpuPercent: hwMetrics.cpu.percent,
       cpuCores: hwMetrics.cpu.cores,
       ramPercent: hwMetrics.ram.percent,
@@ -507,16 +553,6 @@ class FeatureCollector {
       topAuthActor,
       topExploitActor,
     };
-
-    // Reset window counters cho chu kỳ kế tiếp
-    this._requests = 0;
-    this._errors4xx = 0;
-    this._errors5xx = 0;
-    this._failedLogins = 0;
-    this._tokenReuseAttacks = 0;
-    this._malformedRequests = 0;
-    this._ipHashes.clear();
-    this._ipStats.clear();
 
     return sample;
   }

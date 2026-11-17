@@ -1,22 +1,22 @@
 /**
  * AIOps Multi-Vector Anomaly Detector
- * Kết hợp 4 Vector Rủi ro chuyên biệt & Mô hình Co giãn Quy mô Người dùng (User Concurrency Scaling):
- * - Vector 1: Rủi ro Xác thực & Danh tính (Auth & Identity: Brute-force, Token Hijacking)
- * - Vector 2: Rủi ro Lưu lượng & Từ chối Dịch vụ (Traffic & Availability: Rate deviations, IP Entropy)
- * - Vector 3: Rủi ro Lỗ hổng & Injection (Exploits & Probes: SQLi, Path Traversal, XSS)
- * - Vector 4: Sức khỏe Phần cứng & Tài nguyên (System Resources: CPU, RAM, Event Loop Lag, 5xx)
+ * 4 vectơ rủi ro: Xác thực (auth), Lưu lượng (traffic), Khai thác (exploit), Tài nguyên (resource).
  *
- * Điểm Threat Score được tổng hợp đa chiều theo nguyên lý Corroborated Vector Scaling:
- *   threatScore = max(rawMax, rawMax + corroborationBonus)
- *
- * Cơ chế Anti-Poisoning: Chỉ học dữ liệu sạch khi Threat Score < 70.
+ * Công thức (đặc tả: docs/AIOps/AIOPS_CONG_THUC.md, hàm thuần ở aiops.formulas.js):
+ * - Điểm mỗi tín hiệu tăng liên tục: 0 tại A → 70 tại T → 100 tại T_nặng (điểm ≥ 70 ⇔ vượt ngưỡng cảnh báo).
+ * - Điểm vectơ = max điểm tín hiệu (tài nguyên cộng 10 × (k − 1) khi k chỉ số ≥ 70).
+ * - Điểm tổng = min(100, max điểm vectơ + 8 × (m − 1)), m = số vectơ ≥ 70.
+ * - Đường nền lưu lượng theo giờ lấy từ snapshot lịch sử (service nạp qua setTrafficBaselines);
+ *   chưa có lịch sử thì ước tính N × 2 yêu cầu/phút.
  */
 
-const os = require('os');
+const F = require('./aiops.formulas');
+
+const SCORE_BANDS = { elevated: 40, warning: 70, critical: 85 };
+const MIN_REQUESTS_FOR_5XX = 10;
 
 class AnomalyDetector {
   constructor(options = {}) {
-    this.alpha = options.alpha || 0.15; // Hệ số suy giảm EWMA
     this.targetConcurrency = Math.max(100, Number(options.targetConcurrency || 1000));
     this.vectorConfig = {
       auth: true,
@@ -25,6 +25,7 @@ class AnomalyDetector {
       resource: true,
       ...(options.vectorConfig || {}),
     };
+    this._historyBaselines = null; // 24 phần tử từ computeHourlyTrafficBaselines, hoặc null
     this.hourlyBaselines = this._initializeBaselines();
     this.customThresholds = {
       authFailedLogins: null,
@@ -76,145 +77,41 @@ class AnomalyDetector {
   }
 
   _getVnHour() {
-    const now = new Date();
-    return (now.getUTCHours() + 7) % 24;
+    return F.vnHourOf(new Date());
   }
 
-  /**
-   * Cập nhật quy mô người dùng đồng thời mục tiêu (User Concurrency Scale)
-   * Tự động co giãn lại đường chuẩn lưu lượng kỳ vọng
-   */
+  /** Đường nền 24 giờ: giờ có dữ liệu lịch sử thì giữ, giờ còn lại ước tính theo N. */
+  _initializeBaselines() {
+    const estimate = F.computeHourlyTrafficBaselines([], { targetConcurrency: this.targetConcurrency });
+    const hist = this._historyBaselines;
+    return estimate.map((est, h) => {
+      const fromHistory = hist && hist[h] && hist[h].source !== 'estimate' ? hist[h] : est;
+      return {
+        requestsPerMin: fromHistory.baselineRpm,
+        p95Rpm: fromHistory.p95Rpm,
+        source: fromHistory.source,
+        samples: fromHistory.samples,
+      };
+    });
+  }
+
+  /** Nạp đường nền tính từ snapshot (B1). */
+  setTrafficBaselines(hours) {
+    if (Array.isArray(hours) && hours.length === 24) {
+      this._historyBaselines = hours;
+      this.hourlyBaselines = this._initializeBaselines();
+    }
+    return this.hourlyBaselines;
+  }
+
+  /** Cập nhật quy mô N: chỉ ảnh hưởng các giờ chưa có lịch sử (ước tính N × 2). */
   setConcurrencyScale(scaleNumber) {
     this.targetConcurrency = Math.max(100, Number(scaleNumber || 1000));
     this.hourlyBaselines = this._initializeBaselines();
     return {
       targetConcurrency: this.targetConcurrency,
-      expectedBaselineRPM: this.targetConcurrency * 10,
-      peakCeilingRPM: this.targetConcurrency * 25,
+      indicators: this.getEffectiveThresholds(),
     };
-  }
-
-  /**
-   * Tính toán các thông số đường chuẩn thực tế (Real-Server Hardware Baselines)
-   * dựa trên số nhân CPU thật, tổng RAM vật lý của server, và quy mô người dùng N.
-   */
-  calculateServerHardwareBaseline(targetConcurrency = null, currentSample = null) {
-    const N = Math.max(100, Number(targetConcurrency || this.targetConcurrency || 1000));
-    const cpus = os.cpus() || [];
-    const cpuCores = Math.max(1, cpus.length || 1);
-    const totalMemMb = Math.max(512, Math.round(os.totalmem() / 1024 / 1024));
-    const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
-
-    let idleRssMb = 120;
-    try {
-      if (typeof process.memoryUsage === 'function') {
-        idleRssMb = Math.max(80, Math.round(process.memoryUsage().rss / 1024 / 1024));
-      }
-    } catch (_) {}
-
-    // 1. Lưu lượng lý thuyết:
-    const baseRpm = N * 10;
-    const rps = baseRpm / 60;
-
-    // 2. CPU thực tế kết hợp tải thực đo:
-    const idleCpuPct = 3;
-    const addedCpuPct = (rps * 1.8 * 100) / (cpuCores * 1000);
-    const theoCpuDay = Math.min(95, Math.max(5, Math.round(idleCpuPct + addedCpuPct)));
-    const theoCpuNight = Math.min(90, Math.max(3, Math.round(idleCpuPct + addedCpuPct * 0.25)));
-
-    // 3. RAM thực tế kết hợp tải thực đo:
-    const addedRamDayMb = Math.round(N * 0.5);
-    const expectedRamDayMb = idleRssMb + addedRamDayMb;
-    const theoRamDay = Math.min(98, Math.max(10, Math.round((expectedRamDayMb / totalMemMb) * 100)));
-    const expectedRamNightMb = idleRssMb + Math.round(addedRamDayMb * 0.25);
-    const theoRamNight = Math.min(95, Math.max(8, Math.round((expectedRamNightMb / totalMemMb) * 100)));
-
-    // 4. Event Loop Lag:
-    const theoLagDay = Math.max(3, Math.round(4 + Math.max(0, (theoCpuDay - 60) * 0.3)));
-    const theoLagNight = 3;
-
-    // 5. Kết hợp chỉ số đo lường thực tế (Live System Sample) nếu có:
-    const liveCpu = currentSample && typeof currentSample.cpuPercent === 'number' ? currentSample.cpuPercent : null;
-    const liveRam = currentSample && typeof currentSample.ramPercent === 'number' ? currentSample.ramPercent : null;
-    const liveLag = currentSample && typeof currentSample.eventLoopLagMs === 'number' ? currentSample.eventLoopLagMs : null;
-    const liveRpm = currentSample && typeof currentSample.requestsPerMin === 'number' ? currentSample.requestsPerMin : null;
-
-    const expectedCpuDay = liveCpu !== null ? Math.min(95, Math.max(5, Math.round(0.6 * liveCpu + 0.4 * theoCpuDay))) : theoCpuDay;
-    const expectedCpuNight = liveCpu !== null ? Math.min(90, Math.max(3, Math.round(0.4 * liveCpu + 0.6 * theoCpuNight))) : theoCpuNight;
-    const expectedRamDay = liveRam !== null ? Math.min(98, Math.max(10, Math.round(0.6 * liveRam + 0.4 * theoRamDay))) : theoRamDay;
-    const expectedRamNight = liveRam !== null ? Math.min(95, Math.max(8, Math.round(0.4 * liveRam + 0.6 * theoRamNight))) : theoRamNight;
-    const expectedLagDay = liveLag !== null ? Math.max(2, Math.round(0.6 * liveLag + 0.4 * theoLagDay)) : theoLagDay;
-    const expectedLagNight = liveLag !== null ? Math.max(2, Math.round(0.4 * liveLag + 0.6 * theoLagNight)) : theoLagNight;
-    const effectiveRpm = liveRpm && liveRpm > 0 ? Math.round(0.4 * liveRpm + 0.6 * baseRpm) : baseRpm;
-
-    // 6. Đánh giá khả năng chịu tải (Capacity Assessment):
-    const isOverCapacity = expectedCpuDay >= 85 || expectedRamDay >= 85;
-    const isNearLimit = expectedCpuDay >= 70 || expectedRamDay >= 70;
-    const capacityStatus = isOverCapacity ? 'OVER_CAPACITY' : (isNearLimit ? 'WARNING' : 'OPTIMAL');
-    let recommendation = 'Hạ tầng máy chủ hoàn toàn đáp ứng trơn tru quy mô mục tiêu.';
-    if (isOverCapacity) {
-      recommendation = `CẢNH BÁO: Với ${N.toLocaleString('vi-VN')} người dùng, máy chủ ${cpuCores} cores / ${(totalMemMb / 1024).toFixed(1)}GB RAM sẽ bị quá tải (dự kiến CPU ~${expectedCpuDay}%, RAM ~${expectedRamDay}%). Khuyến nghị mở rộng số nhân CPU hoặc tăng RAM!`;
-    } else if (isNearLimit) {
-      recommendation = `LƯU Ý: Quy mô ${N.toLocaleString('vi-VN')} người dùng tiệm cận ngưỡng cảnh báo của máy chủ (${expectedCpuDay}% CPU, ${expectedRamDay}% RAM).`;
-    }
-
-    return {
-      targetConcurrency: N,
-      serverSpecs: {
-        cpuCores,
-        totalRamMb: totalMemMb,
-        freeRamMb: freeMemMb,
-        platform: process.platform,
-        arch: process.arch,
-      },
-      liveMetricsSample: currentSample ? {
-        measuredCpu: liveCpu,
-        measuredRam: liveRam,
-        measuredLag: liveLag,
-        measuredRpm: liveRpm,
-      } : null,
-      calculatedMetrics: {
-        baselineRpm: effectiveRpm,
-        safePeakRpm: effectiveRpm * 3,
-        expectedCpuPercent: expectedCpuDay,
-        expectedRamPercent: expectedRamDay,
-        expectedEventLoopLagMs: expectedLagDay,
-      },
-      nightMetrics: {
-        baselineRpm: Math.round(effectiveRpm * 0.25),
-        expectedCpuPercent: expectedCpuNight,
-        expectedRamPercent: expectedRamNight,
-        expectedEventLoopLagMs: expectedLagNight,
-      },
-      capacityAssessment: {
-        status: capacityStatus,
-        isOverCapacity,
-        isNearLimit,
-        recommendation,
-      },
-      calibratedAt: new Date().toISOString(),
-    };
-  }
-
-  /**
-   * Khởi tạo đường chuẩn 24 giờ dựa trên phần cứng server thật và quy mô người dùng mục tiêu
-   */
-  _initializeBaselines(currentSample = null) {
-    const hwBaseline = this.calculateServerHardwareBaseline(this.targetConcurrency, currentSample);
-    const baselines = [];
-    for (let h = 0; h < 24; h++) {
-      const isNight = h >= 0 && h <= 6;
-      const m = isNight ? hwBaseline.nightMetrics : hwBaseline.calculatedMetrics;
-      baselines.push({
-        requestsPerMin: m.baselineRpm,
-        errorRate4xx: 0.02,
-        errorRate5xx: 0.00,
-        eventLoopLagMs: m.expectedEventLoopLagMs,
-        cpuPercent: m.expectedCpuPercent,
-        ramPercent: m.expectedRamPercent,
-      });
-    }
-    return baselines;
   }
 
   getBaselineMetric(metric, hour = null) {
@@ -222,30 +119,72 @@ class AnomalyDetector {
     return this.hourlyBaselines[h]?.[metric] ?? 0;
   }
 
-  _updateBaseline(sample, hour) {
-    const b = this.hourlyBaselines[hour];
-    if (!b) return;
+  _customMarks() {
+    const c = this.customThresholds;
+    return F.signalMarks({
+      failedLogins: c.authFailureThreshold ?? c.authFailedLogins,
+      malformed: c.exploitLimit ?? c.exploitSamples,
+      lagMs: c.eventLoopLagMs ?? c.resourceLag,
+      cpuPercent: c.resourceCpuPercent ?? c.resourceCpu,
+      ramPercent: c.resourceMemoryPercent ?? c.resourceRam,
+    });
+  }
 
-    const ewma = (current, previous) => {
-      return Number((this.alpha * current + (1 - this.alpha) * previous).toFixed(2));
+  _trafficMarks(hour) {
+    const b = this.hourlyBaselines[hour] || {};
+    const baselineRpm = Number(b.requestsPerMin) || 0;
+    const c = this.customThresholds;
+    let alertRpm = F.trafficAlertRpm(baselineRpm, b.p95Rpm);
+    if (Number(c.trafficSpikeRps) > 0) {
+      alertRpm = Math.round(Number(c.trafficSpikeRps) * 60);
+    } else if (Number(c.trafficRatio) > 0) {
+      alertRpm = Math.round(Number(c.trafficRatio) * baselineRpm);
+    }
+    return {
+      baselineRpm,
+      p95Rpm: b.p95Rpm ?? null,
+      source: b.source || 'estimate',
+      samples: b.samples || 0,
+      // A = max(1,5 × nền, 0,5 × T): sàn tránh A ≈ 0 khi lịch sử toàn mẫu rỗi (nền ≈ 0)
+      attentionRpm: Math.round(Math.max(1.5 * baselineRpm, 0.5 * alertRpm)),
+      alertRpm,
+      severeRpm: 2 * alertRpm,
     };
+  }
 
-    b.requestsPerMin = Math.round(ewma(sample.requestsPerMin, b.requestsPerMin));
-    b.errorRate4xx = ewma(sample.errorRate4xx, b.errorRate4xx);
-    b.errorRate5xx = ewma(sample.errorRate5xx, b.errorRate5xx);
-    b.eventLoopLagMs = Math.round(ewma(sample.eventLoopLagMs, b.eventLoopLagMs));
-    b.cpuPercent = Math.round(ewma(sample.cpuPercent, b.cpuPercent));
-    b.ramPercent = Math.round(ewma(sample.ramPercent, b.ramPercent));
+  /** Mọi ngưỡng đang hiệu lực — đúng các con số evaluate() dùng (A1). */
+  getEffectiveThresholds(hour = null) {
+    const h = hour !== null ? hour : this._getVnHour();
+    const m = this._customMarks();
+    return {
+      targetConcurrency: this.targetConcurrency,
+      traffic: this._trafficMarks(h),
+      auth: { failedLogins: m.failedLogins, tokenReuse: m.tokenReuse },
+      exploit: { malformed: m.malformed },
+      resource: {
+        lagMs: m.lagMs,
+        cpuPercent: m.cpuPercent,
+        ramPercent: m.ramPercent,
+        error5xxRate: m.error5xxRate,
+        minRequestsFor5xx: MIN_REQUESTS_FOR_5XX,
+      },
+      ipBurstPer10s: F.ipBurstPer10s(),
+      scoreBands: { ...SCORE_BANDS },
+    };
   }
 
   /**
    * Đánh giá rủi ro đa vector (Multi-Vector Evaluation)
    */
-  evaluate(sample, shouldUpdateBaseline = true) {
+  evaluate(sample) {
     const hour = this._getVnHour();
-    const baseline = this.hourlyBaselines[hour];
+    const ind = this.getEffectiveThresholds(hour);
     const anomalies = [];
-    const N = this.targetConcurrency;
+
+    // Số yêu cầu thật trong cửa sổ; mẫu cũ không có thì suy từ RPM (10 giây).
+    const windowRequests = Number.isFinite(sample.requestCount)
+      ? sample.requestCount
+      : Math.max(0, Math.round(((sample.requestsPerMin || 0) / 60) * 10));
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 1: RỦI RO XÁC THỰC & DANH TÍNH (AUTH & IDENTITY)
@@ -264,19 +203,13 @@ class AnomalyDetector {
       targetEndpoint: 'Background Event Loop & Connection Pool',
     };
 
-    let authScore = 0;
-    // Ngưỡng phát hiện Brute-Force động theo quy mô hoặc cấu hình tùy chỉnh của Admin:
-    const customAuth = this.customThresholds.authFailureThreshold ?? this.customThresholds.authFailedLogins;
-    const bruteForceThreshold =
-      customAuth !== null &&
-      customAuth !== undefined &&
-      Number(customAuth) > 0
-        ? Number(customAuth)
-        : Math.max(15, Math.round(15 + 10 * Math.log10(N / 100)));
+    const failedMarks = ind.auth.failedLogins;
+    const failedScore = F.rampScore(sample.failedLogins, failedMarks);
+    const tokenMarks = ind.auth.tokenReuse;
+    const tokenScore = F.rampScore(sample.tokenReuseAttacks, tokenMarks);
+    const authScore = Math.max(failedScore, tokenScore);
 
-    if (this.vectorConfig.auth && sample.failedLogins >= bruteForceThreshold) {
-      const isSevere = sample.failedLogins >= bruteForceThreshold * 2;
-      authScore = isSevere ? 85 : 70;
+    if (this.vectorConfig.auth && sample.failedLogins >= failedMarks.alert) {
       const authActor = suspects.find((s) => s.failedLogins > 0) || sample.topAuthActor || {
         type: 'IP_SOURCE',
         identity: '192.168.xxx.xxx',
@@ -294,29 +227,19 @@ class AnomalyDetector {
         vector: 'auth',
         metric: 'failedLogins',
         current: sample.failedLogins,
-        threshold: bruteForceThreshold,
+        threshold: failedMarks.alert,
         baseline: 0,
         unit: 'lần thất bại/10s',
         severity: 'HIGH',
         actor: authActor,
-        message: `Tần suất đăng nhập thất bại tăng vọt (${sample.failedLogins} lần/10s, ngưỡng an toàn: ${bruteForceThreshold}) — Dấu hiệu dò quét mật khẩu (Brute-Force).`,
+        message: `Tần suất đăng nhập thất bại tăng vọt (${sample.failedLogins} lần/10s, ngưỡng an toàn: ${failedMarks.alert}) — Dấu hiệu dò quét mật khẩu (Brute-Force).`,
         rootCauseDiagnosis: `Phát hiện ${sample.failedLogins} lần đăng nhập sai dồn dập từ nguồn ${authActor.identity} sử dụng ${authActor.userAgent}.`,
         mitigationTaken: 'Hệ thống kích hoạt Rate Limiter và đưa IP vào Khiên Chắn Active Quarantine nếu vượt ngưỡng vi phạm.',
       });
-    } else if (sample.failedLogins >= bruteForceThreshold) {
-      // Vẫn đo lường điểm số độc lập khi vector bị tắt (chỉ quan sát)
-      const isSevere = sample.failedLogins >= bruteForceThreshold * 2;
-      authScore = isSevere ? 85 : 70;
-    } else if (sample.failedLogins > 0) {
-      // 1-24 lần: lỗi người dùng thông thường, chỉ tính điểm nhẹ (tối đa 15 điểm), tuyệt đối không báo động
-      authScore = Math.min(15, Math.round((sample.failedLogins / bruteForceThreshold) * 15));
     }
 
-    // Tái sử dụng Refresh Token: Chỉ báo động khi lặp lại >= 5 lần
-    // (1-4 lần: thường do mở nhiều tab trình duyệt hoặc retry mạng, không phải tấn công)
-    if (this.vectorConfig.auth && sample.tokenReuseAttacks >= 5) {
-      const isSevere = sample.tokenReuseAttacks >= 10;
-      authScore = Math.max(authScore, isSevere ? 80 : 70);
+    // Tái sử dụng Refresh Token: 1-4 lần thường do nhiều tab / retry mạng; báo động từ 5 lần
+    if (this.vectorConfig.auth && sample.tokenReuseAttacks >= tokenMarks.alert) {
       const tokenActor = suspects.find((s) => s.tokenReuse > 0) || {
         type: 'AUTHENTICATED_USER',
         identity: '192.168.xxx.xxx',
@@ -334,7 +257,7 @@ class AnomalyDetector {
         vector: 'auth',
         metric: 'tokenReuseAttacks',
         current: sample.tokenReuseAttacks,
-        threshold: 5,
+        threshold: tokenMarks.alert,
         baseline: 0,
         unit: 'lần vi phạm',
         severity: 'HIGH',
@@ -343,250 +266,170 @@ class AnomalyDetector {
         rootCauseDiagnosis: `Token đã bị thu hồi nhưng vẫn tiếp tục được gửi lên từ nguồn ${tokenActor.identity}.`,
         mitigationTaken: 'Đã ngay lập tức thu hồi toàn bộ Token Family của tài khoản và ngắt phiên đăng nhập.',
       });
-    } else if (sample.tokenReuseAttacks >= 5) {
-      // Vẫn đo lường điểm số độc lập khi vector bị tắt (chỉ quan sát)
-      const isSevere = sample.tokenReuseAttacks >= 10;
-      authScore = Math.max(authScore, isSevere ? 80 : 70);
-    } else if (sample.tokenReuseAttacks > 0) {
-      // 1-4 lần vi phạm đơn lẻ: chỉ ghi nhận điểm nhẹ từ 10 - 25, không gắn cờ bất thường
-      authScore = Math.max(authScore, Math.min(25, sample.tokenReuseAttacks * 6));
     }
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 2: RỦI RO LƯU LƯỢNG & TỪ CHỐI DỊCH VỤ (TRAFFIC & DOS)
     // ─────────────────────────────────────────────────────────────
-    let trafficScore = 0;
-    const expectedRpm = Math.max(100, baseline.requestsPerMin);
-    const trafficRatio = sample.requestsPerMin / expectedRpm;
-    const sampleWindowRequests = Math.max(1, Math.round((sample.requestsPerMin / 60) * 10));
-    const ipEntropy = sample.distinctIpsCount / sampleWindowRequests;
-    let effectiveTrafficRatio = 3.5;
-    if (this.customThresholds.trafficSpikeRps !== null && this.customThresholds.trafficSpikeRps !== undefined && Number(this.customThresholds.trafficSpikeRps) > 0) {
-      effectiveTrafficRatio = Math.max(1.1, Number((Number(this.customThresholds.trafficSpikeRps) * 60 / expectedRpm).toFixed(2)));
-    } else if (
-      this.customThresholds.trafficRatio !== null &&
-      this.customThresholds.trafficRatio !== undefined &&
-      Number(this.customThresholds.trafficRatio) > 0
-    ) {
-      effectiveTrafficRatio = Number(this.customThresholds.trafficRatio);
-    }
+    const tm = ind.traffic;
+    const rawTrafficScore = F.rampScore(sample.requestsPerMin, {
+      attention: tm.attentionRpm,
+      alert: tm.alertRpm,
+      severe: tm.severeRpm,
+    });
+    // B4: lưu lượng dồn từ ít nguồn (IP lớn nhất ≥ 50%), nhiều 4xx, hoặc có mẫu độc hại
+    const topShare = sample.topTrafficActor && windowRequests > 0
+      ? (sample.topTrafficActor.reqCount || 0) / windowRequests
+      : 0;
+    const isAttackIndicator =
+      topShare >= 0.5 ||
+      (sample.errorRate4xx || 0) >= 0.25 ||
+      (sample.malformedRequests || 0) > 0;
+    const trafficScore = isAttackIndicator ? rawTrafficScore : Math.min(40, rawTrafficScore);
 
-    // Chỉ xem xét rủi ro lưu lượng khi RPM đạt tối thiểu 300 req/phút VÀ gấp effectiveTrafficRatio lần baseline
-    if (sample.requestsPerMin >= 300 && trafficRatio >= effectiveTrafficRatio) {
-      // Phân biệt: DDoS (ít IP nguồn, tỷ lệ lỗi cao) vs Organic Traffic Peak (nhiều IP thật)
-      const isDdosIndicator =
-        sample.distinctIpsCount <= 3 ||
-        ipEntropy < 0.05 ||
-        sample.errorRate4xx >= 0.25 ||
-        sample.errorRate5xx >= 0.05 ||
-        sample.malformedRequests > 0;
-
-      if (isDdosIndicator) {
-        trafficScore = Math.min(100, Math.round(50 + (trafficRatio - effectiveTrafficRatio) * 15));
-        if (this.vectorConfig.traffic) {
-          const trafficActor = suspects.find((s) => s.reqCount >= 50) || sample.topTrafficActor || {
-            type: 'IP_SOURCE',
-            identity: '192.168.xxx.xxx',
-            maskedIp: '192.168.xxx.xxx',
-            rawIp: '192.168.1.1',
-            ipHash: 'traffic_flood_hash',
-            userId: null,
-            username: 'Khách vãng lai / Ẩn danh',
-            role: 'Guest',
-            userAgent: 'DDoS Cluster / HTTP Flooder',
-            targetEndpoint: '/api/*',
-          };
-          anomalies.push({
-            code: 'TRAFFIC_ANOMALY_FLOOD',
-            vector: 'traffic',
-            metric: 'requestsPerMin',
-            current: sample.requestsPerMin,
-            baseline: baseline.requestsPerMin,
-            threshold: Math.round(expectedRpm * effectiveTrafficRatio),
-            unit: 'req/phút',
-            severity: 'HIGH',
-            actor: trafficActor,
-            message: `Lưu lượng tăng vọt bất thường (${sample.requestsPerMin} req/phút, gấp ${trafficRatio.toFixed(1)}x) với dấu hiệu phân tán IP thấp (${sample.distinctIpsCount} IPs) — Nghi vấn tấn công từ chối dịch vụ (DDoS/Scraping).`,
-            rootCauseDiagnosis: `Lưu lượng tăng vọt gấp ${trafficRatio.toFixed(1)}x đường chuẩn trung bình (${sample.requestsPerMin} vs ${baseline.requestsPerMin} RPM).`,
-            mitigationTaken: 'Hệ thống đã kích hoạt Token-Bucket Rate Limiter và Load Shedding cắt tải các request vượt ngưỡng.',
-          });
-        }
-      } else {
-        // Tăng trưởng tự nhiên lành mạnh từ người dùng thật (Flash Sale / Giờ cao điểm)
-        trafficScore = Math.min(25, Math.round(10 + (trafficRatio - effectiveTrafficRatio) * 5));
-      }
-    } else {
-      trafficScore = Math.min(15, Math.round(trafficRatio * 4));
+    if (this.vectorConfig.traffic && isAttackIndicator && sample.requestsPerMin >= tm.alertRpm) {
+      const trafficRatio = tm.baselineRpm > 0 ? sample.requestsPerMin / tm.baselineRpm : 0;
+      const trafficActor = suspects.find((s) => s.reqCount >= 50) || sample.topTrafficActor || {
+        type: 'IP_SOURCE',
+        identity: '192.168.xxx.xxx',
+        maskedIp: '192.168.xxx.xxx',
+        rawIp: '192.168.1.1',
+        ipHash: 'traffic_flood_hash',
+        userId: null,
+        username: 'Khách vãng lai / Ẩn danh',
+        role: 'Guest',
+        userAgent: 'DDoS Cluster / HTTP Flooder',
+        targetEndpoint: '/api/*',
+      };
+      anomalies.push({
+        code: 'TRAFFIC_ANOMALY_FLOOD',
+        vector: 'traffic',
+        metric: 'requestsPerMin',
+        current: sample.requestsPerMin,
+        baseline: tm.baselineRpm,
+        threshold: tm.alertRpm,
+        unit: 'req/phút',
+        severity: 'HIGH',
+        actor: trafficActor,
+        message: `Lưu lượng tăng vọt bất thường (${sample.requestsPerMin} req/phút, gấp ${trafficRatio.toFixed(1)}x đường nền, ngưỡng: ${tm.alertRpm}) với dấu hiệu tấn công (${sample.distinctIpsCount} IPs) — Nghi vấn tấn công từ chối dịch vụ (DDoS/Scraping).`,
+        rootCauseDiagnosis: `Lưu lượng tăng vọt gấp ${trafficRatio.toFixed(1)}x đường chuẩn trung vị (${sample.requestsPerMin} vs ${tm.baselineRpm} RPM).`,
+        mitigationTaken: 'Hệ thống đã kích hoạt Token-Bucket Rate Limiter và Load Shedding cắt tải các request vượt ngưỡng.',
+      });
     }
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 3: RỦI RO THĂM DÒ LỖ HỔNG & INJECTION (EXPLOITS & PROBES)
     // ─────────────────────────────────────────────────────────────
-    let exploitScore = 0;
-    const customExploit = this.customThresholds.exploitLimit ?? this.customThresholds.exploitSamples;
-    const exploitThreshold =
-      customExploit !== null &&
-      customExploit !== undefined &&
-      Number(customExploit) > 0
-        ? Number(customExploit)
-        : 8;
+    const exploitMarks = ind.exploit.malformed;
+    const exploitScore = F.rampScore(sample.malformedRequests, exploitMarks);
 
-    if (sample.malformedRequests >= exploitThreshold) {
-      const isSevere = sample.malformedRequests >= exploitThreshold * 2.5;
-      exploitScore = isSevere ? 80 : 70;
-      if (this.vectorConfig.exploit) {
-        const exploitActor = suspects.find((s) => s.malformed > 0) || sample.topExploitActor || {
-          type: 'IP_SOURCE',
-          identity: '192.168.xxx.xxx',
-          maskedIp: '192.168.xxx.xxx',
-          rawIp: '192.168.1.112',
-          ipHash: 'exploit_probe_hash',
-          userId: null,
-          username: 'Khách vãng lai / Ẩn danh',
-          role: 'Guest',
-          userAgent: 'Scanner / Vulnerability Probe (sqlmap/curl)',
-          targetEndpoint: 'Injection URL Probes',
-        };
-        anomalies.push({
-          code: 'MALICIOUS_REQUEST_PROBES',
-          vector: 'exploit',
-          metric: 'malformedRequests',
-          current: sample.malformedRequests,
-          threshold: exploitThreshold,
-          baseline: 0,
-          unit: 'mẫu độc hại',
-          severity: 'HIGH',
-          actor: exploitActor,
-          message: `Phát hiện các mẫu request độc hại chứa cú pháp SQLi/Path Traversal/XSS (${sample.malformedRequests} mẫu, ngưỡng: ${exploitThreshold}) từ bên ngoài.`,
-          rootCauseDiagnosis: `Phát hiện ${sample.malformedRequests} request mang payload nguy hiểm (../, ..%2f, UNION SELECT, <script>) từ nguồn ${exploitActor.identity}.`,
-          mitigationTaken: 'Đã tự động ngắt kết nối và cô lập IP độc hại vào Khiên Chắn Active Quarantine 30 phút.',
-        });
-      }
-    } else if (sample.malformedRequests > 0) {
-      exploitScore = Math.min(25, Math.round((sample.malformedRequests / exploitThreshold) * 25));
+    if (this.vectorConfig.exploit && sample.malformedRequests >= exploitMarks.alert) {
+      const exploitActor = suspects.find((s) => s.malformed > 0) || sample.topExploitActor || {
+        type: 'IP_SOURCE',
+        identity: '192.168.xxx.xxx',
+        maskedIp: '192.168.xxx.xxx',
+        rawIp: '192.168.1.112',
+        ipHash: 'exploit_probe_hash',
+        userId: null,
+        username: 'Khách vãng lai / Ẩn danh',
+        role: 'Guest',
+        userAgent: 'Scanner / Vulnerability Probe (sqlmap/curl)',
+        targetEndpoint: 'Injection URL Probes',
+      };
+      anomalies.push({
+        code: 'MALICIOUS_REQUEST_PROBES',
+        vector: 'exploit',
+        metric: 'malformedRequests',
+        current: sample.malformedRequests,
+        threshold: exploitMarks.alert,
+        baseline: 0,
+        unit: 'mẫu độc hại',
+        severity: 'HIGH',
+        actor: exploitActor,
+        message: `Phát hiện các mẫu request độc hại chứa cú pháp SQLi/Path Traversal/XSS (${sample.malformedRequests} mẫu, ngưỡng: ${exploitMarks.alert}) từ bên ngoài.`,
+        rootCauseDiagnosis: `Phát hiện ${sample.malformedRequests} request mang payload nguy hiểm (../, ..%2f, UNION SELECT, <script>) từ nguồn ${exploitActor.identity}.`,
+        mitigationTaken: 'Đã tự động ngắt kết nối và cô lập IP độc hại vào Khiên Chắn Active Quarantine 30 phút.',
+      });
     }
 
     // ─────────────────────────────────────────────────────────────
     // VECTOR 4: SỨC KHỎE HẠ TẦNG & TÀI NGUYÊN (SYSTEM RESOURCES)
     // ─────────────────────────────────────────────────────────────
-    const customLag = this.customThresholds.eventLoopLagMs ?? this.customThresholds.resourceLag;
-    const lagThreshold =
-      customLag !== null &&
-      customLag !== undefined &&
-      Number(customLag) > 0
-        ? Number(customLag)
-        : 250;
-    const customRam = this.customThresholds.resourceMemoryPercent ?? this.customThresholds.resourceRam;
-    const ramThreshold =
-      customRam !== null &&
-      customRam !== undefined &&
-      Number(customRam) > 0
-        ? Number(customRam)
-        : 92;
-    const customCpu = this.customThresholds.resourceCpuPercent ?? this.customThresholds.resourceCpu;
-    const cpuThreshold =
-      customCpu !== null &&
-      customCpu !== undefined &&
-      Number(customCpu) > 0
-        ? Number(customCpu)
-        : 85;
-
-    let lagScore = 0;
-    if (sample.eventLoopLagMs >= lagThreshold) {
-      const isSevereLag = sample.eventLoopLagMs >= lagThreshold * 1.6;
-      lagScore = isSevereLag ? 80 : 50;
-      if (this.vectorConfig.resource) {
-        anomalies.push({
-          code: 'EVENT_LOOP_FREEZE',
-          vector: 'resource',
-          metric: 'eventLoopLagMs',
-          current: sample.eventLoopLagMs,
-          threshold: lagThreshold,
-          baseline: 15,
-          unit: 'ms lag',
-          severity: isSevereLag ? 'HIGH' : 'MEDIUM',
-          actor: systemActor,
-          message: `Event Loop bị trễ nghiêm trọng (${sample.eventLoopLagMs}ms lag, ngưỡng: ${lagThreshold}ms) — Tiến trình Node.js đang bị nghẽn CPU hoặc I/O treo.`,
-          rootCauseDiagnosis: `Độ trễ Event Loop đạt ${sample.eventLoopLagMs}ms (ngưỡng an toàn < ${lagThreshold}ms). Tiến trình đang chịu tải tính toán nặng hoặc I/O bị chặn.`,
-          mitigationTaken: 'Load Shedding kích hoạt: Tự động trả HTTP 503 cho request khách vãng lai để giải tỏa CPU máy chủ.',
-        });
-      }
-    } else if (sample.eventLoopLagMs >= 100) {
-      lagScore = Math.min(25, Math.round((sample.eventLoopLagMs / lagThreshold) * 25));
+    const r = ind.resource;
+    const lagScore = sample.warmingUp ? 0 : F.rampScore(sample.eventLoopLagMs, r.lagMs);
+    if (lagScore >= 70 && this.vectorConfig.resource) {
+      anomalies.push({
+        code: 'EVENT_LOOP_FREEZE',
+        vector: 'resource',
+        metric: 'eventLoopLagMs',
+        current: sample.eventLoopLagMs,
+        threshold: r.lagMs.alert,
+        baseline: 15,
+        unit: 'ms lag',
+        severity: lagScore >= 85 ? 'HIGH' : 'MEDIUM',
+        actor: systemActor,
+        message: `Event Loop bị trễ nghiêm trọng (p99 ${sample.eventLoopLagMs}ms, ngưỡng: ${r.lagMs.alert}ms) — Tiến trình Node.js đang bị nghẽn CPU hoặc I/O treo.`,
+        rootCauseDiagnosis: `Độ trễ vòng lặp sự kiện (p99 trong cửa sổ) đạt ${sample.eventLoopLagMs}ms (ngưỡng an toàn < ${r.lagMs.alert}ms). Tiến trình đang chịu tải tính toán nặng hoặc I/O bị chặn.`,
+        mitigationTaken: 'Load Shedding kích hoạt: Tự động trả HTTP 503 cho request khách vãng lai để giải tỏa CPU máy chủ.',
+      });
     }
 
-    let ramScore = 0;
-    if (sample.ramPercent >= ramThreshold) {
-      ramScore = 75;
-      if (this.vectorConfig.resource) {
-        anomalies.push({
-          code: 'MEMORY_EXHAUSTION',
-          vector: 'resource',
-          metric: 'ramPercent',
-          current: sample.ramPercent,
-          threshold: ramThreshold,
-          baseline: 50,
-          unit: '% RAM',
-          severity: 'HIGH',
-          actor: systemActor,
-          message: `Bộ nhớ RAM tiêu thụ đã chạm ${sample.ramPercent}% (ngưỡng an toàn: ${ramThreshold}%) — Nguy cơ rò rỉ bộ nhớ (Memory Leak) hoặc sập tiến trình (OOM).`,
-          rootCauseDiagnosis: `Bộ nhớ RAM đã vượt ngưỡng nguy hiểm (${sample.ramPercent}% >= ${ramThreshold}%). Cần giám sát rò rỉ bộ nhớ hoặc scale up tài nguyên.`,
-          mitigationTaken: 'Cảnh báo tài nguyên hệ thống phát ra tới Quản trị viên để chuẩn bị mở rộng hạ tầng.',
-        });
-      }
-    } else if (sample.ramPercent >= 80) {
-      ramScore = Math.min(25, Math.round((sample.ramPercent - 80) * 2));
+    const ramScore = F.rampScore(sample.ramPercent, r.ramPercent);
+    if (ramScore >= 70 && this.vectorConfig.resource) {
+      anomalies.push({
+        code: 'MEMORY_EXHAUSTION',
+        vector: 'resource',
+        metric: 'ramPercent',
+        current: sample.ramPercent,
+        threshold: r.ramPercent.alert,
+        baseline: 50,
+        unit: '% RAM',
+        severity: 'HIGH',
+        actor: systemActor,
+        message: `Bộ nhớ tiến trình đã chạm ${sample.ramPercent}% hạn mức (ngưỡng an toàn: ${r.ramPercent.alert}%) — Nguy cơ rò rỉ bộ nhớ (Memory Leak) hoặc sập tiến trình (OOM).`,
+        rootCauseDiagnosis: `Bộ nhớ tiến trình đã vượt ngưỡng nguy hiểm (${sample.ramPercent}% >= ${r.ramPercent.alert}%). Cần giám sát rò rỉ bộ nhớ hoặc scale up tài nguyên.`,
+        mitigationTaken: 'Cảnh báo tài nguyên hệ thống phát ra tới Quản trị viên để chuẩn bị mở rộng hạ tầng.',
+      });
     }
 
-    let cpuScore = 0;
-    if (sample.cpuPercent >= cpuThreshold) {
-      cpuScore = 75;
-      if (this.vectorConfig.resource) {
-        anomalies.push({
-          code: 'CPU_OVERLOAD_SURGE',
-          vector: 'resource',
-          metric: 'cpuPercent',
-          current: sample.cpuPercent,
-          threshold: cpuThreshold,
-          baseline: 30,
-          unit: '% CPU',
-          severity: 'HIGH',
-          actor: systemActor,
-          message: `CPU máy chủ tiêu thụ chạm ${sample.cpuPercent}% (ngưỡng an toàn: ${cpuThreshold}%) — Nguy cơ nghẽn tải tính toán hệ thống.`,
-          rootCauseDiagnosis: `CPU tiêu thụ chạm ${sample.cpuPercent}%, vượt ngưỡng an toàn ${cpuThreshold}%.`,
-          mitigationTaken: 'Load Shedding kích hoạt: Giảm tải các tác vụ nền định kỳ.',
-        });
-      }
-    } else if (sample.cpuPercent >= 70) {
-      cpuScore = Math.min(25, Math.round((sample.cpuPercent - 70) * 1.5));
+    const cpuScore = F.rampScore(sample.cpuPercent, r.cpuPercent);
+    if (cpuScore >= 70 && this.vectorConfig.resource) {
+      anomalies.push({
+        code: 'CPU_OVERLOAD_SURGE',
+        vector: 'resource',
+        metric: 'cpuPercent',
+        current: sample.cpuPercent,
+        threshold: r.cpuPercent.alert,
+        baseline: 30,
+        unit: '% CPU',
+        severity: 'HIGH',
+        actor: systemActor,
+        message: `CPU máy chủ tiêu thụ chạm ${sample.cpuPercent}% (ngưỡng an toàn: ${r.cpuPercent.alert}%) — Nguy cơ nghẽn tải tính toán hệ thống.`,
+        rootCauseDiagnosis: `CPU tiêu thụ chạm ${sample.cpuPercent}%, vượt ngưỡng an toàn ${r.cpuPercent.alert}%.`,
+        mitigationTaken: 'Load Shedding kích hoạt: Giảm tải các tác vụ nền định kỳ.',
+      });
     }
 
-    let err5xxScore = 0;
-    const minRequestsFor5xx = 10;
-    if (sampleWindowRequests >= minRequestsFor5xx && sample.errorRate5xx >= 0.25) {
-      err5xxScore = 70;
-      if (this.vectorConfig.resource) {
-        anomalies.push({
-          code: 'SERVER_5XX_SURGE',
-          vector: 'resource',
-          metric: 'errorRate5xx',
-          current: sample.errorRate5xx,
-          threshold: 0.25,
-          baseline: 0.01,
-          unit: '% lỗi',
-          severity: 'HIGH',
-          actor: systemActor,
-          message: `Tỷ lệ lỗi máy chủ 5xx tăng bất thường (${Math.round(sample.errorRate5xx * 100)}% yêu cầu) — Dấu hiệu database hoặc service phụ thuộc tê liệt.`,
-          rootCauseDiagnosis: `Tỷ lệ lỗi HTTP 500 đạt ${Math.round(sample.errorRate5xx * 100)}% trên tổng ${sampleWindowRequests} requests.`,
-          mitigationTaken: 'DB Bulkhead tự động bảo lưu 20% kết nối cho luồng Quản trị viên (Fast-Lane) để cứu hộ.',
-        });
-      }
-    } else if (sample.errorRate5xx > 0 && sampleWindowRequests >= minRequestsFor5xx) {
-      err5xxScore = Math.min(20, Math.round(sample.errorRate5xx * 60));
+    const err5xxScore = windowRequests >= MIN_REQUESTS_FOR_5XX ? F.rampScore(sample.errorRate5xx, r.error5xxRate) : 0;
+    if (err5xxScore >= 70 && this.vectorConfig.resource) {
+      anomalies.push({
+        code: 'SERVER_5XX_SURGE',
+        vector: 'resource',
+        metric: 'errorRate5xx',
+        current: sample.errorRate5xx,
+        threshold: r.error5xxRate.alert,
+        baseline: 0.01,
+        unit: '% lỗi',
+        severity: 'HIGH',
+        actor: systemActor,
+        message: `Tỷ lệ lỗi máy chủ 5xx tăng bất thường (${Math.round(sample.errorRate5xx * 100)}% yêu cầu, ngưỡng: ${Math.round(r.error5xxRate.alert * 100)}%) — Dấu hiệu database hoặc service phụ thuộc tê liệt.`,
+        rootCauseDiagnosis: `Tỷ lệ lỗi HTTP 5xx đạt ${Math.round(sample.errorRate5xx * 100)}% trên tổng ${windowRequests} requests.`,
+        mitigationTaken: 'DB Bulkhead tự động bảo lưu 20% kết nối cho luồng Quản trị viên (Fast-Lane) để cứu hộ.',
+      });
     }
 
-    // Compound resource exhaustion: Nếu có từ 2 chỉ số phần cứng bị nguy hiểm cùng lúc
-    const resourceIssuesCount = [lagScore >= 70, ramScore >= 70, cpuScore >= 70, err5xxScore >= 70].filter(Boolean).length;
+    // Nhiều chỉ số tài nguyên cùng vượt ngưỡng: cộng 10 × (k − 1)
+    const resourceIssuesCount = [lagScore, ramScore, cpuScore, err5xxScore].filter((s) => s >= 70).length;
     const compoundBonus = resourceIssuesCount >= 2 ? (resourceIssuesCount - 1) * 10 : 0;
     const resourceScore = Math.min(100, Math.max(lagScore, ramScore, cpuScore, err5xxScore) + compoundBonus);
 
@@ -600,11 +443,10 @@ class AnomalyDetector {
     if (this.vectorConfig.resource) activeScores.push(resourceScore);
 
     const rawMax = activeScores.length > 0 ? Math.max(...activeScores) : 0;
-    const highVectorsCount = activeScores.filter((s) => s >= 65).length;
+    const highVectorsCount = activeScores.filter((s) => s >= SCORE_BANDS.warning).length;
     const corroborationBonus = highVectorsCount >= 2 ? (highVectorsCount - 1) * 8 : 0;
 
-    // Hệ số đe dọa lấy theo giá trị thực tế được tính toán (không kẹp tối thiểu 5)
-    let threatScore = Math.min(100, Math.max(0, Math.round(rawMax + corroborationBonus)));
+    const threatScore = Math.min(100, Math.max(0, Math.round(rawMax + corroborationBonus)));
 
     // ─────────────────────────────────────────────────────────────
     // CƠ CHẾ PHÒNG THỦ CÁ NHÂN HÓA THEO TỪNG VECTƠ (PER-VECTOR DEFENSE)
@@ -651,14 +493,13 @@ class AnomalyDetector {
         actionLabel: !this.vectorConfig.resource
           ? 'Vectơ Tài nguyên đã bị tắt khỏi tính toán rủi ro (Chế độ giám sát thụ động)'
           : resourceScore >= 85
-            ? '🚨 Nguy cơ sập dây chuyền hạ tầng (Lag > 400ms & 5xx > 25% / OOM): Đề xuất kích hoạt Bảo trì khẩn cấp để bảo vệ CSDL'
+            ? '🚨 Nguy cơ sập dây chuyền hạ tầng (độ trễ, lỗi 5xx hoặc bộ nhớ vượt ngưỡng đồng thời): Đề xuất kích hoạt Bảo trì khẩn cấp để bảo vệ CSDL'
             : resourceScore >= 70
               ? 'Tự động kích hoạt Load Shedding (hạ tải nhẹ HTTP 503 cho request không ưu tiên, bảo vệ tiến trình lõi)'
               : 'Tài nguyên phần cứng ổn định',
       },
     };
 
-    // Xác định phân cấp trạng thái và hành động tổng thể
     // QUY TẮC CỐT LÕI: Chỉ đề xuất EMERGENCY_MAINTENANCE khi HẠ TẦNG sập nghiêm trọng đa chỉ số VÀ Vector Resource đang BẬT
     const severeResourceCrisis = Boolean(this.vectorConfig.resource) && resourceScore >= 85 && (
       (lagScore >= 70 && err5xxScore >= 70) ||
@@ -701,11 +542,6 @@ class AnomalyDetector {
 
     const isAnomaly = anomalies.length > 0 || threatScore >= 70;
 
-    // Cơ chế Anti-Poisoning: Chỉ cập nhật baseline khi hệ thống hoạt động bình thường, an toàn
-    if (shouldUpdateBaseline && threatScore < 70) {
-      this._updateBaseline(sample, hour);
-    }
-
     return {
       threatScore,
       status,
@@ -718,6 +554,7 @@ class AnomalyDetector {
       vectorDefenses,
       vectorConfig: { ...this.vectorConfig },
       customThresholds: this.getCustomThresholds(),
+      indicators: ind,
       targetConcurrency: this.targetConcurrency,
       isAnomaly,
       anomalies,
@@ -726,34 +563,18 @@ class AnomalyDetector {
     };
   }
 
+  /**
+   * Hiệu chuẩn: đặt quy mô N (nếu có) và ngưỡng tuỳ chỉnh. Không xoá đường nền đã nạp từ lịch sử.
+   * Báo cáo năng lực do AIOpsService dựng (Luật sử dụng, B5).
+   */
   calibrate(options = {}) {
-    // 1. Tự động tính toán lại đường chuẩn 24h dựa trên phần cứng server thật, tải thực tế và N
-    const target = options.targetConcurrency || (typeof options === 'number' ? options : this.targetConcurrency);
-    this.targetConcurrency = Math.max(100, Number(target || 1000));
-    const currentSample = options.currentSample || null;
-    const report = this.calculateServerHardwareBaseline(this.targetConcurrency, currentSample);
-    this.hourlyBaselines = this._initializeBaselines(currentSample);
-
-    // 2. Nhận cấu hình ngưỡng an toàn tùy chỉnh (Custom Thresholds) cho 4 Vector nếu Admin cung cấp
+    if (options.targetConcurrency) {
+      this.setConcurrencyScale(options.targetConcurrency);
+    }
     if (options.customThresholds && typeof options.customThresholds === 'object') {
       this.setCustomThresholds(options.customThresholds);
     }
-    report.customThresholds = this.getCustomThresholds();
-
-    // 3. Nếu có customBaselines truyền vào từng giờ, merge vào
-    if (options.customBaselines) {
-      const hour = this._getVnHour();
-      if (this.hourlyBaselines[hour]) {
-        Object.assign(this.hourlyBaselines[hour], options.customBaselines);
-      }
-    } else if (typeof options === 'object' && !options.targetConcurrency && !options.customThresholds) {
-      const hour = this._getVnHour();
-      if (this.hourlyBaselines[hour]) {
-        Object.assign(this.hourlyBaselines[hour], options);
-      }
-    }
-
-    return report;
+    return this.getEffectiveThresholds();
   }
 }
 

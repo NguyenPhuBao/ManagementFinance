@@ -1,7 +1,14 @@
 /**
  * Event Loop Lag Monitor
- * Theo dõi độ trễ của vòng lặp sự kiện Node.js thời gian thực
+ * - getLag(): độ trễ tức thời của tick gần nhất (load shedding dùng).
+ * - getWindowLag() / peekWindowLag(): p99 và max trong cửa sổ đo của AIOps,
+ *   đo bằng perf_hooks.monitorEventLoopDelay (histogram); getWindowLag() reset histogram.
  */
+const { monitorEventLoopDelay } = require('perf_hooks');
+
+const NS_PER_MS = 1_000_000;
+const RESOLUTION_MS = 20; // giá trị histogram gồm cả chu kỳ đo → trừ ra để còn phần trễ thật
+const round1 = (ms) => Math.round(ms * 10) / 10;
 
 class EventLoopMonitor {
   constructor(options = {}) {
@@ -10,11 +17,19 @@ class EventLoopMonitor {
     this.currentLag = 0;
     this.running = false;
     this.timer = null;
+    this.histogram = null;
   }
 
   start() {
     if (this.running) return;
     this.running = true;
+
+    try {
+      this.histogram = monitorEventLoopDelay({ resolution: RESOLUTION_MS });
+      this.histogram.enable();
+    } catch (_) {
+      this.histogram = null;
+    }
 
     let lastCheck = process.hrtime.bigint();
 
@@ -24,9 +39,9 @@ class EventLoopMonitor {
       lastCheck = now;
 
       // Độ trễ vượt mức mong muốn của interval (chuyển đổi từ nanoseconds sang milliseconds)
-      const expectedNs = this.intervalMs * 1_000_000;
+      const expectedNs = this.intervalMs * NS_PER_MS;
       const lagNs = Math.max(0, deltaNs - expectedNs);
-      this.currentLag = Math.round((lagNs / 1_000_000) * 10) / 10;
+      this.currentLag = round1(lagNs / NS_PER_MS);
     }, this.intervalMs);
 
     if (this.timer.unref) {
@@ -39,11 +54,30 @@ class EventLoopMonitor {
       clearInterval(this.timer);
       this.timer = null;
     }
+    if (this.histogram) {
+      this.histogram.disable();
+      this.histogram = null;
+    }
     this.running = false;
   }
 
   getLag() {
     return this.currentLag;
+  }
+
+  /** p99 và max (ms) trong cửa sổ hiện tại, không reset. */
+  peekWindowLag() {
+    const h = this.histogram;
+    if (!h || !h.count) return { p99Ms: 0, maxMs: 0 };
+    const lag = (ns) => round1(Math.max(0, ns / NS_PER_MS - RESOLUTION_MS));
+    return { p99Ms: lag(h.percentile(99)), maxMs: lag(h.max) };
+  }
+
+  /** p99 và max (ms) trong cửa sổ hiện tại, rồi reset để bắt đầu cửa sổ mới. */
+  getWindowLag() {
+    const out = this.peekWindowLag();
+    if (this.histogram) this.histogram.reset();
+    return out;
   }
 
   isOverloaded() {

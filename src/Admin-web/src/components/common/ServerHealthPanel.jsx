@@ -191,7 +191,7 @@ const ServerHealthPanel = ({ uptimeData }) => {
         <>
           <div className="flex flex-col gap-3">
             <Gauge label="CPU" pct={cpu?.percent ?? 0} detail={`${cpu?.percent ?? 0}%${cpu?.cores ? ` · ${t('serverHealth.cores', { n: cpu.cores })}` : ''}`} warnAt={70} critAt={85} />
-            <Gauge label="RAM" pct={ramPct} detail={ram?.totalMb ? `${nf.number(ram.usedMb, { maxFrac: 0 })} / ${nf.number(ram.totalMb, { maxFrac: 0 })} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
+            <Gauge label={t('serverHealth.ram')} pct={ramPct} detail={ram?.totalMb ? `${nf.number(ram.usedMb, { maxFrac: 0 })} / ${nf.number(ram.totalMb, { maxFrac: 0 })} MB` : `${ram?.percent ?? 0}%`} warnAt={70} critAt={85} />
             <Gauge label={t('serverHealth.lag')} pct={(lag / 200) * 100} detail={`${lag} ms`} warnAt={25} critAt={50} />
           </div>
 
