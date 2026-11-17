@@ -673,7 +673,7 @@ export default {
     },
     syncModal: {
       title: 'Save category changes',
-      description: 'Changes apply to every user. Enter your PIN to confirm.',
+      description: 'Changes apply only to accounts created after you save. Existing accounts keep their categories. Enter your PIN to confirm.',
       confirmBtn: 'Save',
       syncSuccess: 'Category changes saved.',
     },

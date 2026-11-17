@@ -156,6 +156,18 @@ describe('Bản nháp', () => {
 });
 
 describe('Lưu bằng PIN', () => {
+  it('hộp xác nhận nói rõ thay đổi chỉ áp cho tài khoản tạo sau, không đổi danh mục tài khoản hiện có (2026-11-17)', async () => {
+    await renderPage();
+    const add = openAdd();
+    fireEvent.change(within(add).getByLabelText('Tên danh mục'), { target: { value: 'Mua sắm' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Thêm vào bản nháp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Lưu thay đổi danh mục' });
+    expect(dialog).toHaveTextContent('chỉ áp dụng cho tài khoản tạo sau khi lưu');
+    expect(dialog).toHaveTextContent('Danh mục của tài khoản hiện có không đổi');
+    expect(dialog).not.toHaveTextContent('mọi người dùng');
+  });
+
   it('PIN gửi kèm từng lệnh thêm / sửa / khôi phục / xóa (máy chủ kiểm), sau đó tải lại', async () => {
     await renderPage();
     const add = openAdd();
