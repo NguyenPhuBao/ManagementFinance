@@ -69,15 +69,14 @@ async function bootstrap() {
     const { initScheduler } = require('./core/scheduler.service');
     initScheduler();
 
-    // 7. Start AIOps Sentinel Machine Learning Monitoring Engine (10s cycle)
+    // 7. AIOps (tạm dừng mặc định, bật bằng AIOPS_ENABLED=true): vòng đo 10 giây chỉ chạy khi bật.
+    //    Khi tắt vẫn nạp danh sách phong toả để bộ quét hết hạn mở các tài khoản đang bị khoá tạm.
+    const { isAiopsEnabled, startAiops } = require('./modules/aiops/aiops.toggle');
     const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
-    defaultAIOpsService.start();
-
-    // 7b. Khởi tạo 3 bảng CSDL và Hydrate dữ liệu phong tỏa còn hiệu lực vào RAM Cache (Zero-loss on restart)
     const { defaultAIOpsQuarantine } = require('./modules/aiops/aiops.quarantine');
     const { defaultAIOpsQuarantineRepository } = require('./modules/aiops/aiops.quarantine.repository');
-    defaultAIOpsQuarantineRepository.initTables()
-      .then(() => defaultAIOpsQuarantine.hydrateFromDatabase())
+    logger.info(`[AIOps] ${isAiopsEnabled() ? 'Đang bật' : 'Tạm dừng (AIOPS_ENABLED khác true)'}`);
+    startAiops({ service: defaultAIOpsService, quarantine: defaultAIOpsQuarantine, repository: defaultAIOpsQuarantineRepository })
       .catch((err) => logger.warn('[AIOps] Không thể nạp phong tỏa từ DB:', err.message));
 
     // 8. Khởi động System Metrics Streamer (3s/lần) phát nhịp tim tới admin_room
@@ -102,7 +101,7 @@ async function bootstrap() {
         if (typeof defaultMaintenanceRepository.hasPendingSync === 'function' && defaultMaintenanceRepository.hasPendingSync()) {
           defaultMaintenanceRepository.flushPendingQueue().catch(() => {});
         }
-        const aiopsStatus = defaultAIOpsService.getStatus() || {};
+        const aiopsStatus = (isAiopsEnabled() && defaultAIOpsService.getStatus()) || {};
         const lastSample = aiopsStatus.sample || {};
         // Chạy liên tục (không trừ bảo trì) + độ khả dụng tháng hiện tại (đệm 60 giây, không truy vấn CSDL mỗi 3 giây)
         const uptime = await require('./modules/admin/admin.service').buildUptimeInfo();

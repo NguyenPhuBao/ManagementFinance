@@ -10,6 +10,7 @@ import adminApi from '../../api/admin.api';
 import { useLanguageSafe } from '../../store/language.context';
 import { useSettingsSafe } from '../../store/settings.context';
 import { Button, Icon, SecurityConfirmModal } from '../ui';
+import { isAiopsEnabled } from '../../config/features';
 
 const SIDEBAR_KEY = 'admin_sidebar_collapsed';
 
@@ -69,7 +70,7 @@ const AppLayout = () => {
   };
 
   const checkThreatStatus = async () => {
-    if (settingsCtx?.isLocked) return;
+    if (settingsCtx?.isLocked || !isAiopsEnabled()) return;
     try {
       const res = await aiopsApi.getStatus();
       const data = res?.data || res;
@@ -124,12 +125,17 @@ const AppLayout = () => {
       }
     };
 
-    socket.on('admin.security_alert', handleSecurityAlert);
-    socket.on('admin.security_blocked', handleSecurityBlocked);
+    const aiops = isAiopsEnabled();
+    if (aiops) {
+      socket.on('admin.security_alert', handleSecurityAlert);
+      socket.on('admin.security_blocked', handleSecurityBlocked);
+    }
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
     return () => {
-      socket.off('admin.security_alert', handleSecurityAlert);
-      socket.off('admin.security_blocked', handleSecurityBlocked);
+      if (aiops) {
+        socket.off('admin.security_alert', handleSecurityAlert);
+        socket.off('admin.security_blocked', handleSecurityBlocked);
+      }
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);

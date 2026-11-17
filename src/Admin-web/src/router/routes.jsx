@@ -9,6 +9,11 @@ import AIOpsPage from '../pages/system/AIOpsPage';
 import PermissionManagementPage from '../pages/system/PermissionManagementPage';
 import PaymentHistoryPage from '../pages/payments/PaymentHistoryPage';
 import PaymentResultPage from '../pages/payment/PaymentResultPage';
+import { Navigate } from 'react-router-dom';
+import { isAiopsEnabled } from '../config/features';
+
+// AIOps tạm dừng (2026-11-17): công tắc tắt thì /aiops chuyển về Dashboard.
+const AIOpsRoute = () => (isAiopsEnabled() ? <AIOpsPage /> : <Navigate to="/dashboard" replace />);
 
 const routes = [
   {
@@ -61,7 +66,7 @@ const routes = [
   },
   {
     path: '/aiops',
-    element: <AIOpsPage />,
+    element: <AIOpsRoute />,
   },
 ];
 

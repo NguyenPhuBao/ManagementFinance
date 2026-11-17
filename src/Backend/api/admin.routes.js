@@ -7,12 +7,14 @@ const { uploadRefundProof } = require('../middleware/upload.middleware');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 const { stripRawIpResponse } = require('../middleware/strip-raw-ip.middleware');
+const { aiopsRouteGate } = require('../modules/aiops/aiops.toggle');
 
 // Tất cả admin routes yêu cầu đăng nhập + role admin
 router.use(authenticate, authorize('admin'));
 
 // AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
-router.use('/aiops', stripRawIpResponse);
+// AIOps tạm dừng: công tắc AIOPS_ENABLED tắt thì mọi /aiops/* trả 404 AIOPS_DISABLED.
+router.use('/aiops', aiopsRouteGate, stripRawIpResponse);
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
 router.get('/aiops/vectors', aiopsController.getVectorConfig);

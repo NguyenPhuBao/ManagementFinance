@@ -1,5 +1,7 @@
 # AIOps — Đặc tả công thức và đo lường
 
+> **Tạm dừng từ 2026-11-17.** Công thức dưới đây chỉ chạy khi bật `AIOPS_ENABLED=true` (Backend) và `VITE_AIOPS_ENABLED=true` (Admin-web). Chi tiết: `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`, mục "Trạng thái: tạm dừng".
+
 Cập nhật: 2026-11-17. Mã nguồn: `src/Backend/modules/aiops/aiops.formulas.js` (hàm thuần), `anomaly.detector.js`, `feature.collector.js`, `aiops.service.js`. Test: `tests/unit/aiops.formulas.test.js`, `aiops.detector.formulas.test.js`, `aiops.measurement.test.js`, `aiops.service.formulas.test.js`.
 
 Ký hiệu:

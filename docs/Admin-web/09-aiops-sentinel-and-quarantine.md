@@ -2,10 +2,32 @@
 
 > **Mã chức năng:** `ADMIN-FEAT-09`  
 > **Phiên bản:** `v2.6 (23/10/2026)`  
-> **Trạng thái:** `Production Ready`  
+> **Trạng thái:** `Tạm dừng từ 2026-11-17 (xem mục Trạng thái)`  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AIOpsPage.jsx` (ghép khối), `src/Admin-web/src/pages/system/aiops/*` (`useAIOps.js`, `ScaleSection`, `SignalsSection`, `VectorSection`, `TrendSection`, `IncidentsSection`, `QuarantineSection`, `AIOpsModals`, `aiopsFormat.js`), `src/Admin-web/src/components/layout/AppLayout.jsx`  
 > - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`, `src/Backend/database/27b_create_aiops_metric_snapshot_table.sql`  
+
+## Trạng thái: tạm dừng (2026-11-17)
+
+Tính năng tạm dừng, thuộc phạm vi nâng cấp khi đưa hệ thống ra người dùng thật. Mã được giữ nguyên (bản công thức cuối: commit `a476d5ca`), bật lại bằng công tắc.
+
+| Công tắc | Nơi đặt | Mặc định |
+|---|---|---|
+| `AIOPS_ENABLED` | Backend (`.env`, Render) | tắt; chỉ bật khi `= true` |
+| `VITE_AIOPS_ENABLED` | Admin-web (lúc build, Vercel) | tắt; chỉ bật khi `= true` |
+
+Bật thì bật cả hai. Chỉ bật Admin-web thì trang gọi API sẽ nhận 404.
+
+**Khi tắt** (mã: `src/Backend/modules/aiops/aiops.toggle.js`, `src/Admin-web/src/config/features.js`; test: `tests/unit/aiops.toggle.test.js`, `src/tests/layout.test.jsx`, `src/tests/aiops.route.toggle.test.jsx`):
+- Backend không thu thập chỉ số, không chạy vòng đo 10 giây, không tự khoá IP hay tài khoản, không chặn IP đang cách ly (không còn 403 `AIOPS_QUARANTINED`).
+- `/admin/aiops/*` trả 404 `AIOPS_DISABLED`.
+- Danh sách phong toả vẫn được nạp để bộ quét hết hạn mở các tài khoản đang bị khoá tạm đúng hạn. Khoá vĩnh viễn giữ nguyên; quản trị viên mở ở trang Người dùng.
+- Đăng nhập vẫn được bảo vệ bởi bộ giới hạn tần suất (`authLimiter`, `generalLimiter`).
+- Admin-web ẩn menu "Giám sát an ninh"; `/aiops` chuyển về Dashboard; không thăm dò trạng thái, không hiện banner đe doạ, bỏ qua sự kiện socket `admin.security_alert` / `admin.security_blocked`.
+- Client-app không cần đổi: chỉ không còn nhận 403 `AIOPS_QUARANTINED`.
+- Bảng CSDL, migration, ma trận quyền giữ nguyên.
+
+---
 
 ---
 

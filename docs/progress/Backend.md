@@ -771,3 +771,11 @@ Kế hoạch: `docs/superpowers/plans/2026-11-17-aiops-cong-thuc-va-do-luong.md`
 - Đo: `peekSample()` (đọc trạng thái không xoá cửa sổ), RPM theo giây thực, độ trễ p99 / max bằng `monitorEventLoopDelay`, RAM = RSS / hạn mức (cả bảng điều khiển), cờ `cpuQuotaHard`.
 - Hiệu chuẩn: báo cáo năng lực theo Luật sử dụng (C = C₀ + S × R) thay hằng số 1,8 ms / 0,5 MB; lưu `custom_vector_thresholds`, `target_concurrency`, `capacity_estimate` vào `aiops_setting` (không migration). Sửa lỗi Admin-web không hiện báo cáo hiệu chuẩn (đọc sai tầng `data`). Nút "Về mặc định" (`resetThresholds: true`, PIN) bỏ mọi ngưỡng tuỳ chỉnh và lưu lại.
 - Test: `aiops.formulas.test.js`, `aiops.detector.formulas.test.js`, `aiops.measurement.test.js`, `aiops.service.formulas.test.js` (mới); Admin-web `aiops.test.jsx`, `aiops.trend.test.jsx`. Client-app không phải đổi gì.
+
+## 29. AIOps tạm dừng bằng công tắc (2026-11-17)
+
+- Tính năng AIOps tạm dừng, thuộc phạm vi nâng cấp sau. Bản công thức cuối giữ ở commit `a476d5ca`.
+- Công tắc `AIOPS_ENABLED` (Backend) và `VITE_AIOPS_ENABLED` (Admin-web), mặc định tắt. Khi tắt: không đo, không tự khoá, không chặn IP cách ly, `/admin/aiops/*` trả 404 `AIOPS_DISABLED`, Admin-web ẩn menu, trang, banner và cảnh báo socket.
+- Khi tắt vẫn nạp danh sách phong toả để bộ quét hết hạn mở các tài khoản đang bị khoá tạm.
+- Mã: `modules/aiops/aiops.toggle.js`, `app.js`, `index.js`, `api/admin.routes.js`; Admin-web `config/features.js`, `Sidebar.jsx`, `AppLayout.jsx`, `Header.jsx`, `router/routes.jsx`.
+- Test: `tests/unit/aiops.toggle.test.js` (7 ca); Admin-web `layout.test.jsx` (thêm 2 ca), `aiops.route.toggle.test.jsx` (2 ca). Unit Backend 1.154/1.175 (19 ca đỏ sẵn cần CSDL dùng chung), Admin-web 291/291, lint sạch, build đạt.
