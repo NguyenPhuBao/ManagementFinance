@@ -340,6 +340,7 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Quy trình: `Quy_trinh_su_co_du_lieu.md`.
 
 ### 10.13. Khoá Truy Cập Trên Trang AIOps Và Tài Khoản Quản Trị Gốc (Migration 56, 2026-11-16)
+* **Trạng thái (2026-11-17):** AIOps tạm dừng, mặc định tắt bằng công tắc `AIOPS_ENABLED` / `VITE_AIOPS_ENABLED`. Khi tắt: không thu thập chỉ số, không tự khoá IP / tài khoản, `/admin/aiops/*` trả 404; các bảng `aiops_*` và thời hạn lưu IP (mục 10.8) giữ nguyên, job xoá IP quá hạn vẫn chạy. Khoá tạm đang có vẫn tự mở đúng hạn. Xem `docs/Admin-web/09-aiops-sentinel-and-quarantine.md`, mục "Trạng thái: tạm dừng".
 * **Hiện IP cho admin theo dõi:** danh sách khoá hiện tên tài khoản và IP đã che; IP đầy đủ chỉ xem khi nhập PIN, mỗi lần xem ghi nhật ký (giữ cơ chế mục 10.8). Căn cứ: IP gắn tài khoản là dữ liệu cá nhân, được xử lý vì an ninh mạng ở mức cần thiết (`Khao_sat_phap_ly_2026-11.md` L13); hiện IP đầy đủ thường trực trong danh sách là vượt mức cần thiết.
 * **PIN cho mọi thao tác ghi AIOps:** khoá / mở IP và tài khoản, khoá thủ công, bật / tắt phòng vệ, hiệu chuẩn, đổi quy mô, bảo trì khẩn cấp. Máy chủ kiểm PIN (`adminService.verifySecurityAction`), nhật ký thao tác ghi mọi lệnh không phải `GET`.
 * **Khoá IP chặn cả admin:** không còn miễn khoá theo phiên admin (kẻ chiếm tài khoản admin không tự gỡ khoá IP được). Admin không tự khoá tài khoản của mình; khoá được admin khác.

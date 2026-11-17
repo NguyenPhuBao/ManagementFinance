@@ -76,7 +76,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 | **Refresh Token TTL** | `30d` (2,592,000 giây) | Duy trì phiên làm việc cho quản trị viên, tự động thu hồi khi đổi mật khẩu hoặc đăng xuất. |
 | **Băm mật khẩu** | `bcrypt` (10 rounds) | Chống tấn công Rainbow Table và Brute-force offline. |
 | **Băm Refresh Token** | `SHA-256` | Token hash lưu tại database: `token_hash = SHA256(raw_token)`. |
-| **Ngưỡng khóa đăng nhập Brute-force** | $\ge 5$ lần thất bại / 10s | Kích hoạt tường lửa AIOps phong tỏa IP nguồn 15 phút. |
+| **Ngưỡng khóa đăng nhập Brute-force** | $\ge 5$ lần thất bại / 10s | Kích hoạt tường lửa AIOps phong tỏa IP nguồn 15 phút. Khi AIOps tạm dừng (mặc định từ 2026-11-17) lớp này không chạy; đăng nhập chỉ còn bộ giới hạn tần suất `authLimiter` (50 lần / 15 phút / IP ở production). |
 
 ---
 
