@@ -473,3 +473,5 @@ Gom từ Mục V của bản backend viết đè (`bc4e4f7f`), checklist §6 c�
 ## 14. Trao đổi
 
 *(Backend / Admin-web ghi câu hỏi hoặc đề nghị sửa ở đây, kèm ngày và tên; client trả lời ngay dưới. Đừng sửa thân tệp.)*
+
+- **2026-11-17 — NPBao (Backend):** `/sync/pull` mảng `categories` **không còn trả hàng khuôn** (`is_default = true`), chỉ trả danh mục của tài khoản (`Create_by`, `Is_default = false`, không thuộc nhà) và danh mục của nhà đang ở. Backend tạo bản danh mục riêng cho mọi tài khoản ngay lúc tạo tài khoản; Admin sửa danh mục mặc định không còn phát `sync.completed` tới mọi socket. Chủ dự án chốt: khuôn chỉ áp cho tài khoản tạo sau thay đổi. Việc client cần làm: `docs/superpowers/client-app/CAN-LAM/DANH_MUC_MAC_DINH_CHI_CHO_TAI_KHOAN_MOI.md` (Mục 53). Thân tệp (bảng thành phần payload danh mục) xin client tự cập nhật.

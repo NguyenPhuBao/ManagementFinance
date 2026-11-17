@@ -150,8 +150,9 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
   - Index độc lập trên `[name_category, is_default, delete_at]` giúp tốc độ kiểm tra trùng lặp chỉ mất $< 2\text{ms}$.
   - Giảm tải kết nối WebSocket duy trì không cần thiết cho màn hình danh mục.
 - **Đến Mobile App (Client-app):**
-  - Khi người dùng đăng ký mới hoặc cài lại ứng dụng, Mobile App gọi `GET /api/sync/pull` để kéo danh sách các danh mục `is_default = true` mới nhất này vào CSDL SQLite nội bộ trên điện thoại.
-  - **Thay đổi tới máy ngay:** mỗi lần Admin thêm, sửa, xóa mềm hoặc khôi phục danh mục hệ thống, Backend phát `sync.completed` tới mọi máy đang kết nối; Client-app nghe tên sự kiện này và kéo `/api/sync/pull` ngay (im lặng). Bản ghi trả về mang `delete_at`: có giá trị thì app khóa danh mục, `null` (vừa khôi phục) thì app mở lại. Máy đang offline nhận thay đổi ở lần đồng bộ kế tiếp (mở app, đổi mạng hoặc chu kỳ 15 phút).
+  - **Từ 2026-11-17 (Chủ dự án chốt):** danh mục mặc định là **khuôn**. Khi một tài khoản được tạo (người dùng đăng ký hoặc quản trị do Admin tạo), Backend chép các khuôn đang hoạt động thành **bản danh mục riêng** của tài khoản đó (`create_by` = id tài khoản, `is_default = false`) trong cùng giao tác (`modules/account/personal-categories.js`).
+  - Admin thêm, sửa, xóa mềm hoặc khôi phục khuôn **chỉ áp cho tài khoản tạo sau thay đổi**. Danh mục của tài khoản đã có không bị tác động. `/api/sync/pull` không trả hàng `is_default = true`; Backend không phát sự kiện nào tới máy người dùng khi khuôn đổi. Việc Client-app cần làm: `docs/superpowers/client-app/CAN-LAM/DANH_MUC_MAC_DINH_CHI_CHO_TAI_KHOAN_MOI.md` (Mục 53).
+  - Tài khoản tạo trước 2026-11-17 chưa có bản riêng: bù bằng `src/Backend/scripts/bu_danh_muc_ca_nhan.js` (mặc định chạy thử; `--apply --xac-nhan=<tên CSDL>` mới ghi).
   - Các giao dịch mới tạo trên điện thoại sẽ tự động gợi ý danh mục dựa trên bộ từ khóa `keyword` mà Admin đã cấu hình.
 
 ---
@@ -169,4 +170,4 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 
 ### Phương Thức Đồng Bộ (Sync Strategy)
 - **Admin-web:** kéo thủ công qua nút "Làm mới" (Manual Pull via REST API); màn Quản lý Danh mục không nghe socket.
-- **Mobile App:** Backend phát `admin.category_updated` tới `admin_room` và `sync.completed` tới mọi socket sau mỗi thao tác thêm / sửa / xóa mềm / khôi phục (`emitCategoryUpdated`, `core/socket.js`); app kéo `/api/sync/pull` ngay khi nhận.
+- **Mobile App:** từ 2026-11-17, `emitCategoryUpdated` (`core/socket.js`) chỉ phát `admin.category_updated` tới `admin_room`; không phát `sync.completed` tới máy người dùng (khuôn đổi không áp cho tài khoản đã có).
