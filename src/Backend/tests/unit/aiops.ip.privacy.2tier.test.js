@@ -124,9 +124,13 @@ describe('Tầng 2: IP đầy đủ không ra khỏi Backend qua API / socket AI
     res.json({ success: true, data: { anomalies: [{ actor: { rawIp: '203.0.113.9', maskedIp: '203.0.xxx.xxx' } }] } });
     assert.ok(!hasRawIp(res.body));
     assert.strictEqual(res.body.data.anomalies[0].actor.maskedIp, '203.0.xxx.xxx');
-    const src = require('fs').readFileSync(require.resolve('../../api/admin.routes'), 'utf8');
-    assert.match(src, /router\.use\('\/aiops', stripRawIpResponse\)/);
-    assert.ok(src.indexOf("router.use('/aiops', stripRawIpResponse)") < src.indexOf("router.get('/aiops/status'"), 'bộ lọc phải gắn trước các route AIOps');
+    // Kiểm trên router thật (2026-11-17: trước bộ lọc có thêm cổng AIOPS_ENABLED, nên không so chuỗi mã nguồn nữa).
+    const router = require('../../api/admin.routes');
+    const idxFilter = router.stack.findIndex((l) => l.handle === stripRawIpResponse);
+    const idxStatus = router.stack.findIndex((l) => l.route && l.route.path === '/aiops/status');
+    assert.ok(idxFilter >= 0, 'phải gắn bộ lọc rawIp');
+    assert.ok(router.stack[idxFilter].regexp.test('/aiops/status'), 'bộ lọc áp cho /aiops/*');
+    assert.ok(idxFilter < idxStatus, 'bộ lọc phải gắn trước các route AIOps');
   });
 });
 

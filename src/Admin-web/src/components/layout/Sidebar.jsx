@@ -3,10 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../store/auth.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { Icon } from '../ui';
+import { isAiopsEnabled } from '../../config/features';
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: 'dashboard', key: 'nav.dashboard' },
-  { to: '/aiops', icon: 'security', key: 'nav.aiops' },
+  { to: '/aiops', icon: 'security', key: 'nav.aiops', feature: 'aiops' },
   { to: '/users', icon: 'group', key: 'nav.users' },
   { to: '/permissions', icon: 'admin_panel_settings', key: 'nav.permissions' },
   { to: '/payments', icon: 'receipt_long', key: 'nav.payments' },
@@ -47,7 +48,7 @@ const Sidebar = ({ collapsed, mobileOpen = false, onCloseMobile }) => {
         </div>
 
         <nav aria-label={t('nav.mainMenu', 'Menu chính')} className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => item.feature !== 'aiops' || isAiopsEnabled()).map((item) => {
             const text = t(item.key);
             return (
               <NavLink

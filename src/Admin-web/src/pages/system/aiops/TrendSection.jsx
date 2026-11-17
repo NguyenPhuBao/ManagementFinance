@@ -36,13 +36,10 @@ const GAP_FACTOR = 3;
 const yOf = (score) => BASE - (Math.min(100, Math.max(0, Number(score) || 0)) / 100) * SPAN;
 const xAt = (ratio) => PAD_X + Math.min(1, Math.max(0, ratio)) * (W - 2 * PAD_X);
 
+// Chỉ dùng điểm vectơ Backend đã tính; mẫu thiếu điểm thì null (ngắt đường), không quy đổi chỉ số thô sang thang khác.
 const scoreOf = (d, key) => {
-  const vs = d.vectorScores || {};
-  if (vs[key] !== undefined) return vs[key];
-  if (key === 'auth') return d.failedLogins ? Math.min(100, d.failedLogins * 10) : 0;
-  if (key === 'traffic') return d.requestsPerMin ? Math.min(100, Math.round(d.requestsPerMin / 30)) : 0;
-  if (key === 'exploit') return d.malformedRequests ? Math.min(100, d.malformedRequests * 25) : 0;
-  return Math.max(d.cpuPercent || 0, d.ramPercent || 0);
+  const v = d.vectorScores?.[key];
+  return v === undefined || v === null ? null : v;
 };
 
 const median = (values) => {
@@ -72,7 +69,13 @@ const buildChart = (history, range) => {
     SERIES.map((s) => [
       s.key,
       samples
-        .map((p, i) => `${i === 0 || p.ts - samples[i - 1].ts > maxGap ? 'M' : 'L'} ${p.x.toFixed(1)} ${yOf(p.scores[s.key]).toFixed(1)}`)
+        .map((p, i) => {
+          if (p.scores[s.key] === null) return null;
+          const prev = samples[i - 1];
+          const breakLine = i === 0 || prev.scores[s.key] === null || p.ts - prev.ts > maxGap;
+          return `${breakLine ? 'M' : 'L'} ${p.x.toFixed(1)} ${yOf(p.scores[s.key]).toFixed(1)}`;
+        })
+        .filter(Boolean)
         .join(' '),
     ])
   );
@@ -220,7 +223,7 @@ const TrendSection = ({ ops }) => {
                 <g key={s.key} className={s.tone}>
                   <path data-testid={`trend-path-${s.key}`} d={chart.paths[s.key]} fill="none" stroke="currentColor" strokeWidth={activeVectorTab === s.key ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round" />
                   {chart.samples.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={yOf(p.scores[s.key])} r={hover === i ? 4.5 : p.scores[s.key] >= 70 ? 3.5 : 2} fill="currentColor" className="stroke-card" strokeWidth="1" />
+                    p.scores[s.key] === null ? null : <circle key={i} cx={p.x} cy={yOf(p.scores[s.key])} r={hover === i ? 4.5 : p.scores[s.key] >= 70 ? 3.5 : 2} fill="currentColor" className="stroke-card" strokeWidth="1" />
                   ))}
                 </g>
               ))}
@@ -246,7 +249,7 @@ const TrendSection = ({ ops }) => {
                       <span className={`h-2 w-2 rounded-full bg-current ${s.tone}`} />
                       {t(`aiopsPage.vector.${s.key}`)}
                     </span>
-                    <span className="font-semibold tabular-nums text-ink">{hovered.scores[s.key]}</span>
+                    <span className="font-semibold tabular-nums text-ink">{hovered.scores[s.key] ?? '--'}</span>
                   </div>
                 ))}
               </div>

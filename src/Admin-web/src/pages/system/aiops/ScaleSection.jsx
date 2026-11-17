@@ -5,34 +5,39 @@ import { useNumberFormat } from '../../../utils/format';
 
 const PRESETS = [500, 1000, 5000, 10000];
 
-const REPORT_TONE = (assessment) => {
-  if (assessment?.isOverCapacity) return 'danger';
-  if (assessment?.isNearLimit) return 'warning';
-  return 'success';
-};
+const REPORT_TONE = { OPTIMAL: 'success', WARNING: 'warning', OVER_CAPACITY: 'danger', INSUFFICIENT_DATA: 'neutral' };
 
+// Báo cáo năng lực do Backend dựng (Luật sử dụng U = X × S); Admin-web chỉ hiển thị.
 const CalibrationReport = ({ report }) => {
   const { t } = useLanguageSafe();
   const nf = useNumberFormat();
-  const fmt = (n) => nf.number(n);
+  const num = (n, opts) => (n === null || n === undefined ? '--' : nf.number(n, opts));
   const specs = report.serverSpecs || {};
-  const metrics = report.calculatedMetrics || {};
+  const cap = report.capacity || {};
+  const mem = report.memory || {};
+  const status = report.capacityAssessment?.status || cap.status || 'INSUFFICIENT_DATA';
+  const quota = specs.effectiveCores === undefined || specs.effectiveCores === null
+    ? '--'
+    : t(specs.cpuQuotaHard ? 'aiopsPage.scale.quotaHard' : 'aiopsPage.scale.quotaSoft', { n: nf.number(specs.effectiveCores, { maxFrac: 2 }) });
+  const rows = [
+    [t('aiopsPage.scale.reportCpuQuota'), quota],
+    [t('aiopsPage.scale.reportCpuPerReq'), cap.cpuMsPerRequest === null || cap.cpuMsPerRequest === undefined ? '--' : `${num(cap.cpuMsPerRequest, { maxFrac: 2 })} ms`],
+    [t('aiopsPage.scale.reportMaxRpm'), cap.maxRpm === null || cap.maxRpm === undefined ? '--' : `${num(cap.maxRpm)} ${t('aiopsPage.unit.perMinute')}`],
+    [t('aiopsPage.scale.reportAlertRpm'), cap.alertRpm === null || cap.alertRpm === undefined ? '--' : `${num(cap.alertRpm)} ${t('aiopsPage.unit.perMinute')}`],
+    [t('aiopsPage.scale.reportUsers'), num(cap.estimatedMaxUsers)],
+    [t('aiopsPage.scale.reportWindows'), num(cap.windows)],
+    [t('aiopsPage.scale.reportRss'), mem.rssMb === undefined ? '--' : `${num(mem.rssMb)} / ${num(mem.ramLimitMb)} MB`],
+    [t('aiopsPage.scale.reportHeap'), mem.heapUsedMb === undefined ? '--' : `${num(mem.heapUsedMb)} / ${num(mem.heapLimitMb)} MB`],
+  ];
   return (
     <div className="mt-4 rounded-lg border border-line bg-muted p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="m-0 text-sm font-semibold text-ink">{t('aiopsPage.scale.reportTitle')}</h3>
-        <Badge tone={REPORT_TONE(report.capacityAssessment)}>{report.capacityAssessment?.status || 'OPTIMAL'}</Badge>
+        <Badge tone={REPORT_TONE[status] || 'neutral'}>{t(`aiopsPage.scale.status.${status}`, status)}</Badge>
       </div>
       {report.capacityAssessment?.recommendation && <p className="m-0 mt-1 text-sm text-ink-muted">{report.capacityAssessment.recommendation}</p>}
-      <dl className="m-0 mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
-        {[
-          [t('aiopsPage.scale.reportCores'), specs.cpuCores == null ? '--' : fmt(specs.cpuCores)],
-          [t('aiopsPage.scale.reportRam'), `${nf.number((specs.totalRamMb || 0) / 1024, { minFrac: 1, maxFrac: 1 })} GB`],
-          [t('aiopsPage.scale.reportUsers'), fmt(report.targetConcurrency)],
-          [t('aiopsPage.scale.reportCpu'), `${metrics.expectedCpuPercent == null ? '--' : fmt(metrics.expectedCpuPercent)}%`],
-          [t('aiopsPage.scale.reportRamPct'), `${metrics.expectedRamPercent == null ? '--' : fmt(metrics.expectedRamPercent)}%`],
-          [t('aiopsPage.scale.reportLag'), `${metrics.expectedEventLoopLagMs == null ? '--' : fmt(metrics.expectedEventLoopLagMs)} ms`],
-        ].map(([label, value]) => (
+      <dl className="m-0 mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+        {rows.map(([label, value]) => (
           <div key={label}>
             <dt className="text-ink-faint">{label}</dt>
             <dd className="m-0 font-semibold tabular-nums text-ink">{value}</dd>
@@ -46,12 +51,11 @@ const CalibrationReport = ({ report }) => {
 const ScaleSection = ({ ops }) => {
   const { t } = useLanguageSafe();
   const nf = useNumberFormat();
-  const fmt = (n) => nf.number(n);
+  const fmt = (n) => (n === null || n === undefined ? '--' : nf.number(n));
   const inputId = useId();
-  const { targetConcurrency, customConcurrency, setCustomConcurrency, handleApplyScale, savingScale, calibrationReport } = ops;
-  const baselineRpm = targetConcurrency * 10;
-  const safePeakRpm = baselineRpm * 3;
-  const ipThreshold = Math.max(150, Math.round(20 + 50 * Math.log10(targetConcurrency)));
+  const { targetConcurrency, customConcurrency, setCustomConcurrency, handleApplyScale, savingScale, calibrationReport, indicators } = ops;
+  const traffic = indicators?.traffic;
+  const sourceHint = traffic?.source ? t(`aiopsPage.scale.source.${traffic.source}`) : t('aiopsPage.unit.perMinute');
 
   return (
     <Card title={t('aiopsPage.scale.title')} padded>
@@ -96,9 +100,9 @@ const ScaleSection = ({ ops }) => {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label={t('aiopsPage.scale.baseline')} value={fmt(baselineRpm)} hint={t('aiopsPage.unit.perMinute')} />
-        <StatCard label={t('aiopsPage.scale.safePeak')} value={fmt(safePeakRpm)} hint={t('aiopsPage.unit.perMinute')} />
-        <StatCard label={t('aiopsPage.scale.ipThreshold')} value={fmt(ipThreshold)} hint={t('aiopsPage.unit.per10s')} />
+        <StatCard label={t('aiopsPage.scale.baseline')} value={fmt(traffic?.baselineRpm)} hint={sourceHint} />
+        <StatCard label={t('aiopsPage.scale.alertRpm')} value={fmt(traffic?.alertRpm)} hint={t('aiopsPage.unit.perMinute')} />
+        <StatCard label={t('aiopsPage.scale.ipThreshold')} value={fmt(indicators?.ipBurstPer10s)} hint={t('aiopsPage.unit.per10s')} />
       </div>
 
       {calibrationReport && <CalibrationReport report={calibrationReport} />}

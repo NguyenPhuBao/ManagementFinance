@@ -67,7 +67,11 @@ const renderLayout = (path = '/users') =>
     </MemoryRouter>
   );
 
+afterEach(() => vi.unstubAllEnvs());
+
 beforeEach(() => {
+  // Các nhóm test dưới đây mô tả AIOps khi BẬT; nhóm "AIOps tạm dừng" tự đặt lại công tắc = tắt.
+  vi.stubEnv('VITE_AIOPS_ENABLED', 'true');
   Object.keys(handlers).forEach((k) => delete handlers[k]);
   localStorage.clear();
   logout.mockReset().mockResolvedValue();
@@ -224,5 +228,36 @@ describe('Banner bảo trì và báo động', () => {
     emit('admin.security_blocked', { maskedIp: '10.0.*.*', reason: 'Dò mật khẩu' });
     expect(screen.getByText(/10\.0\.\*\.\*/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Xem danh sách cách ly' })).toHaveAttribute('href', '/aiops');
+  });
+});
+
+// Đặc tả: docs/Admin-web/09-aiops-sentinel-and-quarantine.md, mục "Trạng thái: tạm dừng" (2026-11-17).
+// VITE_AIOPS_ENABLED khác 'true' ⇒ AIOps ẩn hoàn toàn khỏi Admin-web.
+describe('AIOps tạm dừng (VITE_AIOPS_ENABLED khác true)', () => {
+  beforeEach(() => vi.stubEnv('VITE_AIOPS_ENABLED', ''));
+
+  it('menu không còn mục AIOps, 7 mục còn lại giữ nguyên', async () => {
+    renderLayout('/users');
+    const nav = screen.getByRole('navigation', { name: 'Menu chính' });
+    expect(within(nav).queryByRole('link', { name: 'AIOps Sentinel' })).not.toBeInTheDocument();
+    NAV.filter(([p]) => p !== '/aiops').forEach(([path, label]) => {
+      expect(within(nav).getByRole('link', { name: label })).toHaveAttribute('href', path);
+    });
+    await waitFor(() => expect(notificationApi.getAdminAlerts).toHaveBeenCalled());
+  });
+
+  it('không gọi trạng thái AIOps, không đăng ký sự kiện socket AIOps, không hiện báo động', async () => {
+    aiopsApi.getStatus.mockResolvedValue({ data: { recommendedAction: 'EMERGENCY_MAINTENANCE', vectorScores: { resource: 92 } } });
+    renderLayout();
+    await waitFor(() => expect(adminApi.getMaintenanceStatus).toHaveBeenCalled());
+    await waitFor(() => expect(notificationApi.getAdminAlerts).toHaveBeenCalled());
+    expect(aiopsApi.getStatus).not.toHaveBeenCalled();
+    expect(handlers['admin.security_alert']?.size || 0).toBe(0);
+    expect(handlers['admin.security_blocked']?.size || 0).toBe(0);
+    emit('admin.security_alert', { status: 'CRITICAL', threatScore: 95, recommendedAction: 'EMERGENCY_MAINTENANCE', vectorScores: { resource: 95 } });
+    emit('admin.security_blocked', { maskedIp: '10.0.*.*', reason: 'Dò mật khẩu' });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Xem danh sách cách ly' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Thông báo/ })).toHaveTextContent('1');
   });
 });

@@ -43,16 +43,14 @@ describe('SystemHardwareMonitor - Real Hardware Measurement', () => {
     assert.ok(diff <= 5, `Used + Free (${sum}) must equal Total (${metrics.ram.totalMb}) within 5MB margin`);
   });
 
-  it('getRamPercent should compute real RAM usage accurately from os.totalmem and os.freemem', () => {
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const expectedPercent = Math.round(((totalMem - freeMem) / totalMem) * 100);
-
+  it('getRamPercent = RSS tiến trình / hạn mức bộ nhớ (định nghĩa thống nhất, 2026-11-17)', () => {
     const actualPercent = defaultSystemHardwareMonitor.getRamPercent();
-    // Sai số tối đa 2% do chênh lệch thời điểm gọi hàm nano giây
+    const totalMb = defaultSystemHardwareMonitor.getRamTotalMb();
+    const rssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const expectedPercent = Math.round((Math.min(totalMb, rssMb) / totalMb) * 100);
     assert.ok(
       Math.abs(actualPercent - expectedPercent) <= 2,
-      `Calculated RAM percent ${actualPercent}% must be close to host ${expectedPercent}%`
+      `RAM tiến trình ${actualPercent}% phải gần RSS/hạn mức ${expectedPercent}%`
     );
   });
 

@@ -15,7 +15,7 @@ Mọi trường hợp dữ liệu cá nhân bị truy cập, sửa, xóa, sao ch
 | Mốc | Việc | Ai |
 |---|---|---|
 | T0 | Thời điểm **phát hiện** (không phải thời điểm xảy ra). Ghi ngay vào sổ sự cố: T0, người phát hiện, nguồn (AIOps, nhật ký, người dùng báo, bên xử lý báo) | Người phát hiện |
-| T0 → T0 + 4 giờ | Ngăn chặn: thu hồi phiên (`refreshtoken`), khóa tài khoản liên quan, cách ly IP qua AIOps, xoay khóa / mật khẩu bị lộ, bật bảo trì khẩn cấp nếu cần | Quản trị hệ thống |
+| T0 → T0 + 4 giờ | Ngăn chặn: thu hồi phiên (`refreshtoken`), khóa tài khoản liên quan, cách ly IP qua AIOps (AIOps tạm dừng từ 2026-11-17: cần bật `AIOPS_ENABLED` / `VITE_AIOPS_ENABLED` mới dùng được), xoay khóa / mật khẩu bị lộ, bật bảo trì khẩn cấp nếu cần | Quản trị hệ thống |
 | T0 → T0 + 24 giờ | Đánh giá: loại dữ liệu (cơ bản / nhạy cảm, theo `Data_Security.md` mục 2), số người dùng bị ảnh hưởng (truy vấn CSDL), khả năng tổn hại, nguyên nhân sơ bộ | Chủ dự án + quản trị hệ thống |
 | **≤ T0 + 72 giờ** | **Thông báo cơ quan chuyên trách bảo vệ dữ liệu cá nhân** (Bộ Công an; tên đơn vị tiếp nhận và cổng gửi: cần xác minh theo văn bản hướng dẫn Luật 91/2025) nếu sự cố có thể gây tổn hại | Chủ dự án |
 | Sau khi đánh giá | Thông báo người dùng bị ảnh hưởng khi dữ liệu nhạy cảm (tài chính, lịch sử truy cập) bị lộ: thông báo trong app + email, nêu dữ liệu nào, việc người dùng nên làm (đổi mật khẩu…) | Chủ dự án |

@@ -283,6 +283,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | API chính sách bảo mật `GET /api/policy/current`, `POST /api/policy/accept`, sự kiện `system.policy_updated` | Không. **Đổi hướng 2026-11-16:** app không dùng các API / sự kiện này (chính sách viết cứng phía app); Backend không bật chặn |
 | Hết 30 ngày chờ xóa, Backend xóa IP đầy đủ của tài khoản trong lịch sử thiết bị | Không |
 | AIOps băm IP bằng khóa bí mật, bỏ API xóa toàn bộ sự cố (chỉ Admin-web) | Không |
+| AIOps tạm dừng từ 2026-11-17 (công tắc `AIOPS_ENABLED`, mặc định tắt): Backend không trả 403 `AIOPS_QUARANTINED` | Không. Giữ nguyên xử lý mã này; việc số 10 (chốt chặn 403 AIOps) hạ ưu tiên |
 | Minh chứng hoàn tiền lưu kho riêng tư (Supabase Storage): trường `refund_proof` trong `GET /api/payment/history` và `refundProof` trong sự kiện `payment.refunded` nay là **đường dẫn tạm** (hết hạn sau 10 phút / 1 giờ) thay cho đường dẫn tĩnh `/assets/Refunds/...` | Không (app hiện không dùng hai trường này). Nếu sau này hiển thị ảnh: dùng ngay, hết hạn thì gọi lại `GET /api/payment/history` để lấy đường dẫn mới, không lưu đường dẫn vào SQLite |
 | API bản sao dữ liệu `POST /api/account/data-export`, `GET /latest`, `GET /:id/download`, sự kiện `account.data_export_ready` | App cũ không gọi nên không ảnh hưởng. **Bắt buộc làm**: Mục 52 |
 

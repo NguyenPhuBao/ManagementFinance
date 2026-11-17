@@ -95,6 +95,17 @@ describe('Biểu đồ xu hướng — 1.3', () => {
     expect(screen.getByText('Chưa có dữ liệu trong khoảng này')).toBeInTheDocument();
   });
 
+  it('3b. mẫu thiếu điểm vectơ: ngắt đường, không quy đổi chỉ số thô sang thang điểm khác', () => {
+    renderTrend({
+      timePreset: '10m',
+      activeVectorTab: 'traffic',
+      historyData: [point(5 * MIN), point(4 * MIN), { timestamp: ago(3 * MIN), requestsPerMin: 3000, failedLogins: 9 }, point(2 * MIN), point(1 * MIN)],
+    });
+    const d = screen.getByTestId('trend-path-traffic').getAttribute('d');
+    expect(d.match(/[ML]/g)).toHaveLength(4);
+    expect(d.match(/M/g)).toHaveLength(2);
+  });
+
   it('5. trục dọc có vạch 0, 50, 100', () => {
     renderTrend();
     expect(screen.getAllByTestId('trend-y-tick').map((el) => el.textContent)).toEqual(['0', '50', '100']);

@@ -68,6 +68,22 @@ const SAMPLE = {
   errorRate4xx: 0.02,
   errorRate5xx: 0,
 };
+// Ngưỡng đang hiệu lực do Backend trả (detector.getEffectiveThresholds) — Admin-web không tự tính.
+const INDICATORS = {
+  targetConcurrency: 1000,
+  traffic: { baselineRpm: 777, p95Rpm: 900, source: 'history', samples: 84, attentionRpm: 1166, alertRpm: 2331, severeRpm: 4662 },
+  auth: { failedLogins: { attention: 5, alert: 15, severe: 30 }, tokenReuse: { attention: 1, alert: 5, severe: 10 } },
+  exploit: { malformed: { attention: 1, alert: 8, severe: 20 } },
+  resource: {
+    lagMs: { attention: 100, alert: 250, severe: 400 },
+    cpuPercent: { attention: 70, alert: 85, severe: 95 },
+    ramPercent: { attention: 80, alert: 92, severe: 97 },
+    error5xxRate: { attention: 0.02, alert: 0.1, severe: 0.25 },
+    minRequestsFor5xx: 10,
+  },
+  ipBurstPer10s: 150,
+  scoreBands: { elevated: 40, warning: 70, critical: 85 },
+};
 const status = (over = {}) => ({
   data: {
     threatScore: 20,
@@ -75,6 +91,7 @@ const status = (over = {}) => ({
     targetConcurrency: 1000,
     vectorScores: { auth: 10, traffic: 20, exploit: 0, resource: 30 },
     vectorDefenses: {},
+    indicators: INDICATORS,
     sample: SAMPLE,
     ...over,
   },
@@ -135,14 +152,58 @@ describe('AIOps — Tầng 1: hiển thị', () => {
     expect(await screen.findByRole('button', { name: 'Bảo trì khẩn cấp' })).toBeInTheDocument();
   });
 
-  it('quy mô: 4 mức có sẵn, mức hiện tại được chọn; 3 số liệu suy ra từ quy mô', async () => {
+  it('quy mô: 4 mức có sẵn, mức hiện tại được chọn; 3 số liệu lấy nguyên từ Backend (không tự tính)', async () => {
     await renderPage();
     const scale = card('Quy mô người dùng');
     await waitFor(() => expect(within(scale).getByRole('button', { name: '1.000' })).toHaveAttribute('aria-pressed', 'true'));
     expect(within(scale).getByRole('button', { name: '500' })).toHaveAttribute('aria-pressed', 'false');
-    expect(within(scale).getByText('Lưu lượng nền').parentElement).toHaveTextContent('10.000');
-    expect(within(scale).getByText('Trần an toàn').parentElement).toHaveTextContent('30.000');
-    expect(within(scale).getByText('Ngưỡng chặn IP').parentElement).toHaveTextContent('170');
+    expect(within(scale).getByText('Lưu lượng nền').parentElement).toHaveTextContent('777');
+    expect(within(scale).getByText('Lưu lượng nền').parentElement).toHaveTextContent('từ lịch sử');
+    expect(within(scale).getByText('Ngưỡng cảnh báo lưu lượng').parentElement).toHaveTextContent('2.331');
+    expect(within(scale).getByText('Ngưỡng chặn IP').parentElement).toHaveTextContent('150');
+    expect(within(scale).queryByText('Trần an toàn')).not.toBeInTheDocument();
+  });
+
+  it('quy mô: chưa có số liệu từ Backend thì hiện "--", đường nền ước tính ghi rõ', async () => {
+    aiopsApi.getStatus.mockResolvedValue(status({ indicators: undefined }));
+    await renderPage();
+    const scale = card('Quy mô người dùng');
+    await waitFor(() => expect(within(scale).getByText('Lưu lượng nền').parentElement).toHaveTextContent('--'));
+    aiopsApi.getStatus.mockResolvedValue(status({ indicators: { ...INDICATORS, traffic: { ...INDICATORS.traffic, source: 'estimate' } } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    await waitFor(() => expect(within(card('Quy mô người dùng')).getByText('Lưu lượng nền').parentElement).toHaveTextContent('ước tính'));
+  });
+
+  it('thẻ tín hiệu tô màu theo ngưỡng Backend: chú ý → "Gần ngưỡng", cảnh báo → "Vượt ngưỡng"', async () => {
+    aiopsApi.getStatus.mockResolvedValue(status({ sample: { ...SAMPLE, failedLogins: 5, tokenReuseAttacks: 2, malformedRequests: 3, eventLoopLagMs: 120 } }));
+    await renderPage();
+    const attack = card('Dấu hiệu tấn công');
+    await waitFor(() => expect(within(attack).getByText('Đăng nhập sai').parentElement).toHaveTextContent('lần'));
+    expect(within(attack).getByText('Đăng nhập sai').parentElement).not.toHaveTextContent('Vượt ngưỡng');
+    expect(within(attack).getByText('Token bị dùng lại').parentElement).toHaveTextContent('Gần ngưỡng');
+    expect(within(attack).getByText('Yêu cầu độc hại').parentElement).toHaveTextContent('Gần ngưỡng');
+    expect(within(card('Tải máy chủ')).getByText('Độ trễ vòng lặp (p99)').parentElement).toHaveTextContent('Gần ngưỡng');
+
+    aiopsApi.getStatus.mockResolvedValue(status({ sample: { ...SAMPLE, failedLogins: 15 } }));
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    await waitFor(() => expect(within(card('Dấu hiệu tấn công')).getByText('Đăng nhập sai').parentElement).toHaveTextContent('Vượt ngưỡng'));
+  });
+
+  it('trạng thái nhóm rủi ro lấy từ vectorDefenses của Backend, không tự suy từ điểm', async () => {
+    aiopsApi.getStatus.mockResolvedValue(status({
+      vectorScores: { auth: 10, traffic: 75, exploit: 0, resource: 65 },
+      vectorDefenses: { traffic: { status: 'NORMAL' }, resource: { status: 'ELEVATED' } },
+    }));
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Trong ngưỡng cho 1.000 người dùng')).toBeInTheDocument());
+    expect(screen.queryByText('Đang giới hạn tốc độ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Đang từ chối bớt yêu cầu')).not.toBeInTheDocument();
+  });
+
+  it('nút bảo trì khẩn cấp hiện khi Backend báo tài nguyên CRITICAL', async () => {
+    aiopsApi.getStatus.mockResolvedValue(status({ vectorDefenses: { resource: { status: 'CRITICAL' } } }));
+    await renderPage();
+    expect(await screen.findByRole('button', { name: 'Bảo trì khẩn cấp' })).toBeInTheDocument();
   });
 
   it('chỉ số an ninh và tải máy chủ lấy từ trạng thái', async () => {
@@ -152,7 +213,7 @@ describe('AIOps — Tầng 1: hiển thị', () => {
     expect(within(attack).getByText('Đăng nhập sai').parentElement).toHaveTextContent('2');
     const load = card('Tải máy chủ');
     expect(within(load).getByText('CPU').parentElement).toHaveTextContent('42%');
-    expect(within(load).getByText('RAM').parentElement).toHaveTextContent('2.048 / 8.192 MB');
+    expect(within(load).getByText('RAM tiến trình').parentElement).toHaveTextContent('2.048 / 8.192 MB');
   });
 
   it('1.4 số nhân CPU có phần thập phân hiện theo kiểu Việt: "0,15 nhân"', async () => {
@@ -244,27 +305,93 @@ describe('AIOps — Tầng 2: tác động thật', () => {
     await waitFor(() => expect(aiopsApi.getHistory).toHaveBeenLastCalledWith({ range: '10m' }));
   });
 
-  it('hiệu chuẩn: ô trống dùng ngưỡng gợi ý, ô đã nhập dùng giá trị nhập', async () => {
+  it('hiệu chuẩn: gợi ý là ngưỡng đang hiệu lực; chỉ gửi ô đã nhập (ô trống giữ nguyên)', async () => {
     await renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Hiệu chuẩn' }));
     const dialog = await screen.findByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' });
-    expect(within(dialog).getByLabelText('Đăng nhập sai (lần/phút)')).toHaveAttribute('placeholder', '25');
-    expect(within(dialog).getByLabelText('Lưu lượng đột biến (yêu cầu/giây)')).toHaveAttribute('placeholder', '500');
+    expect(within(dialog).getByLabelText('Đăng nhập sai (lần/10 giây)')).toHaveAttribute('placeholder', '15');
+    expect(within(dialog).getByLabelText('Lưu lượng đột biến (yêu cầu/giây)')).toHaveAttribute('placeholder', '39');
+    expect(within(dialog).getByLabelText('Yêu cầu độc hại (lần/10 giây)')).toHaveAttribute('placeholder', '8');
+    expect(within(dialog).getByLabelText('RAM tiến trình (%)')).toHaveAttribute('placeholder', '92');
+    expect(within(dialog).getByLabelText('Độ trễ vòng lặp p99 (ms)')).toHaveAttribute('placeholder', '250');
     fireEvent.change(within(dialog).getByLabelText('CPU (%)'), { target: { value: '90' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hiệu chuẩn' }));
     expect(aiopsApi.calibrate).not.toHaveBeenCalled();
     await confirmWithPin('Xác nhận hiệu chuẩn ngưỡng', 'Hiệu chuẩn');
     await waitFor(() => expect(aiopsApi.calibrate).toHaveBeenCalledWith({
       targetConcurrency: 1000,
-      customThresholds: {
-        authFailureThreshold: 25,
-        trafficSpikeRps: 500,
-        exploitLimit: 8,
-        resourceCpuPercent: 90,
-        resourceMemoryPercent: 85,
-        eventLoopLagMs: 100,
-      },
+      customThresholds: { resourceCpuPercent: 90 },
     }, PIN));
+  });
+
+  it('hiệu chuẩn: nút Về mặc định qua PIN rồi gửi resetThresholds, cập nhật ngưỡng hiển thị', async () => {
+    aiopsApi.calibrate.mockResolvedValue({
+      data: { success: true, data: { serverSpecs: {}, capacity: {}, capacityAssessment: { status: 'INSUFFICIENT_DATA' } }, status: { indicators: { ...INDICATORS, traffic: { ...INDICATORS.traffic, alertRpm: 4444 } } } },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Hiệu chuẩn' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' });
+    fireEvent.change(within(dialog).getByLabelText('CPU (%)'), { target: { value: '90' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Về mặc định' }));
+    expect(aiopsApi.calibrate).not.toHaveBeenCalled();
+    // Sau khi đặt lại, trang tải lại trạng thái: Backend trả ngưỡng mới
+    aiopsApi.getStatus.mockResolvedValue(status({ indicators: { ...INDICATORS, traffic: { ...INDICATORS.traffic, alertRpm: 4444 } } }));
+    await confirmWithPin('Đặt lại ngưỡng mặc định?', 'Về mặc định');
+    await waitFor(() => expect(aiopsApi.calibrate).toHaveBeenCalledWith({ targetConcurrency: 1000, resetThresholds: true }, PIN));
+    await waitFor(() => expect(within(card('Quy mô người dùng')).getByText('Ngưỡng cảnh báo lưu lượng').parentElement).toHaveTextContent('4.444'));
+    expect(screen.queryByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' })).not.toBeInTheDocument();
+  });
+
+  it('hiệu chuẩn: hiện báo cáo năng lực từ data.data của Backend', async () => {
+    aiopsApi.calibrate.mockResolvedValue({
+      success: true,
+      data: {
+        success: true,
+        data: {
+          targetConcurrency: 1000,
+          serverSpecs: { cpuCores: 0.5, cpuQuotaHard: true, effectiveCores: 0.5, totalRamMb: 512 },
+          trafficBaseline: { baselineRpm: 777, alertRpm: 2331, source: 'history' },
+          capacity: { status: 'WARNING', cpuMsPerRequest: 1.25, backgroundCpuMs: 40, windows: 120, maxRpm: 1660, alertRpm: 2331, estimatedMaxUsers: 830 },
+          memory: { rssMb: 180, ramLimitMb: 512, rssPercent: 35, heapUsedMb: 90, heapLimitMb: 2048, heapPercent: 4 },
+          capacityAssessment: { status: 'WARNING', recommendation: 'Ngưỡng vượt mức sử dụng CPU mục tiêu.' },
+        },
+        status: { indicators: INDICATORS },
+      },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Hiệu chuẩn' }));
+    await screen.findByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' });
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' })).getByRole('button', { name: 'Hiệu chuẩn' }));
+    await confirmWithPin('Xác nhận hiệu chuẩn ngưỡng', 'Hiệu chuẩn');
+    const scale = card('Quy mô người dùng');
+    await waitFor(() => expect(within(scale).getByText('Kết quả hiệu chuẩn')).toBeInTheDocument());
+    expect(within(scale).getByText('Lưu lượng tối đa').parentElement).toHaveTextContent('1.660');
+    expect(within(scale).getByText('CPU mỗi yêu cầu').parentElement).toHaveTextContent('1,25 ms');
+    expect(within(scale).getByText('Hạn mức CPU').parentElement).toHaveTextContent('0,5');
+    expect(within(scale).getByText('Người dùng (ước tính)').parentElement).toHaveTextContent('830');
+    expect(within(scale).getByText('Ngưỡng vượt mức sử dụng CPU mục tiêu.')).toBeInTheDocument();
+  });
+
+  it('hiệu chuẩn: chưa đủ dữ liệu thì báo, không hiện con số năng lực', async () => {
+    aiopsApi.calibrate.mockResolvedValue({
+      data: {
+        data: {
+          targetConcurrency: 1000,
+          serverSpecs: { cpuCores: 8, cpuQuotaHard: false, effectiveCores: 1, totalRamMb: 16384 },
+          capacity: { status: 'INSUFFICIENT_DATA', maxRpm: null, cpuMsPerRequest: null, windows: 4 },
+          memory: { rssMb: 180, ramLimitMb: 16384, heapUsedMb: 90, heapLimitMb: 2048 },
+          capacityAssessment: { status: 'INSUFFICIENT_DATA', recommendation: 'Chưa đủ dữ liệu đo.' },
+        },
+      },
+    });
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Hiệu chuẩn' }));
+    await screen.findByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' });
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Hiệu chuẩn ngưỡng' })).getByRole('button', { name: 'Hiệu chuẩn' }));
+    await confirmWithPin('Xác nhận hiệu chuẩn ngưỡng', 'Hiệu chuẩn');
+    const scale = card('Quy mô người dùng');
+    await waitFor(() => expect(within(scale).getByText('Chưa đủ dữ liệu đo.')).toBeInTheDocument());
+    expect(within(scale).getByText('Lưu lượng tối đa').parentElement).toHaveTextContent('--');
   });
 
   it('bảo trì khẩn cấp: nhập lý do, rồi bắt buộc PIN; gửi lý do kèm PIN, bật chế độ khẩn cấp', async () => {
@@ -290,7 +417,7 @@ describe('AIOps — Tầng 2: tác động thật', () => {
     await waitFor(() => expect(within(card('Tải máy chủ')).getByText('CPU').parentElement).toHaveTextContent('42%'));
     emit('admin.metrics_stream', { cpuPercent: 77, ramPercent: 30, eventLoopLagMs: 140, requestsPerMin: 900, threatScore: 10 });
     expect(within(card('Tải máy chủ')).getByText('CPU').parentElement).toHaveTextContent('77%');
-    expect(within(card('Tải máy chủ')).getByText('Độ trễ xử lý').parentElement).toHaveTextContent('140');
+    expect(within(card('Tải máy chủ')).getByText('Độ trễ vòng lặp (p99)').parentElement).toHaveTextContent('140');
   });
 
   it('Làm mới gọi lại trạng thái và sự cố', async () => {
@@ -724,7 +851,7 @@ describe('Sức khỏe máy chủ (ServerHealthPanel)', () => {
     await renderPanel();
     expect(await screen.findByText('CPU')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'CPU' })).toHaveAttribute('aria-valuenow', '35');
-    expect(screen.getByRole('progressbar', { name: 'RAM' })).toHaveAttribute('aria-valuenow', '50');
+    expect(screen.getByRole('progressbar', { name: 'RAM tiến trình' })).toHaveAttribute('aria-valuenow', '50');
     expect(screen.getByText('Độ khả dụng (tháng)').parentElement).toHaveTextContent('99,90%');
     expect(screen.getByText('Chạy liên tục').parentElement).toHaveTextContent('2 ngày');
     expect(screen.getByText('Phiên bản').parentElement).toHaveTextContent('abc123def456');

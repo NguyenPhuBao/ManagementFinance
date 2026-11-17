@@ -499,6 +499,8 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ---
 
 ### 5.4. HTTP 403 `AIOPS_QUARANTINED` — Tường Lửa Sentinel Phong Tỏa IP
+> **Tạm dừng từ 2026-11-17:** khi công tắc `AIOPS_ENABLED` tắt (mặc định), Backend không trả mã này. Client-app giữ nguyên xử lý, không cần đổi; mã sẽ xuất hiện lại khi bật AIOps.
+
 > ⚠️ **ĐẶC TẢ AIOPS SENTINEL CHUẨN PO:**
 > - **Lưu lượng (`traffic`):** Là vector đo tấn công/truy cập từ phía user/client gửi vào hệ thống (gắn liền với `TK:` tài khoản và `IP:` thiết bị).
 > - **Xác thực (`auth`) & Khai thác (`exploit`):** Đều phát xuất từ phía user/client.
