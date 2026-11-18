@@ -201,7 +201,7 @@ void main() {
     expect(find.textContaining('đồng bộ'), findsNothing,
         reason: 'câu 4: không hứa thứ không khác');
     expect(find.widgetWithText(ElevatedButton, 'Thanh toán'), findsOneWidget);
-    expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsNothing);
+    expect(find.text('Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic.'), findsNothing);
   });
 
   testWidgets('?quyen=cashflow_forecast: câu mở đầu nêu tên tính năng (spec phân quyền 4.4)',
@@ -244,7 +244,7 @@ void main() {
               nhanLuc: now,
               quyenTinhNang: const {'export_reports': false},
               quyenPremium: const {'export_reports': false}));
-      expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+      expect(find.text('Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic.'), findsOneWidget);
       expect(find.byKey(const Key('nang-cap-cau-quyen')), findsNothing);
       expect(find.byKey(const Key('nang-cap-thanh-toan')), findsOneWidget,
           reason: 'màn đang nói về TRẦN ví — mua Premium là nới trần, nút phải còn');
@@ -256,7 +256,7 @@ void main() {
           tran: LoaiTran.vi,
           trangThai: TrangThaiGoi(
               loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
-      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví (tính cả ví đã lưu trữ).'), findsOneWidget);
     });
 
     testWidgets('⭐ I1: Premium, trần cột Premium 10 ví, ?tran=vi → đặc quyền "Tới 10 ví", KHÔNG "Không giới hạn ví"',
@@ -266,7 +266,7 @@ void main() {
           tran: LoaiTran.vi,
           trangThai: TrangThaiGoi(
               loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
-      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví (tính cả ví đã lưu trữ).'), findsOneWidget);
       expect(find.text('Không giới hạn ví'), findsNothing,
           reason: 'câu mở đầu nói tối đa 10 ví — danh sách ✓ ngay dưới không được nói "Không giới hạn ví"');
       expect(find.text('Tới 10 ví'), findsOneWidget);
@@ -282,7 +282,7 @@ void main() {
               hetHan: DateTime(2026, 10, 6, 9),
               nhanLuc: DateTime(2026, 10, 5),
               tran: const TranGoi()));
-      expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+      expect(find.text('Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic.'), findsOneWidget);
     });
 
     testWidgets('Premium còn hạn, quyền mở, ?quyen= → không câu khoá', (tester) async {
@@ -310,7 +310,7 @@ void main() {
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {
     await dung(tester, premium: false, tran: LoaiTran.vi);
-    expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+    expect(find.text('Bạn đã dùng 3/3 ví (tính cả ví đã lưu trữ) của gói Basic.'), findsOneWidget);
     final icon = tester.widget<Icon>(find.descendant(
         of: find.byKey(const Key('nang-cap-cau-tran')), matching: find.byIcon(Icons.info_outline)));
     expect(icon.color, AppColors.warning, reason: 'màu chỉ từ AppColors — bản cũ ghi cứng Color(0xFFE65100)');

@@ -274,4 +274,13 @@ void main() {
     final n = ThemGiaoDichNguonThat(xoaBienDong: (_, __) async => throw StateError('hỏng'));
     await expectLater(n.xoaHangBienDong(1, 'bienDong:x'), completes);
   });
+
+  test('tenChuTaiKhoan: đọc hàm tiêm MỖI lần gọi; không tiêm → null (gợi ý Chuyển khoản chiều thu im)', () {
+    var ten = 'Nguyễn Phú Bảo';
+    final n = ThemGiaoDichNguonThat(tenChuTaiKhoan: () => ten);
+    expect(n.tenChuTaiKhoan(), 'Nguyễn Phú Bảo');
+    ten = 'Trần Quang Đạt';
+    expect(n.tenChuTaiKhoan(), 'Trần Quang Đạt', reason: 'phiên đổi thì tên đổi theo — không chụp một lần lúc mở');
+    expect(ThemGiaoDichNguonThat().tenChuTaiKhoan(), isNull);
+  });
 }

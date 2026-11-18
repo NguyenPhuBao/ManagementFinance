@@ -134,6 +134,10 @@ void main() {
     await tester.enterText(registerFields.at(2), 'new@example.com');
     await tester.enterText(registerFields.at(3), 'password123');
     await tester.enterText(registerFields.at(4), 'password123');
+    // Ô tick Điều khoản + Chính sách bắt buộc từ 2026-11-16 — thiếu bước này ca TREO ở `await otpSent` thay vì đỏ.
+    await tester.ensureVisible(find.byKey(const Key('o-dong-y')));
+    await tester.tap(find.byKey(const Key('o-dong-y')));
+    await tester.pump();
     await tester.tap(find.text('Đăng ký'));
     // BẮT BUỘC pump ngay sau tap: trong widget test, handler async của Bloc chỉ
     // chạy khi vòng lặp sự kiện được quay. Nếu `await` thẳng vào bloc.stream mà
@@ -199,6 +203,10 @@ void main() {
 
     final firstSend =
         bloc.stream.firstWhere((state) => state is RegisterOtpSent);
+    // Ô tick Điều khoản + Chính sách bắt buộc từ 2026-11-16 — thiếu bước này ca TREO ở `await otpSent` thay vì đỏ.
+    await tester.ensureVisible(find.byKey(const Key('o-dong-y')));
+    await tester.tap(find.byKey(const Key('o-dong-y')));
+    await tester.pump();
     await tester.tap(find.text('Đăng ký'));
     await tester.pump(); // xem chú thích ở test phía trên
     await firstSend;

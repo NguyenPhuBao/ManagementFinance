@@ -1,0 +1,73 @@
+users=1518 (dropped 27 that stop early) user-months=82404 first_test_month=17 (= 2016-06)
+C:\Users\tadd1\AppData\Roaming\Python\Python313\site-packages\numpy\lib\_nanfunctions_impl.py:1997: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:82: RuntimeWarning: Mean of empty slice
+  cv = np.nanstd(np.where(pos, tp, np.nan), axis=1) / np.nanmean(np.where(pos, tp, np.nan), axis=1)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:103: RuntimeWarning: All-NaN slice encountered
+  rmed = np.nanmedian(np.where(np.isnan(rem), np.nan, rem), axis=0)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:104: RuntimeWarning: Mean of empty slice
+  cal = np.nanmean(rem / np.where(pos.T, tp.T, np.nan), axis=0)
+lambda=0.001 validation Brier=0.1685 (1s)
+lambda=0.002 validation Brier=0.1598 (3s)
+lambda=0.005 validation Brier=0.1513 (4s)
+lambda=0.01 validation Brier=0.1513 (5s)
+lambda=0.02 validation Brier=0.1569 (7s)
+lambda=0.05 validation Brier=0.1690 (8s)
+lambda=0.1 validation Brier=0.1775 (10s)
+lambda=0.2 validation Brier=0.1918 (11s)
+    M3 refit at month 17: 4000 training rows, 44330 forecasts
+    M3 refit at month 23: 4000 training rows, 44565 forecasts
+    M3 refit at month 29: 4000 training rows, 44680 forecasts
+    M3 refit at month 35: 4000 training rows, 44840 forecasts
+    M3 refit at month 41: 4000 training rows, 44970 forecasts
+    M3 refit at month 47: 4000 training rows, 45130 forecasts
+    M3 refit at month 53: 4000 training rows, 45110 forecasts
+    M3 refit at month 59: 4000 training rows, 15045 forecasts
+kappa=1.0 done and saved (218s)
+  p0: brier=0.1773 logloss=0.5376 auc=0.812 ece=0.0621 n=310978 base=0.443
+  p1: brier=0.1657 logloss=0.5011 auc=0.828 ece=0.0296 n=310978 base=0.443
+  p2: brier=0.1492 logloss=0.4535 auc=0.863 ece=0.0238 n=310978 base=0.443
+  p3: brier=0.1479 logloss=0.4498 auc=0.864 ece=0.0057 n=310978 base=0.443
+C:\Users\tadd1\AppData\Roaming\Python\Python313\site-packages\numpy\lib\_nanfunctions_impl.py:1997: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:82: RuntimeWarning: Mean of empty slice
+  cv = np.nanstd(np.where(pos, tp, np.nan), axis=1) / np.nanmean(np.where(pos, tp, np.nan), axis=1)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:103: RuntimeWarning: All-NaN slice encountered
+  rmed = np.nanmedian(np.where(np.isnan(rem), np.nan, rem), axis=0)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:104: RuntimeWarning: Mean of empty slice
+  cal = np.nanmean(rem / np.where(pos.T, tp.T, np.nan), axis=0)
+    M3 refit at month 17: 4000 training rows, 44330 forecasts
+    M3 refit at month 23: 4000 training rows, 44565 forecasts
+    M3 refit at month 29: 4000 training rows, 44680 forecasts
+    M3 refit at month 35: 4000 training rows, 44840 forecasts
+    M3 refit at month 41: 4000 training rows, 44970 forecasts
+    M3 refit at month 47: 4000 training rows, 45130 forecasts
+    M3 refit at month 53: 4000 training rows, 45110 forecasts
+    M3 refit at month 59: 4000 training rows, 15045 forecasts
+kappa=0.9 done and saved (432s)
+  p0: brier=0.1685 logloss=0.5135 auc=0.821 ece=0.0512 n=298103 base=0.624
+  p1: brier=0.1551 logloss=0.4740 auc=0.837 ece=0.0194 n=298103 base=0.624
+  p2: brier=0.1393 logloss=0.4234 auc=0.876 ece=0.0267 n=298103 base=0.624
+  p3: brier=0.1379 logloss=0.4213 auc=0.876 ece=0.0051 n=298103 base=0.624
+C:\Users\tadd1\AppData\Roaming\Python\Python313\site-packages\numpy\lib\_nanfunctions_impl.py:1997: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:82: RuntimeWarning: Mean of empty slice
+  cv = np.nanstd(np.where(pos, tp, np.nan), axis=1) / np.nanmean(np.where(pos, tp, np.nan), axis=1)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:103: RuntimeWarning: All-NaN slice encountered
+  rmed = np.nanmedian(np.where(np.isnan(rem), np.nan, rem), axis=0)
+D:\test_kltn\ManagementFinance\research\du-bao-vuot-ngan-sach\experiment\core.py:104: RuntimeWarning: Mean of empty slice
+  cal = np.nanmean(rem / np.where(pos.T, tp.T, np.nan), axis=0)
+    M3 refit at month 17: 4000 training rows, 44330 forecasts
+    M3 refit at month 23: 4000 training rows, 44565 forecasts
+    M3 refit at month 29: 4000 training rows, 44680 forecasts
+    M3 refit at month 35: 4000 training rows, 44840 forecasts
+    M3 refit at month 41: 4000 training rows, 44970 forecasts
+    M3 refit at month 47: 4000 training rows, 45130 forecasts
+    M3 refit at month 53: 4000 training rows, 45110 forecasts
+    M3 refit at month 59: 4000 training rows, 15045 forecasts
+kappa=1.1 done and saved (634s)
+  p0: brier=0.1656 logloss=0.5074 auc=0.815 ece=0.1088 n=318195 base=0.288
+  p1: brier=0.1395 logloss=0.4385 auc=0.826 ece=0.0314 n=318195 base=0.288
+  p2: brier=0.1255 logloss=0.3965 auc=0.868 ece=0.0217 n=318195 base=0.288
+  p3: brier=0.1245 logloss=0.3909 auc=0.868 ece=0.0015 n=318195 base=0.288
+saved tabformer_vn.json in 634s

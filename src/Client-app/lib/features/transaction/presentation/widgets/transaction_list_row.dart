@@ -7,6 +7,7 @@ import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
+import 'nhan_nha_nho.dart';
 import 'transaction_row_content.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
@@ -28,6 +29,7 @@ class TransactionListRow extends StatelessWidget {
     this.nguonHoaDonDaXoa,
     this.hoiCap,
     this.onXoaCap,
+    this.onXoaKhoanNha,
   });
 
   final TransactionEntity transaction;
@@ -39,6 +41,10 @@ class TransactionListRow extends StatelessWidget {
 
   /// Xoá cả cặp theo mã cặp; ném thì dòng báo lỗi và hàng bật lại.
   final Future<void> Function(String maCap)? onXoaCap;
+
+  /// Khoản của NHÀ (spec 2026-11-16): vuốt xoá đi đường của nhà (kiểm vai, `ThaoTacKhoanNha`) — không bao giờ [onDelete]
+  /// (xoá thẳng qua repository là bỏ qua vai). Trang lo hỏi / báo; dòng luôn bật lại, stream tự rút hàng khi đã xoá.
+  final Future<void> Function(TransactionEntity)? onXoaKhoanNha;
 
   /// Việc 4c — hỏi "hoá đơn của khoản này đã xoá chưa" lúc vuốt (mở khoá có cảnh báo cho khoản mồ côi). `null` (dòng
   /// đơn lẻ trong test, trang chưa đăng ký cổng) → khoản có `billId` vẫn khoá.
@@ -70,6 +76,15 @@ class TransactionListRow extends StatelessWidget {
         // Nửa riêng của khoản góp, rút còn cặp: xoá CẢ HAI nửa qua cổng. Luôn trả `false` — stream drift tự rút hàng; trả
         // `true` là `onDismissed` → `onDelete` gỡ thêm MỘT nửa, đúng lỗi lệch cặp đang chặn. Toast nằm ở `onDismissed`
         // (không chạy khi trả `false`) nên báo ở đây.
+        if (tx.idhousehold != null) {
+          final xoaNha = onXoaKhoanNha;
+          if (xoaNha == null) {
+            baoNhanh('Xoá khoản của nhà ở mục Nhà mình.', loai: LoaiThongBao.loi);
+          } else {
+            await xoaNha(tx);
+          }
+          return false;
+        }
         final cap = await hoiCap?.call(tx);
         if (cap != null) {
           if (!cap.choThaoTac) {
@@ -154,10 +169,9 @@ class TransactionListRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    content.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  DongPhuGiaoDich(
+                    chu: content.subtitle,
+                    tenNha: content.nhanNha,
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,

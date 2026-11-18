@@ -1,5 +1,6 @@
 /// Đọc `app_router.dart` như tài liệu (khuôn `*_noi_day_test`; điều hướng là vùng mù của widget test đơn lẻ): form Thêm giao
-/// dịch có HAI cửa — `/add` của cá nhân và `/nha/khoan` của nhà — và phạm vi nhà không được lọt sang cửa cá nhân.
+/// dịch có HAI cửa — `/add` của cá nhân và `/nha/khoan` của nhà. Từ 2026-11-16 `/add` vào chế độ nhà TẠI CHỖ khi người dùng
+/// chọn ví chung (cổng `ViChungChoFormNguon`), nhưng route vẫn không cố định chế độ nhà (`nha:` / `nguon:`).
 library;
 
 import 'dart:io';
@@ -17,7 +18,7 @@ void main() {
     return nguon.substring(i, j == -1 ? nguon.length : j);
   }
 
-  test('/add KHÔNG mang nha: và nguon: — nút + thanh dưới không vào được phạm vi nhà', () {
+  test('/add KHÔNG cố định chế độ nhà (không nha: / nguon:) — chỉ vào nhà khi người dùng chọn ví chung', () {
     final add = than('/add');
     expect(add.contains('nha:'), isFalse, reason: 'nha: ở /add là mở chế độ nhà từ cửa cá nhân');
     expect(add.contains('nguon:'), isFalse, reason: 'nguon: ở /add là ghi khoản cá nhân vào ví nhà');
@@ -54,11 +55,30 @@ void main() {
     expect(gop.contains('nha: '), isFalse, reason: 'không phải form Thêm giao dịch — /nha/gop không mang CheDoNhaForm');
   });
 
+  /// Thân hàm dựng bộ chọn danh mục nhà dùng chung (`/nha/khoan/category` và `/add/nha-category`, spec 2026-11-16).
+  String thanChonDanhMucNha() {
+    final i = nguon.indexOf('Widget _chonDanhMucNha(GoRouterState state)');
+    expect(i, greaterThan(-1), reason: 'router phải có hàm dựng bộ chọn danh mục nhà dùng chung');
+    return nguon.substring(i, nguon.indexOf('class AppRouter', i));
+  }
+
   test('/nha/khoan/category dùng napCay của nhà và nút quản lý trỏ /nha/danh-muc (Task 11 bật)', () {
-    final nha = than('/nha/khoan');
-    expect(nha.contains('napCayDanhMuc('), isTrue);
-    expect(nha.contains("duongQuanLy: '/nha/danh-muc'"), isTrue,
+    expect(than('/nha/khoan').contains('_chonDanhMucNha(state)'), isTrue);
+    final chon = thanChonDanhMucNha();
+    expect(chon.contains('napCayDanhMuc('), isTrue);
+    expect(chon.contains("duongQuanLy: '/nha/danh-muc'"), isTrue,
         reason: 'null là ẩn nút; trỏ về /danh-muc cá nhân là đưa người dùng sang danh mục riêng');
-    expect(nha.contains('duongQuanLy: null'), isFalse);
+    expect(chon.contains('duongQuanLy: null'), isFalse);
+    expect(chon.contains('const NhaMinhPage()'), isTrue, reason: 'nhà mất khi bộ chọn đang mở → Nhà mình, không ném');
+  });
+
+  test('/add/nha-category (form /add ở chế độ nhà) qua cửa ghiKhoan và dùng CÙNG bộ chọn danh mục nhà', () {
+    final add = than('/add');
+    final i = add.indexOf("path: 'nha-category'");
+    expect(i, greaterThan(-1), reason: 'form /add ở chế độ nhà mở bộ chọn danh mục nhà qua route con này');
+    final con = add.substring(i);
+    expect(con.contains('redirect: (_, __) => _veNhaNeuKhongGhiDuoc()'), isTrue,
+        reason: 'deeplink vào thẳng bộ chọn danh mục nhà cũng phải qua cửa quyền');
+    expect(con.contains('_chonDanhMucNha(state)'), isTrue);
   });
 }

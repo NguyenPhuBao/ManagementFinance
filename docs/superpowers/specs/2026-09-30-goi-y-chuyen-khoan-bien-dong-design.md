@@ -132,3 +132,10 @@ Lưu khi form ở đoạn Chuyển khoản **và** đã áp gợi ý (`_goiYDaAp
 - Nhận chuyển khoản cho chính mình qua tên chủ tài khoản (*"TRAN QUANG DAT chuyen tien"*) — app không lưu tên ấy.
 
 Không đổi schema, không đổi payload đồng bộ, không đụng backend.
+
+## 8. Chỗ mã khác spec
+
+- **2026-11-17 — luật nội dung chiều THU xét tên người gửi** (người dùng báo: MoMo của Trần Quang Đạt chuyển vào MB của
+  Nguyễn Phú Bảo, máy Bảo vẫn gợi ý *"Từ MoMo sang MB Bank"*). Spec §2 chỉ xét tên nguồn trong tin; mã nay đòi thêm mọi
+  chữ (≥ 2) của họ tên tài khoản FlowMoney có trong tin, bỏ dấu, không xét thứ tự (`tenNguoiGuiLaChu`). Tên một chữ /
+  chưa biết → không gợi ý. Chiều chi và luật cặp giữ nguyên. Chi tiết: mục 2 `docs/BIEN_DONG_SO_DU_FEATURE.md`.

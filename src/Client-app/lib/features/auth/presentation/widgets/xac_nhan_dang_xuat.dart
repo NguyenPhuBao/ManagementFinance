@@ -13,8 +13,8 @@ Future<bool?> xacNhanDangXuat(BuildContext context) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Text('Đăng xuất',
           style: TextStyle(fontWeight: FontWeight.bold)),
-      content: const Text(
-          'Bạn có chắc muốn đăng xuất không?\nBạn vẫn có thể đăng nhập offline sau khi đăng xuất.'),
+      // Không có đăng nhập offline: đăng nhập lại luôn gọi máy chủ (sửa 2026-11-16 — câu cũ hứa sai).
+      content: const Text('Bạn có chắc muốn đăng xuất không?\nĐăng nhập lại cần có kết nối mạng.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),

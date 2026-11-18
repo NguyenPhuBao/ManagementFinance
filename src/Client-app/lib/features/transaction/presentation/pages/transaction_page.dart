@@ -21,6 +21,7 @@ import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../data/cap_gop_quy_nguon.dart';
+import '../../data/khoan_nha_cho_so_nguon.dart';
 import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';
@@ -99,6 +100,9 @@ class _TransactionPageState extends State<TransactionPage> {
   Stream<int>? _chuaGan;
   Stream<int>? _bienDong;
 
+  /// Tên ví chung + danh mục nhà cho dòng khoản của nhà (spec 2026-11-16) — một lần mỗi tài khoản như hai stream tra tên.
+  Stream<TraTenNha>? _traTenNha;
+
   @override
   void initState() {
     super.initState();
@@ -148,6 +152,34 @@ class _TransactionPageState extends State<TransactionPage> {
         sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
         sl<ThongBaoRepository>().watchDemBienDong(idaccount);
+    _traTenNha = _nguonKhoanNha?.traTen(idaccount) ?? Stream.value(TraTenNha.rong);
+  }
+
+  /// Cổng khoản của nhà (spec 2026-11-16). Chưa đăng ký (test dựng trang không cần) → `null`: dòng nhà — nếu có — không tên
+  /// nhà, không sửa / xoá được ở đây.
+  KhoanNhaChoSoNguon? get _nguonKhoanNha => sl.isRegistered<KhoanNhaChoSoNguon>() ? sl<KhoanNhaChoSoNguon>() : null;
+
+  /// Xoá một khoản của NHÀ từ Sổ: hỏi quyền (vai hiện tại), hỏi xác nhận, xoá qua đường của nhà (`ThaoTacKhoanNha`).
+  Future<void> _xoaKhoanNha(BuildContext ctx, TransactionEntity tx) async {
+    final cong = _nguonKhoanNha;
+    final q = await cong?.quyen(tx) ?? (sua: false, xoa: false);
+    if (!q.xoa || cong == null) {
+      baoNhanh('Bạn không xoá được khoản này của nhà.', loai: LoaiThongBao.loi);
+      return;
+    }
+    if (!ctx.mounted) return;
+    final ok = await ConfirmDialog.show(
+      ctx,
+      title: 'Xoá khoản này?',
+      message: 'Khoản sẽ bị xoá khỏi nhà và số dư ví chung được tính lại.',
+    );
+    if (!ok) return;
+    try {
+      await cong.xoa(tx);
+      baoNhanh('Đã xoá khoản.', loai: LoaiThongBao.xong);
+    } catch (_) {
+      baoNhanh('Không xoá được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
+    }
   }
 
   /// Việc 4c — cổng "hoá đơn của khoản này đã xoá chưa" cho vuốt xoá và bảng chi tiết. Chưa đăng ký (test dựng trang
@@ -273,12 +305,19 @@ class _TransactionPageState extends State<TransactionPage> {
                             builder: (_, wallets) =>
                                 StreamBuilder<List<CategoryEntity>>(
                               stream: _categories,
-                              builder: (_, categories) {
+                              builder: (_, categories) =>
+                                  StreamBuilder<TraTenNha>(
+                              stream: _traTenNha,
+                              builder: (_, traNha) {
                                 final walletList =
                                     wallets.data ?? const <WalletEntity>[];
+                                final nha = traNha.data ?? TraTenNha.rong;
+                                // Bộ lọc vẫn nhận `walletList` (chỉ ví riêng); bảng tra gộp ví / danh mục của nhà để dòng
+                                // khoản nhà có tên (spec 2026-11-16 mục 3).
                                 final lookup = TransactionLookup(
-                                  wallets: walletList,
-                                  categories: categories.data ?? const [],
+                                  wallets: [...walletList, ...nha.vi],
+                                  categories: [...?categories.data, ...nha.danhMuc],
+                                  tenNha: nha.tenTheoId,
                                 );
                                 return Column(
                                   children: [
@@ -330,6 +369,7 @@ class _TransactionPageState extends State<TransactionPage> {
                                 );
                               },
                             ),
+                            ),
                           );
                         }
 
@@ -363,6 +403,7 @@ class _TransactionPageState extends State<TransactionPage> {
     TransactionEntity tx,
     TransactionLookup lookup,
   ) async {
+    if (tx.idhousehold != null) return _chiTietKhoanNha(blocContext, tx, lookup);
     final daXoa = await hoaDonDaXoaCua(tx, _nguonHoaDonDaXoa);
     // Nửa riêng của khoản góp, rút còn cặp: Sửa, Xoá đi theo cả cặp (đợt 1B Task 9), không bao giờ một nửa.
     final cap = await _nguonCap?.cua(tx);
@@ -412,6 +453,35 @@ class _TransactionPageState extends State<TransactionPage> {
           }
           blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
           baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
+        },
+      ),
+    );
+  }
+
+  /// Khoản của NHÀ (spec 2026-11-16 quyết định 7): được sửa → form `/nha/khoan`; không → chỉ xem chi tiết.
+  Future<void> _chiTietKhoanNha(BuildContext blocContext, TransactionEntity tx, TransactionLookup lookup) async {
+    final q = await _nguonKhoanNha?.quyen(tx) ?? (sua: false, xoa: false);
+    if (!blocContext.mounted) return;
+    await showModalBottomSheet<void>(
+      context: blocContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => TransactionDetailSheet(
+        transaction: tx,
+        lookup: lookup,
+        cauKhoa: q.sua || q.xoa ? null : 'Bạn chỉ xem được khoản này của nhà.',
+        onEdit: () {
+          Navigator.of(sheetContext).pop();
+          if (!q.sua) {
+            baoNhanh('Bạn không sửa được khoản này của nhà.', loai: LoaiThongBao.loi);
+            return;
+          }
+          context.push('/nha/khoan',
+              extra: EditTransactionArgs(transaction: tx, category: lookup.category(tx.categoryId)));
+        },
+        onDelete: () {
+          Navigator.of(sheetContext).pop();
+          _xoaKhoanNha(blocContext, tx);
         },
       ),
     );
@@ -662,6 +732,7 @@ class _TransactionPageState extends State<TransactionPage> {
                       nguonHoaDonDaXoa: _nguonHoaDonDaXoa,
                       hoiCap: _nguonCap?.cua,
                       onXoaCap: _nguonCap?.xoaCap,
+                      onXoaKhoanNha: (t) => _xoaKhoanNha(blocContext, t),
                       onTap: () => _showDetail(blocContext, tx, lookup),
                       onDelete: () => blocContext.read<TransactionBloc>().add(
                             DeleteTransactionEvent(tx),

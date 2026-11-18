@@ -1,7 +1,8 @@
 /// `DemDangHoatDong` — số bản ghi ĐANG HOẠT ĐỘNG mỗi loại, đầu vào `dangCo`
-/// của `conTaoDuoc` (spec Premium 6.7): ví chưa xoá và không lưu trữ; ngân sách
+/// của `conTaoDuoc` (spec Premium 6.7): ví chưa xoá — KỂ CẢ ví lưu trữ (2026-11-17,
+/// người dùng chốt: giới hạn ví theo thiết lập tính cả ví đã lưu trữ); ngân sách
 /// chưa xoá và chưa hết hạn (lặp thì không bao giờ hết hạn); mục tiêu chưa xoá
-/// và chưa đạt. Lưu trữ một ví / hoàn thành một mục tiêu là nhả một chỗ.
+/// và chưa đạt. Xoá một ví / hoàn thành một mục tiêu là nhả một chỗ.
 library;
 
 import 'package:drift/drift.dart' hide isNull;
@@ -32,13 +33,17 @@ void main() {
         deletedAt: xoa ? Value(now) : const Value.absent(),
       ));
 
-  test('ví: đếm chưa xoá và KHÔNG lưu trữ; tài khoản khác không đếm', () async {
+  test('⭐ ví: đếm chưa xoá KỂ CẢ lưu trữ; đã xoá / tài khoản khác / ví nhà không đếm', () async {
     await vi('A');
     await vi('B', status: 'inactive');
     await vi('C', xoa: true);
     await db.walletDao.insert(WalletsCompanion.insert(
         id: 'w_k', idaccount: 99, name: 'K', updatedAt: now));
-    expect(await dem().dem(LoaiTran.vi, 10), 1);
+    await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_nha', idaccount: 10, name: 'Ví nhà', idhousehold: const Value(7), updatedAt: now));
+    expect(await dem().dem(LoaiTran.vi, 10), 2,
+        reason: 'trần ví tính cả ví lưu trữ (người dùng chốt 2026-11-17) — chỉ đếm ví đang dùng thì lưu trữ một ví là '
+            'tạo thêm được, số ví tăng không giới hạn; ví đã xoá nhả chỗ; ví chung có trần riêng toiDaViChung');
   });
 
   test('ngân sách: chưa xoá và chưa hết hạn; ngân sách lặp không bao giờ hết hạn',

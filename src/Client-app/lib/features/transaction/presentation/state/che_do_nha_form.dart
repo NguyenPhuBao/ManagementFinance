@@ -1,5 +1,8 @@
 /// Cấu hình chế độ nhà của form Thêm giao dịch (gia đình 1B, `02A` mục 4). Dart thuần: mảng giao dịch không biết gia đình, nên
 /// mọi thứ thuộc nhà đi vào form qua đối tượng này và qua [ThemGiaoDichNguon] tiêm vào (nguồn nhà ở `household/data`).
+///
+/// Hai đường dựng: route `/nha/khoan` truyền cố định (`AddTransactionPage.nha`); form `/add` dựng TẠI CHỖ khi người dùng chọn
+/// ví chung (`cheDoTuNhom` ở `presentation/bloc/doi_che_do_nha.dart` → `ThemGiaoDichState.nhaDangGhi`, spec 2026-11-16).
 library;
 
 class CheDoNhaForm {

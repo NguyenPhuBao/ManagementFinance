@@ -1,0 +1,65 @@
+{
+ "mapping_status": "DRAFT",
+ "users": 1971,
+ "rows": 8467632,
+ "tiers": [
+  {
+   "tier": "Sinh viên",
+   "users": 493,
+   "target_lo": 3000000,
+   "target_hi": 6000000
+  },
+  {
+   "tier": "Mới đi làm",
+   "users": 689,
+   "target_lo": 6000000,
+   "target_hi": 12000000
+  },
+  {
+   "tier": "Đi làm ổn định",
+   "users": 591,
+   "target_lo": 12000000,
+   "target_hi": 20000000
+  },
+  {
+   "tier": "Thu nhập cao",
+   "users": 198,
+   "target_lo": 20000000,
+   "target_hi": 35000000
+  }
+ ],
+ "category_share_pct": {
+  "Ăn uống": 19.24,
+  "Di chuyển": 24.55,
+  "Nhà cửa": 11.22,
+  "Hóa đơn": 12.52,
+  "Mua sắm": 14.57,
+  "Giải trí": 8.65,
+  "Giáo dục": 0.76,
+  "Y tế": 8.49
+ },
+ "category_rows": {
+  "Ăn uống": 3065910,
+  "Di chuyển": 2070508,
+  "Nhà cửa": 649430,
+  "Hóa đơn": 518055,
+  "Mua sắm": 1106739,
+  "Giải trí": 304490,
+  "Giáo dục": 161083,
+  "Y tế": 591417
+ },
+ "amount_vnd_quantiles": {
+  "0.1": 8000.0,
+  "0.25": 30000.0,
+  "0.5": 86000.0,
+  "0.75": 175000.0,
+  "0.9": 288000.0,
+  "0.99": 860000.0
+ },
+ "share_at_floor_1000": 0.008211504704030596,
+ "factor_quantiles": {
+  "0.1": 2219.4906402180873,
+  "0.5": 2691.0404476329145,
+  "0.9": 2893.796383548318
+ }
+}

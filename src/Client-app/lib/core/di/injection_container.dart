@@ -47,6 +47,7 @@ import '../../features/bill/domain/moc_tu_tra_nen.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
+import '../../features/budget/data/du_bao_vuot_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
@@ -55,6 +56,8 @@ import '../../features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart';
 import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/cap_gop_quy_nguon.dart';
+import '../../features/transaction/data/vi_chung_cho_form_nguon.dart';
+import '../../features/transaction/data/khoan_nha_cho_so_nguon.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
@@ -86,6 +89,8 @@ import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/application/doc_cap_gop_quy.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
+import '../../features/household/application/nhom_vi_chung_cho_form.dart';
+import '../../features/household/application/khoan_nha_cho_so.dart';
 import '../../features/household/application/thao_tac_khoan_nha.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
@@ -94,6 +99,9 @@ import '../../features/household/data/repositories/nha_repository_impl.dart';
 import '../../features/khoa_app/application/khoa_app_service.dart';
 import '../../features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import '../../features/khoa_app/data/khoa_app_store.dart';
+import '../../features/ban_sao_du_lieu/data/datasources/ban_sao_du_lieu_api.dart';
+import '../../features/ban_sao_du_lieu/data/repositories/ban_sao_du_lieu_repository.dart';
+import '../../features/ban_sao_du_lieu/data/repositories/ban_sao_du_lieu_repository_impl.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/datasources/luu_anh_qr.dart';
@@ -523,8 +531,15 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       danhMuc: sl<CategoryManagementRepository>(),
     ),
   );
+  // Bản thử NCKH: xác suất vượt ngân sách M1 · M2 · M3 ở trang chi tiết.
+  sl.registerLazySingleton<DuBaoVuotNguon>(
+    () => DuBaoVuotNguonImpl(local: sl<BudgetLocalDataSource>()),
+  );
   sl.registerFactory<BudgetDetailCubit>(
-    () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
+    () => BudgetDetailCubit(
+      repository: sl<BudgetRepository>(),
+      duBaoNguon: sl<DuBaoVuotNguon>(),
+    ),
   );
 
   // ── 10b. Features — Phân tích ──────────────────────────────────────────────
@@ -587,6 +602,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Ba trang Premium đọc / ghi đơn qua repository, không gọi thẳng API (spec G94 2026-10-18 mục 4.2).
   sl.registerLazySingleton<DonThanhToanRepository>(
       () => DonThanhToanRepositoryImpl(api: sl()));
+  // ── Features — Bản sao dữ liệu cá nhân (đơn client-app mục 52, spec 2026-11-16) ──
+  sl.registerLazySingleton<BanSaoDuLieuApi>(() => DioBanSaoDuLieuApi(sl<DioClient>().dio));
+  sl.registerLazySingleton<BanSaoDuLieuRepository>(() => BanSaoDuLieuRepositoryImpl(api: sl()));
   // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
   sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr(taiAnh: taiAnhBangDioTran));
   sl.registerLazySingleton<GoiStore>(
@@ -665,6 +683,33 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         xoa: (maCap) async {
           if (!await sl<GopQuyService>().xoa(maCap)) throw const CacheException('Khoản này không còn trên máy.');
         },
+      ));
+  // Ví chung chọn được ở form Thêm giao dịch thường (spec 2026-11-16). Hàm nạp ở household/application, nối ở đây.
+  sl.registerLazySingleton<ViChungChoFormNguon>(() => ViChungChoFormNguon(() => napNhomViChung(
+        nha: sl<NhaRepository>(),
+        viChung: (id) => sl<DuLieuNhaRepository>().viChungChoForm(id),
+        nguon: (id) => sl<ThemGiaoDichNguonNha>(param1: ThamSoNguonNha(idNha: id)),
+      )));
+  // Sổ / Trang chủ hiện khoản nhà TÔI ghi (spec 2026-11-16): tra tên ví chung + danh mục nhà, quyền sửa / xoá từ Sổ. Nhà
+  // hiện tại phát TRƯỚC (`theoDoi` chỉ phát khi đổi), sau khi kho nạp (G92).
+  sl.registerLazySingleton<KhoanNhaChoSoNguon>(() => KhoanNhaChoSoNguon(
+        traTen: (id) => theoDoiTraTenNha(
+          nha: () async* {
+            final n = sl<NhaRepository>();
+            await n.choNapKho();
+            yield n.hienTai;
+            yield* n.theoDoi;
+          }(),
+          viChung: sl<DuLieuNhaRepository>().theoDoiViChung,
+          danhMuc: sl<DuLieuNhaRepository>().theoDoiBangTraDanhMuc,
+          idaccount: id,
+        ),
+        quyen: (t) async {
+          final n = sl<NhaRepository>();
+          await n.choNapKho();
+          return quyenKhoanNhaTuSo(t, nha: n.hienTai, idToi: n.idaccount);
+        },
+        xoa: (t) => sl<ThaoTacKhoanNha>().xoa(t),
       ));
   // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
   // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.

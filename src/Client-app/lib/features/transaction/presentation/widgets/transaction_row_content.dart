@@ -22,6 +22,7 @@ class TransactionRowContent {
     required this.colour,
     required this.amountText,
     required this.amountColor,
+    this.nhanNha,
   });
 
   final String title;
@@ -30,6 +31,9 @@ class TransactionRowContent {
   final Color colour;
   final String amountText;
   final Color amountColor;
+
+  /// Tên nhà khi dòng là khoản của NHÀ (Sổ / Trang chủ hiện khoản nhà tôi ghi, spec 2026-11-16); `null` = khoản riêng.
+  final String? nhanNha;
 }
 
 TransactionRowContent buildTransactionRowContent(
@@ -50,6 +54,7 @@ TransactionRowContent buildTransactionRowContent(
       colour: AppColors.primary,
       amountText: CurrencyFormatter.format(tx.amount),
       amountColor: AppColors.primary,
+      nhanNha: lookup.tenNhaCua(tx.idhousehold),
     );
   }
 
@@ -80,5 +85,6 @@ TransactionRowContent buildTransactionRowContent(
         : categoryColorFrom(category.colour, fallback: typeColour),
     amountText: CurrencyFormatter.formatCoDau(tx.amount, thu: !isExpense),
     amountColor: typeColour,
+    nhanNha: lookup.tenNhaCua(tx.idhousehold),
   );
 }

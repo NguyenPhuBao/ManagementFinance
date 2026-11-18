@@ -47,6 +47,10 @@ class _FixedAuthBloc extends AuthBloc {
 
 /// Ghi lại **khoảng** mà trang hỏi tới, để biết mũi tên lùi hay tiến.
 class _GhiKhoangRepository implements TransactionRepository {
+  // Sổ đọc danh sách kèm khoản nhà (spec 2026-11-16) — bản giả không có khoản nhà nên trả đúng như watchKhoang.
+  @override
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) =>
+      watchKhoang(idaccount, from, to);
   final List<({DateTime from, DateTime to})> daHoi = [];
 
   @override

@@ -43,6 +43,10 @@ class _FixedAuthBloc extends AuthBloc {
 
 /// MỘT ngày, ba hàng: chi 55.000 · thu 20.000 · khoản điều chỉnh số dư +10.000 (không danh mục, đúng cặp dấu hiệu).
 class _MotNgayRepository implements TransactionRepository {
+  // Sổ đọc danh sách kèm khoản nhà (spec 2026-11-16) — bản giả không có khoản nhà nên trả đúng như watchKhoang.
+  @override
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) =>
+      watchKhoang(idaccount, from, to);
   @override
   Stream<List<TransactionEntity>> watchKhoang(int idaccount, DateTime from, DateTime to) {
     final moc = DateTime.now().subtract(const Duration(days: 1));

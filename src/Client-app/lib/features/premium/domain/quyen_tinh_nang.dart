@@ -97,7 +97,7 @@ bool duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now) => trangThaiQuyen(ma, 
 /// - bảng là của **Basic** → mỗi trần có số + mỗi quyền Basic bị tắt; server đã gửi cột Premium (B1, chốt 10) → trần Premium
 ///   `null` kể *"Không giới hạn ví"*, số kể *"Tới 10 ví"* chỉ khi lớn hơn trần Basic; quyền Premium cũng tắt thì KHÔNG kể;
 /// - người xem **Premium còn hạn** → bảng đã lưu CHÍNH LÀ cột Premium, so với mặc định Basic ([TranGoi.macDinh] +
-///   `macDinhKhiThieu`) — màn mở đầu *"Gói Premium hiện cho tạo tối đa 10 ví."* thì danh sách nói *"Tới 10 ví"*;
+///   `macDinhKhiThieu`) — màn mở đầu *"Gói Premium hiện cho tạo tối đa 10 ví (tính cả ví đã lưu trữ)."* thì danh sách nói *"Tới 10 ví"*;
 /// - bảng không dùng được (Premium hết hạn lúc offline, Premium không hạn) → mặc định, như trước B1.
 List<String> dacQuyenPremium(TrangThaiGoi goi, DateTime now) {
   final premium = goi.laPremium(now);

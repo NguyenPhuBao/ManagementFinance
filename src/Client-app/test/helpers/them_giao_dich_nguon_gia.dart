@@ -23,6 +23,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
     this.phanHoi = const [],
     this.viNho = const {},
     this.hangCho = const [],
+    this.tenChu,
     this.so = const [],
     this.docAiGia,
     this.duongDan,
@@ -39,6 +40,7 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
   /// Khoá `'<nguon>|<duoi>'` (duoi rỗng khi null) → id ví.
   Map<String, String> viNho;
   List<DienSanBienDong> hangCho;
+  String? tenChu;
   List<KhoanSo> so;
   DocCauBangAi? docAiGia;
   String? duongDan;
@@ -105,6 +107,8 @@ class NguonThemGiaoDichGia implements ThemGiaoDichNguon {
       viDaNho.add('$nguon|${duoi ?? ''}=$walletId');
   @override
   Future<List<DienSanBienDong>> hangBienDongCho(int idaccount) async => hangCho;
+  @override
+  String? tenChuTaiKhoan() => tenChu;
   @override
   Future<List<KhoanSo>> khoanTrongSo(int idaccount) async => so;
   @override

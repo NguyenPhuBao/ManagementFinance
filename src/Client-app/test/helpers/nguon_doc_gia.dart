@@ -51,6 +51,9 @@ class GiaoDichGia implements TransactionRepository {
   Stream<List<TransactionEntity>> watchAll(int idaccount) =>
       db.transactionDao.watchAll(idaccount).map((rows) => rows.map(TransactionEntity.fromDrift).toList());
   @override
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount) =>
+      db.transactionDao.watchAllKemNha(idaccount).map((rows) => rows.map(TransactionEntity.fromDrift).toList());
+  @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 

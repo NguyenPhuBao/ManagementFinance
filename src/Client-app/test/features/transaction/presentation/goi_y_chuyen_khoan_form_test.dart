@@ -51,7 +51,8 @@ void main() {
     daXoa = [];
   });
 
-  Widget app(DienSanBienDong d, {List<DienSanBienDong>? cho}) {
+  // Tin mẫu `quaMomo` là Đạt tự chuyển MoMo → MB của mình, nên chủ tài khoản mặc định là Đạt.
+  Widget app(DienSanBienDong d, {List<DienSanBienDong>? cho, String? chu = 'Trần Quang Đạt'}) {
     final bloc = TransactionBloc(transactionRepository: repo);
     CategoryTree cay(List<CategoryEntity> c) => CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
@@ -71,6 +72,7 @@ void main() {
                 ),
                 wallets: [tienMat, mb, momo, vcb],
                 idaccount: 1,
+                tenChuTaiKhoan: chu,
                 budgetLookup: (_, __) async => null,
                 bienDong: d,
                 viTheoNguon: store,
@@ -86,8 +88,9 @@ void main() {
     return MaterialApp.router(routerConfig: router);
   }
 
-  Future<void> mo(WidgetTester tester, DienSanBienDong d, {List<DienSanBienDong>? cho}) async {
-    await tester.pumpWidget(app(d, cho: cho));
+  Future<void> mo(WidgetTester tester, DienSanBienDong d,
+      {List<DienSanBienDong>? cho, String? chu = 'Trần Quang Đạt'}) async {
+    await tester.pumpWidget(app(d, cho: cho, chu: chu));
     await tester.pumpAndSettle();
   }
 
@@ -97,6 +100,16 @@ void main() {
     await tester.tap(find.byKey(const Key('luu-thanh-tieu-de')));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('⭐ MoMo của NGƯỜI KHÁC (TRAN QUANG DAT) vào MB của Nguyễn Phú Bảo → không thẻ gợi ý, form giữ Thu nhập '
+      '(người dùng báo 2026-11-17)', (tester) async {
+    await store.ghi(1, kNguonMb, '262', 'mb');
+    await mo(tester, tin(), chu: 'Nguyễn Phú Bảo');
+
+    expect(find.byKey(const Key('the-goi-y-chuyen-khoan')), findsNothing,
+        reason: 'tiền người khác chuyển vào không phải chuyển khoản giữa hai ví của mình');
+    expect(find.text('Ví đích (Đến ví)'), findsNothing, reason: 'form vẫn ở Thu nhập');
+  });
 
   testWidgets('⭐ tin MB "qua MoMo": thẻ gợi ý; bấm → đoạn Chuyển khoản, từ Ví MoMo (theo tên) sang Ví MB Bank (đã '
       'nhớ); chưa lưu gì', (tester) async {

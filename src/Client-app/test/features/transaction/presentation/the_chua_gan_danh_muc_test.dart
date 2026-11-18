@@ -42,6 +42,10 @@ class _FixedAuthBloc extends AuthBloc {
 }
 
 class _KyRongRepository implements TransactionRepository {
+  // Sổ đọc danh sách kèm khoản nhà (spec 2026-11-16) — bản giả không có khoản nhà nên trả đúng như watchKhoang.
+  @override
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) =>
+      watchKhoang(idaccount, from, to);
   @override
   Stream<List<TransactionEntity>> watchKhoang(int idaccount, DateTime from, DateTime to) =>
       Stream.value(const <TransactionEntity>[]);

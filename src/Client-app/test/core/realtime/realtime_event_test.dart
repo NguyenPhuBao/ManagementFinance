@@ -136,4 +136,12 @@ void main() {
     expect(RealtimeEvent.loiMoiNha.loiNhan, isNull,
         reason: 'thông báo "Lời mời vào nhà" là luật cục bộ của mảng thông báo (lát 2), không phải toast của kênh');
   });
+
+  test('account.data_export_ready → banSaoDuLieuSanSang: tín hiệu im, không kéo đồng bộ (đơn client-app mục 52)', () {
+    expect(realtimeEventFromName('account.data_export_ready'), RealtimeEvent.banSaoDuLieuSanSang);
+    expect(RealtimeEvent.banSaoDuLieuSanSang.canDongBoLai, isFalse,
+        reason: 'tệp bản sao là chuyện của bảng data_export_request, không bảng đồng bộ');
+    expect(RealtimeEvent.banSaoDuLieuSanSang.loiNhan, isNull,
+        reason: 'thông báo tối giản — email + trang "Dữ liệu của tôi" tự đổi');
+  });
 }
