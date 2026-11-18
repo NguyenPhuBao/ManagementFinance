@@ -139,7 +139,7 @@ const CategoryPage = () => {
     const target = editor.mode === 'edit' ? editor.target : null;
 
     const duplicate = categories.find(
-      (c) => !c.isUserCategory && !isDeleted(c) && normalizeCategoryName(c.name) === norm && c.classify === classify && (!target || c.id !== target.id)
+      (c) => !c.isUserCategory && !isDeleted(c) && normalizeCategoryName(c.name) === norm && (!target || c.id !== target.id)
     );
     if (duplicate) {
       setFormError(t('categories.alerts.duplicateName', { name: duplicate.name }));

@@ -686,7 +686,7 @@ export default {
     },
     alerts: {
       nameRequired: 'Enter a category name.',
-      duplicateName: 'Category "{name}" of the same type already exists.',
+      duplicateName: 'Category "{name}" already exists.',
     },
   },
 

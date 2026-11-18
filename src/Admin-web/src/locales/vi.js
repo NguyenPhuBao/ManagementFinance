@@ -686,7 +686,7 @@ export default {
     },
     alerts: {
       nameRequired: 'Nhập tên danh mục.',
-      duplicateName: 'Danh mục "{name}" cùng loại đã tồn tại.',
+      duplicateName: 'Danh mục "{name}" đã tồn tại.',
     },
   },
 

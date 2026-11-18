@@ -113,12 +113,22 @@ describe('Bản nháp', () => {
     expect(adminApi.createCategory).not.toHaveBeenCalled();
   });
 
-  it('chặn trùng tên với danh mục đang hoạt động cùng loại', async () => {
+  it('chặn trùng tên với danh mục đang hoạt động', async () => {
     await renderPage();
     const dialog = openAdd();
     fireEvent.change(within(dialog).getByLabelText('Tên danh mục'), { target: { value: '  ăn uống ' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Thêm vào bản nháp' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Ăn uống');
+    expect(screen.queryByText('1 thay đổi chưa lưu')).not.toBeInTheDocument();
+  });
+
+  it('chặn trùng tên cả khi khác loại, khớp luật máy chủ', async () => {
+    await renderPage();
+    const dialog = openAdd();
+    fireEvent.change(within(dialog).getByLabelText('Tên danh mục'), { target: { value: 'Ăn uống' } });
+    fireEvent.change(within(dialog).getByLabelText('Loại'), { target: { value: 'income' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Thêm vào bản nháp' }));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Danh mục "Ăn uống" đã tồn tại.');
     expect(screen.queryByText('1 thay đổi chưa lưu')).not.toBeInTheDocument();
   });
 
