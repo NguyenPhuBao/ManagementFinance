@@ -370,7 +370,7 @@ void main() {
       expect(find.byKey(const Key('cong-tac-online')), findsOneWidget,
           reason: 'công tắc online phải bật lại được dù thiếu quyền mô hình');
       expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
-      expect(find.textContaining('Google Gemini'), findsOneWidget);
+      expect(find.textContaining('dịch vụ AI đám mây'), findsOneWidget);
     });
 
     testWidgets('Basic (không cả hai quyền) → không thẻ online, có thẻ khoá, Riêng tư vẫn hiện', (t) async {
@@ -382,17 +382,19 @@ void main() {
       await t.pumpAndSettle();
       expect(find.byKey(const Key('cong-tac-online')), findsNothing);
       expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
-      expect(find.textContaining('Google Gemini'), findsOneWidget);
+      expect(find.textContaining('dịch vụ AI đám mây'), findsOneWidget);
     });
 
     testWidgets(
-        'khối Riêng tư nói đúng hai đường: trên máy không gửi gì; online gửi tóm tắt tới FlowMoney và Google Gemini',
+        'khối Riêng tư nói đúng hai đường: trên máy không gửi gì; online gửi tóm tắt tới FlowMoney và dịch vụ AI đám mây',
         (t) async {
       await t.pumpWidget(boc(const CaiDatAiPage(daCoMoHinh: false)));
       await t.pumpAndSettle();
       expect(find.textContaining('không gửi gì rời khỏi thiết bị'),
           findsOneWidget);
-      expect(find.textContaining('Google Gemini'), findsOneWidget);
+      expect(find.textContaining('dịch vụ AI đám mây'), findsOneWidget);
+      expect(find.textContaining('Gemini'), findsNothing,
+          reason: 'giao diện không ghi tên nhà cung cấp mô hình');
       expect(find.textContaining('vài tin gần nhất của cuộc trò chuyện'), findsOneWidget);
     });
   });
