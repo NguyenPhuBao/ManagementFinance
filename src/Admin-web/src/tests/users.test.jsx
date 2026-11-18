@@ -237,6 +237,9 @@ describe('Thao tác trạng thái', () => {
     await renderPage();
     fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Xóa' }));
     const dialog = screen.getByRole('dialog', { name: 'Xóa người dùng' });
+    // Máy chủ xoá mềm ngay (trạng thái Đã xóa), không qua thời gian chờ xóa.
+    expect(dialog).toHaveTextContent('Tài khoản bị xóa, ví liên quan ngừng hoạt động và người dùng bị đăng xuất.');
+    expect(dialog).not.toHaveTextContent('chờ xóa');
     expect(adminApi.deleteUser).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));

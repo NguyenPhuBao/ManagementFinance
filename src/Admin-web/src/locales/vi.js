@@ -540,7 +540,7 @@ export default {
     },
     deleteModal: {
       title: 'Xóa người dùng',
-      warning: 'Tài khoản chuyển sang chờ xóa, ví liên quan bị vô hiệu hóa và người dùng bị đăng xuất. Nhập mã PIN để xác nhận.',
+      warning: 'Tài khoản bị xóa, ví liên quan ngừng hoạt động và người dùng bị đăng xuất. Nhập mã PIN để xác nhận.',
       confirmBtn: 'Xóa',
     },
     alerts: {

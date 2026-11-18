@@ -540,7 +540,7 @@ export default {
     },
     deleteModal: {
       title: 'Delete user',
-      warning: 'The account moves to pending deletion, related wallets are disabled and the user is signed out. Enter your PIN to confirm.',
+      warning: 'The account is deleted, related wallets are deactivated and the user is signed out. Enter your PIN to confirm.',
       confirmBtn: 'Delete',
     },
     alerts: {
