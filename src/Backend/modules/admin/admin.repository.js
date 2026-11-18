@@ -1,6 +1,7 @@
 const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
 const { encrypt, isEncrypted } = require('../../utils/crypto.util');
+const { seedPersonalCategories } = require('../account/personal-categories');
 
 const adminRepository = {
   async countUsers() {
@@ -515,6 +516,9 @@ const adminRepository = {
           update_at: new Date(),
         },
       });
+
+      // Mọi loại tài khoản đều có bản danh mục riêng (Chủ dự án chốt 2026-11-17, kế hoạch B2).
+      await seedPersonalCategories(tx, newAccount.idaccount);
 
       return {
         idaccount: newAccount.idaccount,

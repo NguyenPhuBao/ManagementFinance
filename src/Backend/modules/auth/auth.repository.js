@@ -1,5 +1,6 @@
 const { prisma } = require('../../config/db');
 const { encrypt, decrypt, isEncrypted } = require('../../utils/crypto.util');
+const { seedPersonalCategories } = require('../account/personal-categories');
 
 // Chuẩn hóa purpose sang enum CSDL (Register, Reset_password, Change_email)
 function normalizePurpose(p) {
@@ -116,6 +117,8 @@ const authRepository = {
           idaccount: account.idaccount,
         },
       });
+      // Bản danh mục riêng của tài khoản mới, cùng giao tác (kế hoạch 2026-11-17, B2).
+      await seedPersonalCategories(tx, account.idaccount);
       return {
         ...account,
         role: { idrole: 2, rolename: 'user' },

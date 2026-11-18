@@ -779,3 +779,12 @@ Kế hoạch: `docs/superpowers/plans/2026-11-17-aiops-cong-thuc-va-do-luong.md`
 - Khi tắt vẫn nạp danh sách phong toả để bộ quét hết hạn mở các tài khoản đang bị khoá tạm.
 - Mã: `modules/aiops/aiops.toggle.js`, `app.js`, `index.js`, `api/admin.routes.js`; Admin-web `config/features.js`, `Sidebar.jsx`, `AppLayout.jsx`, `Header.jsx`, `router/routes.jsx`.
 - Test: `tests/unit/aiops.toggle.test.js` (7 ca); Admin-web `layout.test.jsx` (thêm 2 ca), `aiops.route.toggle.test.jsx` (2 ca). Unit Backend 1.154/1.175 (19 ca đỏ sẵn cần CSDL dùng chung), Admin-web 291/291, lint sạch, build đạt.
+
+## 30. Danh mục mặc định chỉ áp cho tài khoản mới (2026-11-17)
+
+- Chủ dự án chốt: danh mục mặc định là khuôn; mọi tài khoản (người dùng đăng ký, quản trị do Admin tạo) nhận bản danh mục riêng lúc tạo, trong cùng giao tác. Admin sửa khuôn chỉ áp cho tài khoản tạo sau thay đổi; danh mục của tài khoản đã có không bị tác động.
+- `/sync/pull` không còn trả hàng `is_default = true` (`sync.repository.getCategoriesByAccount`, `countCategory`). `emitCategoryUpdated` chỉ phát `admin.category_updated` tới `admin_room`, bỏ `sync.completed` tới mọi socket.
+- Mã: `modules/account/personal-categories.js` (mới), `auth.repository.createAccountWithUser`, `admin.repository.createAdminAccount`, `sync.repository.js`, `core/socket.js`; Admin-web `locales/vi.js`, `locales/en.js` (câu hộp xác nhận Lưu).
+- Script bù `scripts/bu_danh_muc_ca_nhan.js`: tạo bản riêng cho tài khoản chưa từng có; dời `transaction` / `budget` / `bill` (không thuộc nhà) đang trỏ vào khuôn sang bản riêng cùng tên. Mặc định chạy thử; `--apply --xac-nhan=<tên CSDL>` mới ghi. **Đã chạy trên Supabase 2026-11-17** (Chủ dự án xác nhận): bù 3 tài khoản, tạo 48 bản riêng, 0 tham chiếu cần dời; chạy lại báo 0 (luỹ đẳng).
+- Test: `tests/unit/personal-categories.test.js` (12 ca), `tests/unit/bu-danh-muc-ca-nhan.test.js` (4 ca), `tests/unit/category.realtime.client.test.js` (sửa theo nghiệp vụ mới, 3 ca); Admin-web `categories.test.jsx` (+1 ca). Backend 1.227/1.252 (23 ca đỏ sẵn cần CSDL thật, trùng danh sách với mã gốc), Admin-web 292/292, lint sạch.
+- Việc Client-app: Mục 53 `docs/superpowers/client-app/CAN-LAM/DANH_MUC_MAC_DINH_CHI_CHO_TAI_KHOAN_MOI.md`; ghi ở *Trao đổi* của `SYNC_DOCUMENTATION.md`.

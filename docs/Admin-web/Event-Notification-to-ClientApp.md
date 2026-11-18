@@ -96,7 +96,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | **5** | `account.upgraded` | `account_<id>` & `io.emit` | PayOS Webhook / Admin duyệt gói | Nâng cấp tài khoản lên Premium | ℹ️ Tiêu chuẩn |
 | **6** | `account.downgraded` | `account_<id>` | Cron 00:00 hạ cấp hết hạn Premium | Chuyển tài khoản về gói Basic | ⚠️ Cao |
 | **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | App không nghe; số ngày lấy từ `countdown` của `/auth/profile` | ℹ️ Tiêu chuẩn |
-| **8** | `sync.completed` | `account_<id>`; **mọi socket** khi danh mục hệ thống đổi | Push thành công (phát cho mọi máy của tài khoản, cả máy vừa đẩy); Admin thêm / sửa / xoá mềm / khôi phục danh mục hệ thống | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
+| **8** | `sync.completed` | `account_<id>` | Push thành công (phát cho mọi máy của tài khoản, cả máy vừa đẩy). Từ 2026-11-17 **không** phát khi Admin đổi danh mục hệ thống (khuôn chỉ áp cho tài khoản mới) | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
 | **9** | `ocr.completed` | `account_<id>` | Worker hoàn tất bóc tách OCR | Thông báo bóc tách xong, kích hoạt sync | ℹ️ Tiêu chuẩn |
 | **10** | `ocr.duplicate` | `account_<id>` | AI phát hiện hóa đơn trùng lặp | Cảnh báo hóa đơn đã tồn tại | ⚠️ Cảnh báo |
 | **11** | `user.notification` | `account_<id>` | Chưa dùng: server chưa phát | App không nghe | ℹ️ Tiêu chuẩn |
@@ -294,7 +294,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "timestamp": "2026-10-24T08:30:00.000Z"
 }
 ```
-  Khi phát do danh mục hệ thống đổi: `{ "source": "system_category", "at": "<ISO>" }` (không mang dữ liệu danh mục).
+  Payload `{ "source": "system_category", … }` (phát khi danh mục hệ thống đổi) đã bỏ từ 2026-11-17.
 * **Xử lý trên Client-app:**
   - **Sự kiện im lặng (Silent Event):** KHÔNG hiện Toast làm phiền người dùng.
   - Tự động kích hoạt luồng đồng bộ ngầm `syncNow()` (đẩy rồi kéo) để cập nhật dữ liệu mới nhất vào SQLite Drift.
@@ -589,7 +589,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 1. `admin.user_registered`: Phát khi có tài khoản người dùng mới tạo thành công.
 2. `admin.user_logged_in`: Phát khi có người dùng đăng nhập thành công (phục vụ biểu đồ Active Users).
 3. `admin.user_status_changed`: Phát khi trạng thái tài khoản chuyển đổi (`Active`, `Inactive`, `PendingDelete`).
-4. `admin.category_updated`: Phát khi Admin tạo / sửa / xóa mềm / khôi phục danh mục mặc định của hệ thống. Cùng lúc Backend phát `sync.completed` tới mọi socket để Client-app kéo danh mục mới (mục 4.7).
+4. `admin.category_updated`: Phát khi Admin tạo / sửa / xóa mềm / khôi phục danh mục mặc định của hệ thống, chỉ tới `admin_room`. Từ 2026-11-17 không phát `sync.completed` kèm theo: khuôn chỉ áp cho tài khoản tạo sau thay đổi (Mục 53 CAN-LAM client).
 5. `admin.maintenance_changed`: Phát riêng cho Admin Dashboard cập nhật giao diện điều hành bảo trì.
 6. `admin.metrics_stream`: Luồng nhịp tim thông số phần cứng CPU, RAM, Event Loop lag phát 3 giây/lần.
 7. `admin.notification`: Cảnh báo quản trị khẩn cấp (Overload, Security Alert).

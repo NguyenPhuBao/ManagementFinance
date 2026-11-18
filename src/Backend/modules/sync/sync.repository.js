@@ -301,9 +301,10 @@ const syncRepository = {
   },
 
   async getCategoriesByAccount(idaccount, since, activeHouseholdId = null) {
+    // Không trả khuôn (is_default = true) từ 2026-11-17: mỗi tài khoản đã có bản riêng tạo lúc đăng ký; khuôn đổi không
+    // được tới tài khoản đã có (kế hoạch 2026-11-17-danh-muc-mac-dinh-chi-ap-cho-tai-khoan-moi.md, B3).
     const conditions = [
-      { is_default: true },
-      { create_by: Number(idaccount), idhousehold: null },
+      { create_by: Number(idaccount), idhousehold: null, is_default: false },
     ];
     if (activeHouseholdId) {
       conditions.push({ idhousehold: Number(activeHouseholdId) });
@@ -863,12 +864,7 @@ const syncRepository = {
 
   async countCategory(idaccount) {
     return prisma.category.count({
-      where: {
-        OR: [
-          { is_default: true },
-          { create_by: idaccount },
-        ],
-      },
+      where: { create_by: idaccount, is_default: false },
     });
   },
 

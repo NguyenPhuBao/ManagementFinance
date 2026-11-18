@@ -293,6 +293,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | 1 | ~~Màn đồng ý chính sách bảo mật theo API~~ | [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) (Mục 51) | **Bỏ** (đổi hướng 2026-11-16: chính sách viết cứng phía app; Backend không bật `403 POLICY_NOT_ACCEPTED`) |
 | 2 | Sửa chú thích lỗi thời "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart` | Mục 51 phần 5 | **Bắt buộc** (Chủ dự án chốt 2026-11-14) |
 | 3 | Nhận bản sao dữ liệu cá nhân: nút trong Cài đặt, trạng thái, tải JSON / CSV khi đã đăng nhập, nghe `account.data_export_ready` | [`BAN_SAO_DU_LIEU.md`](./BAN_SAO_DU_LIEU.md) (Mục 52) | **Bắt buộc** (Chủ dự án chốt 2026-11-14); app chưa làm vẫn chạy, chỉ thiếu nút |
+| 4 | Danh mục mặc định chỉ áp cho tài khoản mới: gỡ lan truyền khuôn, gỡ ẩn theo khuôn và mục "Đang tạm ngừng", bỏ bộ tạo bản sao khỏi `sauKeoVe`. Backend **đã** ngừng trả khuôn trong `/sync/pull` (2026-11-17) | [`DANH_MUC_MAC_DINH_CHI_CHO_TAI_KHOAN_MOI.md`](./DANH_MUC_MAC_DINH_CHI_CHO_TAI_KHOAN_MOI.md) (Mục 53) | **Bắt buộc** (Chủ dự án chốt 2026-11-17); app chưa làm vẫn chạy, nhưng mục "Đang tạm ngừng" hiển thị khác nhau giữa máy cũ và máy cài mới |
 
 
 > 🎯 **Cam kết chất lượng:** Mọi thắc mắc trong quá trình thực hiện, đội ngũ Client-app có thể đối chiếu trực tiếp với các test suite mẫu tại Backend (`src/Backend/tests/unit/sync.engine.v2.test.js` và `Test/test_data_security_encryption_and_masking.js`) để đảm bảo hệ thống đạt độ ổn định tuyệt đối (Zero Regressions).

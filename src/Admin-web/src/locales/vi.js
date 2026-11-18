@@ -673,7 +673,7 @@ export default {
     },
     syncModal: {
       title: 'Lưu thay đổi danh mục',
-      description: 'Thay đổi được áp dụng cho mọi người dùng. Nhập mã PIN để xác nhận.',
+      description: 'Thay đổi chỉ áp dụng cho tài khoản tạo sau khi lưu. Danh mục của tài khoản hiện có không đổi. Nhập mã PIN để xác nhận.',
       confirmBtn: 'Lưu',
       syncSuccess: 'Đã lưu thay đổi danh mục.',
     },
@@ -686,7 +686,7 @@ export default {
     },
     alerts: {
       nameRequired: 'Nhập tên danh mục.',
-      duplicateName: 'Danh mục "{name}" cùng loại đã tồn tại.',
+      duplicateName: 'Danh mục "{name}" đã tồn tại.',
     },
   },
 

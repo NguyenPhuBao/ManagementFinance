@@ -113,12 +113,22 @@ describe('Bản nháp', () => {
     expect(adminApi.createCategory).not.toHaveBeenCalled();
   });
 
-  it('chặn trùng tên với danh mục đang hoạt động cùng loại', async () => {
+  it('chặn trùng tên với danh mục đang hoạt động', async () => {
     await renderPage();
     const dialog = openAdd();
     fireEvent.change(within(dialog).getByLabelText('Tên danh mục'), { target: { value: '  ăn uống ' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Thêm vào bản nháp' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Ăn uống');
+    expect(screen.queryByText('1 thay đổi chưa lưu')).not.toBeInTheDocument();
+  });
+
+  it('chặn trùng tên cả khi khác loại, khớp luật máy chủ', async () => {
+    await renderPage();
+    const dialog = openAdd();
+    fireEvent.change(within(dialog).getByLabelText('Tên danh mục'), { target: { value: 'Ăn uống' } });
+    fireEvent.change(within(dialog).getByLabelText('Loại'), { target: { value: 'income' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Thêm vào bản nháp' }));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Danh mục "Ăn uống" đã tồn tại.');
     expect(screen.queryByText('1 thay đổi chưa lưu')).not.toBeInTheDocument();
   });
 
@@ -156,6 +166,18 @@ describe('Bản nháp', () => {
 });
 
 describe('Lưu bằng PIN', () => {
+  it('hộp xác nhận nói rõ thay đổi chỉ áp cho tài khoản tạo sau, không đổi danh mục tài khoản hiện có (2026-11-17)', async () => {
+    await renderPage();
+    const add = openAdd();
+    fireEvent.change(within(add).getByLabelText('Tên danh mục'), { target: { value: 'Mua sắm' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Thêm vào bản nháp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Lưu thay đổi danh mục' });
+    expect(dialog).toHaveTextContent('chỉ áp dụng cho tài khoản tạo sau khi lưu');
+    expect(dialog).toHaveTextContent('Danh mục của tài khoản hiện có không đổi');
+    expect(dialog).not.toHaveTextContent('mọi người dùng');
+  });
+
   it('PIN gửi kèm từng lệnh thêm / sửa / khôi phục / xóa (máy chủ kiểm), sau đó tải lại', async () => {
     await renderPage();
     const add = openAdd();
