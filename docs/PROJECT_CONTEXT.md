@@ -71,8 +71,10 @@ npm run dev   # nodemon, hot-reload
 ```bash
 npx prisma studio          # GUI xem DB (port 5555)
 npx prisma migrate status  # kiểm tra migration
-npx prisma migrate dev     # tạo migration mới (CHỈ KHI schema.prisma thay đổi)
 npx prisma generate        # tái sinh Prisma Client
+# ⚠️ KHÔNG `npx prisma migrate dev` / `prisma db push`: `src/Backend/scripts/db-guard.js` chặn (xoá & tạo lại index).
+# Đổi lược đồ = tệp `src/Backend/database/N_*.sql` áp tay theo `docs/Rule_Project/Rule_project.md` §3.2
+# (client không áp — quy tắc 1 `CLAUDE.md`). Đính chính 2026-11-16 theo đơn client-app mục 15.
 ```
 
 ### Client App (`src/Client-app/`)
@@ -588,7 +590,7 @@ src/Backend/
 1. **KHÔNG dùng DELETE vật lý** với dữ liệu user — dùng soft delete (`delete_at`, `is_deleted`)
 2. **Chỉ sửa Client-app** trừ khi user yêu cầu rõ ràng được phép sửa Backend
 3. **Sau khi sửa Drift tables/DAOs** → chạy `dart run build_runner build` để tái sinh `.g.dart`
-4. **Sau khi sửa schema.prisma** → chạy `npx prisma migrate dev` và `npx prisma generate`
+4. **Đổi lược đồ backend** → tệp `src/Backend/database/N_*.sql` áp tay theo `docs/Rule_Project/Rule_project.md` §3.2, rồi `npx prisma generate`; **không** `npx prisma migrate dev` / `prisma db push` (`scripts/db-guard.js` chặn). Client không tự áp migration (quy tắc 1 `CLAUDE.md`). Đính chính 2026-11-16, đơn client-app mục 15.
 5. **Category default** (`idaccount=0`) → KHÔNG push lên backend
 6. **`idaccount` CHỈ đến từ phiên đăng nhập** — tuyệt đối không suy ra từ dữ liệu trong SQLite, và không bao giờ mặc định về `1` (đó là tài khoản admin thật)
 7. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`** — xem mục 11.8
@@ -615,7 +617,86 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
+
+### 💎 Trần ví tính cả ví lưu trữ (2026-11-17, mã xong, ✅ đo máy ảo đạt)
+
+Người dùng mở chốt mã cho riêng việc này: giới hạn ví theo thiết lập admin đếm cả ví đã lưu trữ (`DemDangHoatDong` đọc `walletDao.getAll`; câu chặn kèm *"(tính cả ví đã lưu trữ)"*). Chi tiết + bảng đo: mục 8.12 `PREMIUM_FEATURE.md`. `flutter test` 9636 / 11 skip, analyze 20. Chỉ thi hành ở client — việc backend (nếu cần) chờ người dùng quyết.
+
+### 📜 Điều khoản sử dụng + Chính sách bảo mật viết cứng (2026-11-16 phiên 49, `0f838a05..fe20fea4`, mã xong, ✅ đo máy ảo đạt)
+
+Đơn `client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md` (README mục 12 = đơn 51) **đổi hướng** ở `origin/main` `d6a17999` (NPBao): chính sách viết
+cứng phía app, KHÔNG gọi `/api/policy/*`, KHÔNG nghe `system.policy_updated`, backend không bật `403 POLICY_NOT_ACCEPTED`. Spec
+`docs/superpowers/specs/2026-11-16-dieu-khoan-chinh-sach-viet-cung-design.md` (mục 7 = chỗ mã khác spec); văn bản người dùng duyệt
+`docs/superpowers/specs/2026-11-16-van-ban-dieu-khoan-chinh-sach.md` (Điều khoản theo khuôn YNAB; Chính sách dựng lại từ
+`docs/Rule_Project/Chinh_sach_bao_mat_v1.md` + sửa chỗ lệch app: AI trên máy, đọc biến động số dư, không "đồng ý lại"; CHƯA qua luật sư).
+
+- **Đăng ký:** ô tick bắt buộc trên nút Đăng ký (`ODongYDieuKhoan`, `features/chinh_sach/presentation/widgets/`); chưa tick → dòng lỗi,
+  không gửi `RegisterSendOtpRequested`. Hai liên kết → `/chinh-sach/dieu-khoan`, `/chinh-sach/bao-mat`.
+- **Router:** loại route thứ ba `laRouteMoChoCaHai` (`/chinh-sach`, `/chinh-sach/…`) — `authRedirect` trả `null` ở mọi trạng thái;
+  KHÔNG trong `_publicRoutes` nên lớp khoá ứng dụng vẫn che khi đã đăng nhập.
+- **Cài đặt:** thẻ CÀI ĐẶT tab Cá nhân, dòng "Điều khoản & chính sách" → `/chinh-sach` (Stitch `8b53d373…`).
+- **Không** lưu trạng thái đồng ý, không màn chặn, tài khoản cũ không bị hỏi (người dùng chốt).
+- Test `flutter test` **9627 / 11 skip**, analyze **20**. Hai ca cũ `register_otp_flow_test` phải tick trước khi bấm Đăng ký (thiếu là
+  TREO ở `await otpSent`, không đỏ). Ca 320 dp trang Đăng ký nạp font thật — Ahem báo tràn giả 162 px ở trang gốc.
+- Đo máy ảo đạt (spec mục 7 vế 6). Còn: hai màn Stitch báo `timeout` chưa xác nhận.
+
+### 📦 Bản sao dữ liệu cá nhân — trang "Dữ liệu của tôi" (2026-11-16 phiên 49, `2a7a2afd..8cdfe74c`, mã xong, ✅ đo máy ảo + backend local ĐẠT)
+
+Đơn `client-app/CAN-LAM/BAN_SAO_DU_LIEU.md` (README mục 13 = đơn 52). Spec `docs/superpowers/specs/2026-11-16-ban-sao-du-lieu-ca-nhan-design.md`
+(mục 8 = 7 chỗ mã khác spec). Thi công inline theo kế hoạch 8 task.
+
+- **Lối vào:** dòng thứ tư thẻ "BẢO MẬT & TÙY CHỌN" (dưới Khoá ứng dụng) → `/settings/du-lieu-cua-toi`. Basic + Premium đều dùng. Không
+  khôi phục / nhập ngược (người dùng chốt) — trang nói thẳng tệp chỉ để giữ / xem.
+- **Mảng `features/ban_sao_du_lieu/`:** `domain/trang_thai_ban_sao.dart` (năm trạng thái, chuỗi lạ → *Lỗi*; `chuChoYeuCauLai` làm tròn
+  LÊN theo phút) · `domain/loi_ban_sao.dart` (Dart thuần — cubit đặt lỗi trong datasource là đỏ quét 31) ·
+  `data/datasources/ban_sao_du_lieu_api.dart` (ba API qua `sl<DioClient>().dio`, `loiBanSaoTu` đọc 429 `Retry-After` / 410 / 409 / 404 /
+  mất mạng, tên tệp từ `Content-Disposition` chỉ nhận `[A-Za-z0-9._-]` + đúng đuôi) · `data/luu_tep_ban_sao.dart` (Tải về qua
+  `LuuTepPlatform` của Xuất báo cáo, không được thì tệp tạm + `SharePlus`) · repository · `DuLieuCuaToiCubit` (chặn `POST` khi đang tạo
+  và khi bấm đôi) · trang. Không SQLite, không đồng bộ.
+- **Socket:** `account.data_export_ready` → `RealtimeEvent.banSaoDuLieuSanSang` (im, không kéo đồng bộ, không đọc payload); trang đang mở
+  đọc lại `GET …/latest`; quay lại app (`AppLifecycleListener.onResume`) cũng đọc lại.
+- **Test:** `flutter test` **9610 / 11 skip** (+34), analyze **20** (= mức nền), đo 2026-11-16. Ca 320 dp thử bản sai (bỏ `Expanded`) thấy đỏ.
+- **Stitch:** `generate_screen_from_text` trả `timeout`, không gọi lại; `list_screens` vẫn 170 màn — chưa có màn để đối chiếu.
+- **Đo máy ảo `FlowMoney_16G` + backend local (2026-11-16, ĐẠT):** người dùng: dữ liệu Render đã xoá, chỉ kiểm thử local. Lượt đầu hỏng
+  do mình: APK debug dựng KHÔNG `--dart-define=API_BASE_URL` → mặc định Render (bẫy PR #180) → tài khoản 10 bị từ chối → app đăng xuất
+  (SQLite giữ, đăng nhập lại `dat` = tài khoản 10 thấy dữ liệu cũ). Chuẩn bị (người dùng cho phép đích danh): sao lưu
+  `D:\FlowMoney-saoluu\PersonFinance-truoc-47-54-2026-11-16.dump` (chụp sau khi đã áp 50), áp `database/47`–`54` lên `PersonFinance`
+  (53 xoá 0 hàng mẫu; dò mọi model Prisma sau đó: 0 lệch), `prisma generate` trong worktree, backend worktree chạy
+  `DOTENV_CONFIG_PATH=<.env thư mục chính> node -r dotenv/config index.js` + ghi đè `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY`
+  dev / `STORAGE_DRIVER=local` (log `PostgreSQL connected {"database":"PersonFinance"…}`), APK `--dart-define=API_BASE_URL=http://10.0.2.2:3000/api`.
+  Kết quả: dòng thứ tư hiện ở Cá nhân · trang *Chưa yêu cầu* · bấm → 202 + toast *"Đã gửi tới email ta***@gmail.com…"* · socket
+  `account.data_export_ready` tự chuyển trang sang *Sẵn sàng* (*"Tải được tới 18:59 17/11"*, đúng +24 giờ) · email thật gửi qua Brevo
+  (người dùng chọn giữ) · tải CSV → *"Đã lưu Tải về/flowmoney-giao-dich-20261116.csv"*, JSON cũng vào Tải về, cỡ tệp khớp byte phản hồi
+  (13.638 / 687.487), CSV giữ BOM + `sep=;`, JSON hợp lệ (meta · account · profile · wallets · transactions · budgets · bills · goals ·
+  categories · households…), 0 chuỗi `enc:` · Back về Cá nhân. Chưa đo bằng giao diện: 429 (nút yêu cầu ẩn khi đang *Sẵn sàng*), 410 hết
+  hạn, đường chia sẻ khi máy không có `MediaStore` — đều có ca test.
+- Cùng phiên: hộp xác nhận đăng xuất thôi hứa *"đăng nhập offline"* → *"Đăng nhập lại cần có kết nối mạng."* (`5ef9bce1`, người dùng báo).
+
+### 🏠 Ví chung chọn được ở form Thêm giao dịch thường + khoản nhà ở Trang chủ / Sổ (2026-11-16, `fa72e860..`, mã xong, CHƯA đo máy thật)
+
+Người dùng mở lại chốt mã cho việc này (*"đừng bắt user vào mục gia đình mới thanh toán được"*). Spec
+`docs/superpowers/specs/2026-11-16-vi-chung-trong-form-giao-dich-design.md` (bảy quyết định người dùng chọn ở mục 1). **Đảo quyết định
+#5** của `docs/Family/02A` mục 4 (đã sửa tài liệu).
+
+- **Form `/add`:** bộ chọn ví có nhóm *"VÍ CHUNG · tên nhà"* (chỉ Chủ / Thành viên, nhà hoạt động, form tạo mới thường, không ở đoạn
+  Chuyển khoản). Chọn ví chung → form đổi TẠI CHỖ sang chế độ nhà (`ThemGiaoDichState.nhaDangGhi`, nguồn `ThemGiaoDichNguonNha`,
+  danh mục ghép theo tên — `ghepDanhMucTheoTen`, bộ chọn danh mục `/add/nha-category`); chọn lại ví riêng là về như cũ; chạm Chuyển
+  khoản là về ví riêng chọn sẵn. Ví chung ở danh sách RIÊNG (`viChung`), không vào `state.vi` → Nhập nhanh / giọng nói / ví chọn sẵn
+  không chọn trúng. Lưu mang `idhousehold`; mất quyền lúc Lưu thì báo, không ghi, GIỮ form (chỉ `/nha/khoan` mới đóng). Cổng
+  `ViChungChoFormNguon` (`transaction/data`) + hàm thật `napNhomViChung` (`household/application`), nối DI. Cubit 1.199 / trần 1.200
+  — phép dựng state ở `doi_che_do_nha.dart`.
+- **Trang chủ / Sổ:** danh sách đọc `watchAllKemNha` / `watchKhoangKemNha` (riêng + khoản nhà TÔI ghi, bỏ nửa NHÀ của cặp góp / rút);
+  dòng nhà có viên `NhanNhaNho`, tên ví / danh mục tra qua cổng `KhoanNhaChoSoNguon`. **Không cộng vào tổng**: `summarizeTransactions`
+  bỏ hàng có `idhousehold`; thu chi tháng Trang chủ, Phân tích, Ngân sách vẫn chỉ riêng (người dùng chọn sau ví dụ đếm trùng: góp quỹ
+  đã là khoản chi riêng). Bấm dòng nhà ở Sổ: được sửa → `/nha/khoan`, không → sheet chỉ xem (`cauKhoa`); xoá (sheet lẫn vuốt) đi
+  đường của nhà sau kiểm vai, không bao giờ `DeleteTransactionEvent`.
+- Quét 37: hai hàm `*KemNha` qua được nhờ vế `idhousehold.isNull() | …` — ghi rõ ở docstring quét là chỗ CỐ Ý mở.
+- `flutter test` **9576 / 11 skip** (đo sau `fc32773e`; mốc trước đợt trên nhánh này: 9520 / 11), `flutter analyze` 20 issue / 0 error.
+- Chốt thêm sau lượt soát (`fc32773e`): ở chế độ nhà `dienKetQua` bỏ qua (câu nói về muộn là ví / danh mục RIÊNG), trang huỷ micro
+  khi vào nhà.
+- Giao diện dựng theo mô tả gửi Stitch (hai lượt `generate_screen_from_text` báo timeout, chưa thấy màn) — người dùng chọn làm trước,
+  chỉnh sau khi màn hiện. **Chưa đo trên Realme** (cần tài khoản trong nhà có ví chung, backend Render).
 
 ### 🧪 Đo trên Render: thanh toán thật + gia đình hai máy (2026-11-02 phiên 37, `a80d779c`, 0 tệp mã đổi)
 
@@ -2373,7 +2454,8 @@ con số / dấu so sánh theo bẫy 4.36). Mục **15** `AI_EDGE_FEATURE.md`; �
   Riêng tư nay thêm vế *"và vài tin gần nhất của cuộc trò chuyện"* (người dùng chốt 2026-10-18 khuya) — lệch Stitch đúng một vế,
   không vẽ lại.
 - **Nghiệm thu OnePlus 13R (CPH2691, Android 16, ≈ 361 dp) — 2026-10-18 00:08–00:40**, bản debug `418b9e2d` với `baseUrl` đổi tạm
-  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev; tài khoản thử
+  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev (mô hình lúc đo; từ 2026-11 chatbot chính DeepSeek,
+  `gemini-3.5-flash` dự phòng — đơn client-app mục 15); tài khoản thử
   `quangdat` (id 18) nâng Premium **tạm** trên CSDL dev bằng một câu `UPDATE` (người dùng cho phép đích danh) rồi trả về Basic cho ca
   7. **Cổng G0 đạt**: Gemini trả lời thật (15–40 s / lượt). **Đạt** theo chữ trên màn: ca 1 (nhãn *Trợ lý online* chấm xanh, không
   chip) · ca 2 (Gemini và máy đều *chưa có khoản chi*) · ca 3 (gỡ `adb reverse` → nhãn đỏ *AI trên máy · máy chủ không phản hồi*) ·
@@ -3979,7 +4061,7 @@ vẫn ghi 0, vì client không sửa tệp ấy) *(đóng ở `eceb6c9` ngày h�
 - **Đơn vòng hai `AI_EDGE_SLM_SOAT_SAU_B147FEE.md`**: ✅ **đủ 12 chỗ** — bốn lệnh nghiệm thu ra 0 dòng, B5 và D1 nói cùng một
   cửa sổ cuộn, câu G1 mới khớp `buocLamTron` của `tai_phan_bo.dart`.
 - **Đơn 10 chức năng AI**: sửa đủ chữ (ba lệnh `grep` nghiệm thu ra 0 dòng); chức năng 7 **chốt lối A** (backend tự tính FHS;
-  client chỉ gọi `GET /api/ai/chatbot/snapshot`). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini) không được trả lời trực
+  client chỉ gọi `GET /api/ai/chatbot/snapshot` — ⚠️ endpoint này backend **đã gỡ 2026-11-07**, câu là ảnh chụp 2026-09-27). **Mục 1.3 (F1 ⟷ gửi dữ liệu sang Gemini) không được trả lời trực
   tiếp**: backend dựng *Privacy Shield* — snapshot gộp theo danh mục, `maskPII` che dãy số và email — và coi thế là đủ.
   Đọc mã: tool `get_category_transactions` vẫn gửi **từng giao dịch** (số tiền không làm tròn, tên danh mục, ghi chú sau
   `maskPII`) cho Gemini. Module chatbot **không gọi hàm giải mã nào**, nên ghi chú nằm trong CSDL ở dạng nào thì đi ra ở

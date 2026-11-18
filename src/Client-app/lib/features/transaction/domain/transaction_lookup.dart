@@ -13,8 +13,10 @@ class TransactionLookup {
   TransactionLookup({
     Iterable<WalletEntity> wallets = const [],
     Iterable<CategoryEntity> categories = const [],
+    Map<int, String> tenNha = const {},
   })  : _wallets = {for (final w in wallets) w.id: w},
-        _categories = {for (final c in categories) c.id: c};
+        _categories = {for (final c in categories) c.id: c},
+        _tenNha = tenNha;
 
   static final TransactionLookup empty = TransactionLookup();
 
@@ -25,9 +27,15 @@ class TransactionLookup {
   final Map<String, WalletEntity> _wallets;
   final Map<String, CategoryEntity> _categories;
 
+  /// Tên nhà theo id — dòng khoản của NHÀ ở Sổ / Trang chủ mang nhãn nhà (spec 2026-11-16).
+  final Map<int, String> _tenNha;
+
   WalletEntity? wallet(String? id) => id == null ? null : _wallets[id];
 
   CategoryEntity? category(String? id) => id == null ? null : _categories[id];
 
   String walletName(String? id) => wallet(id)?.name ?? tenViDaXoa;
+
+  /// Tên nhà của khoản; `null` = khoản riêng (hoặc nhà không còn trong bảng tra).
+  String? tenNhaCua(int? idhousehold) => idhousehold == null ? null : _tenNha[idhousehold];
 }

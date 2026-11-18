@@ -46,7 +46,7 @@ Người dùng chốt qua câu hỏi chọn được — đợt 1 ngày **2026-1
 | 2 | Vai trò | Ba vai cố định áp cho cả nhà: **Chủ nhà · Thành viên · Chỉ xem** | 10-23 |
 | 3 | Gói | **Chủ nhà cần Premium**; người được mời dùng miễn phí; chủ hết Premium → nhà *chỉ xem*, không mất dữ liệu | 10-23 |
 | 4 | Mô hình dữ liệu | **"Nhà" là chủ sở hữu thứ ba** — cột `Idhousehold` trên ví, giao dịch, mục tiêu, ngân sách, danh mục | 10-23 |
-| 5 | Dữ liệu nhà hiện ở đâu | **Chỉ trong khu *Nhà mình*** — Trang chủ, Sổ, Phân tích, Ngân sách cá nhân không lẫn tiền của nhà (ngoại lệ có chủ đích: nửa riêng của khoản góp / rút — #14) | 10-23 |
+| 5 | Dữ liệu nhà hiện ở đâu | **Chỉ trong khu *Nhà mình*** — Trang chủ, Sổ, Phân tích, Ngân sách cá nhân không lẫn tiền của nhà (ngoại lệ có chủ đích: nửa riêng của khoản góp / rút — #14; **từ 2026-11-16:** ghi khoản vào ví chung ngay ở form Thêm giao dịch thường, và khoản nhà TÔI ghi hiện ở danh sách Trang chủ / Sổ — kèm nhãn nhà, **không** cộng vào tổng; spec `2026-11-16-vi-chung-trong-form-giao-dich-design.md`) | 10-23 |
 | 6 | Danh mục | Nhà có **bộ danh mục riêng** (server sao bộ mặc định khi lập nhà) | 10-23 |
 | 7 | Giải tán | Dữ liệu chung biến mất với mọi người (xoá mềm ở server) | 10-23 |
 | 8 | Lộ trình | **Bỏ "ai nợ ai"** (chi tự trả rồi chia); **giữ mục tiêu chung**; **bỏ "cho nhà xem" ví riêng** | 10-26 |

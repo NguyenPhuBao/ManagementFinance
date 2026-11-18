@@ -10,6 +10,12 @@ abstract class TransactionLocalDataSource {
     DateTime to,
   );
 
+  /// Danh sách Trang chủ / Sổ: riêng + khoản nhà TÔI ghi (spec 2026-11-16) — `TransactionDao.watchKhoangKemNha`.
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to);
+
+  /// Như [watchKhoangKemNha] trên cả sổ — `TransactionDao.watchAllKemNha`.
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount);
+
   /// Mọi giao dịch của tài khoản (bỏ hàng `deletedAt`, mới nhất trước) — `transactionDao.getAll`.
   Future<List<TransactionEntity>> getAll(int idaccount);
 
@@ -38,6 +44,16 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
           (list) => list.map((t) => TransactionEntity.fromDrift(t)).toList(),
         );
   }
+
+  @override
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) => db.transactionDao
+      .watchKhoangKemNha(idaccount, from, to)
+      .map((list) => list.map(TransactionEntity.fromDrift).toList());
+
+  @override
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount) => db.transactionDao
+      .watchAllKemNha(idaccount)
+      .map((list) => list.map(TransactionEntity.fromDrift).toList());
 
   @override
   Future<List<TransactionEntity>> getAll(int idaccount) async =>

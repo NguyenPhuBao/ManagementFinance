@@ -150,4 +150,16 @@ void main() {
     expect(c.subtitle, isNot(contains('6f8e6b7a')));
     expect(c.subtitle, contains('Ví đã xoá'));
   });
+  test('khoản của NHÀ mang nhãn tên nhà; khoản riêng thì không (spec 2026-11-16)', () {
+    final coNha = TransactionLookup(
+      wallets: [makeWallet(id: 'nha-v', name: 'Tiền chợ')],
+      categories: [anUong],
+      tenNha: const {7: 'Nhà An Bình'},
+    );
+    final nha = tx(note: 'Đi chợ', categoryId: 'c-food', walletId: 'nha-v').copyWith(idhousehold: 7);
+    final c = buildTransactionRowContent(nha, coNha);
+    expect(c.nhanNha, 'Nhà An Bình');
+    expect(c.subtitle, 'Ăn uống • Tiền chợ', reason: 'tên ví chung tra từ bảng của nhà, không phải "Ví đã xoá"');
+    expect(buildTransactionRowContent(tx(categoryId: 'c-food'), coNha).nhanNha, isNull);
+  });
 }

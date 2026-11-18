@@ -15,6 +15,7 @@ import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_mon_hang.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
+import '../state/che_do_nha_form.dart';
 
 /// Dòng tóm tắt dưới ô Nhập nhanh. Dời từ `widgets/them_giao_dich/o_nhap_nhanh.dart` (widget import lại từ đây).
 typedef KetQuaDien = ({String tomTat, bool docDuoc, bool quaAi, List<String> canhBao, String? lyDo});
@@ -53,6 +54,8 @@ class ThemGiaoDichState {
     this.duongDanAnh,
     this.soLanDatGhiChu = 0,
     this.soLanCuonGoiY = 0,
+    this.viChung = const [],
+    this.nhaDangGhi,
   });
 
   /// Đang SỬA một giao dịch đã ghi.
@@ -112,6 +115,14 @@ class ThemGiaoDichState {
   /// Tăng khi thẻ gợi ý nguồn số tiền vừa hiện hoặc đổi danh mục — trang cuộn thẻ vào khung nhìn.
   final int soLanCuonGoiY;
 
+  /// Ví chung của nhà chọn được ở form thường (spec 2026-11-16) — danh sách RIÊNG: [vi] không bao giờ chứa chúng, nên
+  /// Nhập nhanh, giọng nói, ví chọn sẵn, ví theo nguồn tin không chọn trúng ví chung.
+  final List<WalletEntity> viChung;
+
+  /// Khác `null` = form đang ghi KHOẢN CỦA NHÀ vì ví đang chọn là ví chung (đổi tại chỗ). Route `/nha/khoan` không dùng
+  /// trường này (chế độ nhà cố định qua `AddTransactionPage.nha`).
+  final CheDoNhaForm? nhaDangGhi;
+
   bool get laChuyen => huong == 'transfer';
 
   /// `type` sẽ ghi xuống SQLite (`chi` | `thu` | `transfer`), suy từ đoạn và danh mục. `null` = chưa đủ dữ kiện.
@@ -159,6 +170,8 @@ class ThemGiaoDichState {
     Object? duongDanAnh = _giu,
     int? soLanDatGhiChu,
     int? soLanCuonGoiY,
+    List<WalletEntity>? viChung,
+    Object? nhaDangGhi = _giu,
   }) =>
       ThemGiaoDichState(
         laSua: laSua,
@@ -187,5 +200,7 @@ class ThemGiaoDichState {
         duongDanAnh: identical(duongDanAnh, _giu) ? this.duongDanAnh : duongDanAnh as String?,
         soLanDatGhiChu: soLanDatGhiChu ?? this.soLanDatGhiChu,
         soLanCuonGoiY: soLanCuonGoiY ?? this.soLanCuonGoiY,
+        viChung: viChung ?? this.viChung,
+        nhaDangGhi: identical(nhaDangGhi, _giu) ? this.nhaDangGhi : nhaDangGhi as CheDoNhaForm?,
       );
 }

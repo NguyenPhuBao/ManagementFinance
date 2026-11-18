@@ -1,14 +1,17 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../data/doc_nhip_chi.dart';
+import '../../data/du_bao_vuot_nguon.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../domain/budget_history.dart';
 import '../../domain/budget_pace.dart';
+import '../../domain/du_bao_vuot_ngan_sach.dart';
 
 /// Trạng thái của trang chi tiết một ngân sách.
 ///
@@ -36,6 +39,9 @@ class BudgetDetailLoaded extends BudgetDetailState {
   /// Hết hạn thì trang chỉ đọc — cùng quy tắc với tab "Đã hết hạn".
   final bool expired;
 
+  /// Xác suất vượt ngân sách M1 · M2 · M3 — bản thử NCKH; `null` = không hiện.
+  final DuBaoVuot? duBao;
+
   const BudgetDetailLoaded({
     required this.view,
     required this.pace,
@@ -43,6 +49,7 @@ class BudgetDetailLoaded extends BudgetDetailState {
     required this.transactions,
     required this.lookup,
     required this.expired,
+    this.duBao,
   });
 }
 
@@ -70,8 +77,14 @@ class BudgetDetailCubit extends Cubit<BudgetDetailState> {
   /// (giao dịch đổi liên tiếp); lần cũ về sau không được đè lên lần mới.
   int _generation = 0;
 
-  BudgetDetailCubit({required this.repository, DateTime Function()? clock})
-      : clock = clock ?? DateTime.now,
+  /// Bản thử NCKH: nguồn xác suất vượt ngân sách; `null` = không tính.
+  final DuBaoVuotNguon? duBaoNguon;
+
+  BudgetDetailCubit({
+    required this.repository,
+    DateTime Function()? clock,
+    this.duBaoNguon,
+  })  : clock = clock ?? DateTime.now,
         super(const BudgetDetailLoading());
 
   void watch({required int? idaccount, required String budgetId}) {
@@ -114,6 +127,12 @@ class BudgetDetailCubit extends Cubit<BudgetDetailState> {
       final lookup = await repository.lookupFor(idaccount);
       // Nhịp riêng của đúng ngân sách đang xem — phần phụ, hỏng thì chi đều.
       final nhip = await docNhipChi(repository, idaccount, [view.budget], now);
+      final duBao = await duBaoNguon?.duBao(view.budget, now);
+      if (kDebugMode && duBao != null) {
+        debugPrint('[DuBaoVuot] K=${duBao.soKy} p0=${duBao.p0.toStringAsFixed(6)} '
+            'p1=${duBao.p1.toStringAsFixed(6)} p2=${duBao.p2.toStringAsFixed(6)} '
+            'p3=${duBao.p3.toStringAsFixed(6)}');
+      }
       if (isClosed || generation != _generation) return;
       emit(BudgetDetailLoaded(
         view: view,
@@ -122,6 +141,7 @@ class BudgetDetailCubit extends Cubit<BudgetDetailState> {
         transactions: transactions,
         lookup: lookup,
         expired: view.budget.isExpired(now),
+        duBao: duBao,
       ));
     } catch (e) {
       if (isClosed || generation != _generation) return;

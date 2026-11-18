@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../chinh_sach/presentation/widgets/o_dong_y_dieu_khoan.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -16,6 +17,10 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+
+  /// Ô tick Điều khoản + Chính sách (spec điều khoản viết cứng 2026-11-16) — chưa tick thì không gửi đăng ký.
+  bool _daDongY = false;
+  bool _loiDongY = false;
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullnameController = TextEditingController();
@@ -40,6 +45,10 @@ class _RegisterPageState extends State<RegisterPage> {
     }
     if (password != confirm) {
       baoNhanh('Mật khẩu xác nhận không khớp', loai: LoaiThongBao.loi);
+      return;
+    }
+    if (!_daDongY) {
+      setState(() => _loiDongY = true);
       return;
     }
     // Gửi event bước 1: yêu cầu gửi OTP về email
@@ -205,7 +214,16 @@ class _RegisterPageState extends State<RegisterPage> {
                                   });
                                 },
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 20),
+                              ODongYDieuKhoan(
+                                daDongY: _daDongY,
+                                hienLoi: _loiDongY,
+                                khiDoi: (v) => setState(() {
+                                  _daDongY = v;
+                                  if (v) _loiDongY = false;
+                                }),
+                              ),
+                              const SizedBox(height: 20),
 
                               // Submit Button
                               ElevatedButton(
@@ -242,40 +260,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                           Icon(Icons.arrow_forward, size: 20),
                                         ],
                                       ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Terms agreement
-                              RichText(
-                                textAlign: TextAlign.center,
-                                text: const TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    fontFamily: 'Inter',
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                        text:
-                                            'Bằng cách đăng ký, bạn đồng ý với '),
-                                    TextSpan(
-                                      text: 'Điều khoản dịch vụ',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    TextSpan(text: ' và '),
-                                    TextSpan(
-                                      text: 'Chính sách bảo mật',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    TextSpan(text: ' của chúng tôi.'),
-                                  ],
-                                ),
                               ),
                             ],
                           ),

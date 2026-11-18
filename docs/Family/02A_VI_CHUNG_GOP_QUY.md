@@ -50,8 +50,11 @@ vào bảng trên và không vào thống kê của nhà.
 
 ## 4. Ghi khoản của nhà — *chế độ nhà* của form Thêm giao dịch
 
-- Mở từ khu **Nhà mình** (nút *Chi* / *Thu* ở Chi tiết ví chung hoặc ở Nhà mình), **không** từ nút + của thanh dưới (nút ấy giữ cho dữ liệu
-  cá nhân — quyết định #5).
+- Mở từ khu **Nhà mình** (nút *Chi* / *Thu* ở Chi tiết ví chung hoặc ở Nhà mình), **hoặc** chọn ví chung ngay trong form Thêm giao dịch
+  thường của nút + (nhóm *"VÍ CHUNG · tên nhà"* trong bộ chọn ví; form đổi tại chỗ sang chế độ nhà; không ở đoạn Chuyển khoản, không ở
+  đường sửa). ⚠️ Từ 2026-11-16 **đảo quyết định #5** theo yêu cầu người dùng (*"đừng bắt user vào mục gia đình mới thanh toán được"*) —
+  spec `docs/superpowers/specs/2026-11-16-vi-chung-trong-form-giao-dich-design.md`. Khoản nhà TÔI ghi hiện cả ở Trang chủ / Sổ giao dịch
+  (kèm nhãn nhà) nhưng không cộng vào tổng cá nhân.
 - Dùng lại trang Thêm giao dịch + `ThemGiaoDichCubit` với **nguồn dữ liệu của nhà**: bộ chọn ví chỉ có ví chung của nhà đang hoạt động;
   danh mục chỉ danh mục của nhà; *Chuyển khoản* chỉ hiện cho Chủ nhà và chỉ giữa hai ví chung.
 - **Không có** ở chế độ nhà (2a): Nhập nhanh, quét ảnh, giọng nói, gợi ý danh mục học theo cá nhân (B1), tách khoản. Bộ học B1 của người

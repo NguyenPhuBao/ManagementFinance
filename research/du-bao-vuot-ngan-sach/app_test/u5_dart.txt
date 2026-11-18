@@ -1,0 +1,1 @@
+ROW|n=5 now=2026-11-10T09:51:18 K=6 B=4128000 spent=798000 x=0.31369 expected=1266831 projection=2858500 spentShare=0.1933 paceShare=0.3069

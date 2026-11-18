@@ -43,7 +43,8 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
   void _subscribeKy(int idaccount, Ky ky) {
     _subscription?.cancel();
     _subscription = transactionRepository
-        .watchKhoang(idaccount, ky.from, ky.to)
+        // Danh sách Sổ: riêng + khoản nhà TÔI ghi (spec 2026-11-16) — tổng vẫn chỉ riêng (`summarizeTransactions`).
+        .watchKhoangKemNha(idaccount, ky.from, ky.to)
         .listen((list) {
       add(TransactionsUpdatedEvent(list, ky: ky));
     });

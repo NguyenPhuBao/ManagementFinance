@@ -21,6 +21,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<List<TransactionEntity>> getAll(int idaccount) => localDataSource.getAll(idaccount);
   @override
   Stream<List<TransactionEntity>> watchAll(int idaccount) => localDataSource.watchAll(idaccount);
+  @override
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount) => localDataSource.watchAllKemNha(idaccount);
+  @override
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to) =>
+      localDataSource.watchKhoangKemNha(idaccount, from, to);
 
   @override
   Stream<List<TransactionEntity>> watchKhoang(

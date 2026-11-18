@@ -1,0 +1,20 @@
+1	Sinh viên	user=1297	month_index=37
+2	Sinh viên	user=793	month_index=55
+3	Sinh viên	user=404	month_index=54
+4	Sinh viên	user=1638	month_index=50
+5	Sinh viên	user=51	month_index=58
+6	Mới đi làm	user=1359	month_index=58
+7	Mới đi làm	user=236	month_index=34
+8	Mới đi làm	user=1723	month_index=48
+9	Mới đi làm	user=1480	month_index=46
+10	Mới đi làm	user=392	month_index=52
+11	Đi làm ổn định	user=1281	month_index=34
+12	Đi làm ổn định	user=229	month_index=29
+13	Đi làm ổn định	user=1572	month_index=32
+14	Đi làm ổn định	user=980	month_index=56
+15	Đi làm ổn định	user=1266	month_index=43
+16	Thu nhập cao	user=1635	month_index=37
+17	Thu nhập cao	user=582	month_index=30
+18	Thu nhập cao	user=1231	month_index=31
+19	Thu nhập cao	user=803	month_index=42
+20	Thu nhập cao	user=126	month_index=46

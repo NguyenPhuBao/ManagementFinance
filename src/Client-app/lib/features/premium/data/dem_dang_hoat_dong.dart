@@ -13,8 +13,9 @@ abstract class NguonDemDangHoatDong {
 }
 
 /// Số bản ghi **đang hoạt động** của một loại — đầu vào `dangCo` của
-/// `conTaoDuoc` (spec Premium 2026-10-06 mục 6.7). Lưu trữ một ví / hoàn thành
-/// một mục tiêu là nhả một chỗ — cố ý, cùng luật với bộ chọn ví.
+/// `conTaoDuoc` (spec Premium 2026-10-06 mục 6.7). Ví: mọi ví cá nhân chưa xoá, KỂ CẢ ví lưu trữ (người dùng chốt
+/// 2026-11-17 — trước đó lưu trữ một ví là nhả một chỗ, số ví tăng không giới hạn); xoá ví mới nhả chỗ. Hoàn thành một
+/// mục tiêu vẫn nhả một chỗ.
 class DemDangHoatDong implements NguonDemDangHoatDong {
   DemDangHoatDong({required this.db, DateTime Function()? clock})
       : _now = clock ?? DateTime.now;
@@ -26,8 +27,9 @@ class DemDangHoatDong implements NguonDemDangHoatDong {
   Future<int> dem(LoaiTran loai, int idaccount) async {
     switch (loai) {
       case LoaiTran.vi:
-        // `getActive`: chưa xoá, không lưu trữ — cùng phép đọc với bộ chọn ví.
-        return (await db.walletDao.getActive(idaccount)).length;
+        // `getAll`: ví cá nhân (`idhousehold IS NULL` — ví chung có trần riêng `toiDaViChung`) chưa xoá, gồm cả ví lưu
+        // trữ. Đừng đổi về `getActive` (bộ chọn ví): trần ví tính cả ví lưu trữ (2026-11-17).
+        return (await db.walletDao.getAll(idaccount)).length;
       case LoaiTran.nganSach:
         final now = _now();
         final rows = await db.budgetDao.getAll(idaccount); // đã lọc deletedAt

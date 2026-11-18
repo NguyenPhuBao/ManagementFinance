@@ -60,8 +60,24 @@ String? nguonNhacTrongTin(String noiDung, {required String nguonCuaTin}) {
   return nhac.length == 1 ? nhac.single : null;
 }
 
+/// Mọi chữ (≥ 2) của [tenChu] — họ tên tài khoản FlowMoney — đứng trọn chữ trong [noiDung], bỏ dấu, không xét thứ
+/// tự (*"Phú Bảo"* khớp *"NGUYEN PHU BAO"*). Tên một chữ / trống / `null` → `false`: dễ trùng người khác. Chỉ dùng cho
+/// GỢI Ý (bỏ dấu là phép so mất thông tin — quy tắc 7 `CLAUDE.md`), không bao giờ cho quy tắc trùng tên.
+bool tenNguoiGuiLaChu(String noiDung, String? tenChu) {
+  final chu = removeVietnameseTones(tenChu ?? '').toLowerCase().split(RegExp(r'[^a-z]+')).where((t) => t.isNotEmpty);
+  final can = chu.toSet();
+  if (can.length < 2) return false;
+  final co = removeVietnameseTones(noiDung).toLowerCase().split(RegExp(r'[^a-z]+')).toSet();
+  return can.every(co.contains);
+}
+
 /// [dangCho]: mọi hàng biến động chưa gạt của tài khoản (có thể gồm cả [d]). `null` = không gợi ý.
-GoiYChuyenKhoan? goiYChuyenKhoan(DienSanBienDong d, List<DienSanBienDong> dangCho) {
+///
+/// [tenChuTaiKhoan]: họ tên tài khoản FlowMoney. Luật nội dung chiều THU chỉ gợi ý khi tên người gửi trong tin là chủ
+/// tài khoản ([tenNguoiGuiLaChu]) — tin MB *"…-TRAN QUANG DAT chuyen tien qua MoMo…"* tới máy của Nguyễn Phú Bảo là
+/// người khác chuyển vào, không phải chuyển giữa hai ví của mình (người dùng báo 2026-11-17). Chiều chi không xét tên:
+/// tin chiều trừ không mang tên người.
+GoiYChuyenKhoan? goiYChuyenKhoan(DienSanBienDong d, List<DienSanBienDong> dangCho, {String? tenChuTaiKhoan}) {
   final tien = d.soTien;
   final chieu = d.chieu;
   if (tien == null || chieu == null) return null;
@@ -97,6 +113,7 @@ GoiYChuyenKhoan? goiYChuyenKhoan(DienSanBienDong d, List<DienSanBienDong> dangCh
 
   final kia = nguonNhacTrongTin(d.ghiChu, nguonCuaTin: d.nguon);
   if (kia == null) return null;
+  if (chieu == 'thu' && !tenNguoiGuiLaChu(d.ghiChu, tenChuTaiKhoan)) return null;
   return chieu == 'thu'
       ? GoiYChuyenKhoan(nguonTu: kia, nguonDen: d.nguon, duoiDen: d.duoi)
       : GoiYChuyenKhoan(nguonTu: d.nguon, duoiTu: d.duoi, nguonDen: kia);

@@ -30,6 +30,7 @@ void main() {
         builder: (_, __) => const Scaffold(body: SingleChildScrollView(child: NoiDungCaiDat())),
       ),
       GoRoute(path: '/settings/khoa-app', builder: (_, __) => const Scaffold(body: Text('trang khoá app'))),
+      GoRoute(path: '/settings/du-lieu-cua-toi', builder: (_, __) => const Scaffold(body: Text('trang dữ liệu'))),
     ]);
     Widget w = MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router);
     if (khoaApp != null) w = BlocProvider.value(value: khoaApp, child: w);
@@ -44,6 +45,15 @@ void main() {
     await t.tap(find.text('Khoá ứng dụng'));
     await t.pumpAndSettle();
     expect(find.text('trang khoá app'), findsOneWidget);
+  });
+
+  testWidgets('thẻ Bảo mật có dòng thứ tư "Dữ liệu của tôi"; chạm → /settings/du-lieu-cua-toi (đơn mục 52)', (t) async {
+    await t.pumpWidget(app());
+    await t.pump();
+    await t.ensureVisible(find.text('Dữ liệu của tôi'));
+    await t.tap(find.text('Dữ liệu của tôi'));
+    await t.pumpAndSettle();
+    expect(find.text('trang dữ liệu'), findsOneWidget);
   });
 
   testWidgets('KhoaAppCubit đang Mo(daBat: true) → nhãn "Đang bật"', (t) async {

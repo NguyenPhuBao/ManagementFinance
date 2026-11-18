@@ -4666,7 +4666,8 @@ xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout k
 **Trạng thái:** ✅ **mã xong 2026-10-17** — 22 commit `80d9dee8` → `fb92c16d` (nhánh `TranQuangDat`, base `909ae016`; Task 1,
 3–11, Task 2 bỏ; `b6eb9975` ghi id Stitch) + commit tài liệu Task 12. Đợt sửa sau review toàn nhánh + ba quyết định người dùng
 2026-10-17 khuya (`1ddb90aa` · `0e52d591` · `418b9e2d`) và F4 `f88137f7` + vòng sửa 1 `1c6ab600` (giữ `>` trước con số). ✅ **Nghiệm thu OnePlus 13R 2026-10-18** trên backend dev
-chạy thật (`gemini-3.8-flash` + khoá dev trả lời thật) — kết quả từng ca ở spec §6; ba hiện tượng thuộc backend ở **G96**
+chạy thật (`gemini-3.8-flash` + khoá dev trả lời thật — mô hình **lúc đo**; từ 2026-11 backend: chatbot chính DeepSeek,
+Gemini `gemini-3.5-flash` cho OCR / phân loại / chatbot dự phòng, theo đơn client-app mục 15; client không đổi mã) — kết quả từng ca ở spec §6; ba hiện tượng thuộc backend ở **G96**
 `CLIENT_APP_KNOWN_GAPS.md` (đơn 47 việc 5–7: Dừng không tới server · server im > 45 s khi Gemini suy nghĩ → `receiveTimeout` ·
 `maxOutputTokens: 1024` gồm token suy nghĩ → câu cụt), G95 cổng C3 bắt nhầm câu hỏi. Spec
 `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 23 chỗ khác bản viết (đếm 2026-10-18; 21 của mã / test — 20–23 là ba quyết định người dùng + F4,

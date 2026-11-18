@@ -9,6 +9,13 @@ abstract class TransactionRepository {
     DateTime to,
   );
 
+  /// Danh sách Sổ giao dịch: khoản riêng + khoản của nhà TÔI ghi trong `[from, to)` (spec 2026-11-16). CHỈ cho danh sách —
+  /// tổng đi `summarizeTransactions` (bỏ hàng có `idhousehold`); thống kê đọc [watchKhoang].
+  Stream<List<TransactionEntity>> watchKhoangKemNha(int idaccount, DateTime from, DateTime to);
+
+  /// Danh sách "Giao dịch gần đây" ở Trang chủ — như [watchKhoangKemNha] trên cả sổ.
+  Stream<List<TransactionEntity>> watchAllKemNha(int idaccount);
+
   /// Mọi giao dịch của tài khoản (bỏ hàng `deletedAt`, mới nhất trước) — cho Thêm giao dịch (nhắc trùng, ví hay dùng)
   /// và Trang chủ.
   Future<List<TransactionEntity>> getAll(int idaccount);

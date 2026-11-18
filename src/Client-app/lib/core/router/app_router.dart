@@ -29,6 +29,7 @@ import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/domain/quyen_nha.dart';
 import '../../features/transaction/presentation/state/che_do_nha_form.dart';
+import '../../features/transaction/data/vi_chung_cho_form_nguon.dart';
 import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
 import '../../features/household/presentation/bloc/gop_rut_cubit.dart';
 import '../../features/household/presentation/pages/gop_rut_page.dart';
@@ -44,7 +45,10 @@ import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/chinh_sach/presentation/pages/danh_sach_van_ban_page.dart';
+import '../../features/chinh_sach/presentation/pages/van_ban_page.dart';
 import '../../features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
+import '../../features/ban_sao_du_lieu/presentation/pages/du_lieu_cua_toi_page.dart';
 import '../../features/khoa_app/presentation/pages/khoa_app_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/delete_account_page.dart';
@@ -112,6 +116,11 @@ const _publicRoutes = {
   '/reset-password'
 };
 
+/// Route mở cho CẢ HAI phía (chưa / đã đăng nhập) — Điều khoản sử dụng + Chính sách bảo mật viết cứng: `authRedirect` không
+/// đẩy đi. KHÔNG nằm trong `_publicRoutes` nên lớp khoá ứng dụng vẫn che khi đã đăng nhập (spec điều khoản viết cứng
+/// 2026-11-16 mục 2).
+bool _laRouteChinhSach(String? r) => r == '/chinh-sach' || (r?.startsWith('/chinh-sach/') ?? false);
+
 /// Cửa quyền GHI khoản của nhà (`/nha/khoan` và route con). Khuôn G92: chờ kho trước khi đọc vai, vì router chạy `redirect`
 /// lúc phiên vừa nối mà kho chưa trả lời. Không được ghi (Chỉ xem, nhà chỉ xem, đã rời) → về Nhà mình; mọi lối vào qua đây.
 /// Vai đổi khi form đang mở: `redirect` chỉ chạy lúc vào, nên mỗi form tự hỏi lại lúc Lưu qua `conDuocGhi` (closure gọi
@@ -140,6 +149,18 @@ Future<String?> _veNhaNeuKhongSuaDanhMucDuoc() async {
   await n.choNapKho();
   final t = n.hienTai;
   return duocLamViecNha(ViecNha.suaDanhMuc, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
+
+/// Bộ chọn danh mục của NHÀ — dùng chung cho `/nha/khoan/category` và `/add/nha-category` (spec 2026-11-16). Lấy id nhà MỘT
+/// lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
+Widget _chonDanhMucNha(GoRouterState state) {
+  final idNha = sl<NhaRepository>().hienTai.nha?.id;
+  if (idNha == null) return const NhaMinhPage();
+  return ChooseCategoryPage(
+    classify: state.extra as String? ?? 'chi',
+    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
+    duongQuanLy: '/nha/danh-muc',
+  );
 }
 
 class AppRouter {
@@ -177,6 +198,11 @@ class AppRouter {
           // Auth routes (public)
           GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
           GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
+          // Điều khoản + Chính sách viết cứng — mở cho cả hai phía (`laRouteMoChoCaHai`).
+          GoRoute(path: '/chinh-sach', builder: (_, __) => const DanhSachVanBanPage()),
+          GoRoute(
+              path: '/chinh-sach/:ma',
+              builder: (_, state) => VanBanPage(ma: state.pathParameters['ma'])),
           GoRoute(
               path: '/forgot-password',
               builder: (_, __) => const ForgotPasswordPage()),
@@ -306,6 +332,8 @@ class AppRouter {
               bienDong: dienSanBienDongTuQuery(state.uri.queryParameters),
               // C4: nút Nói ở Trang chủ (`/add?noi=1`) — nghe ngay. Query, không `extra`: `extra is String` là chiều tiền.
               batDauNghe: state.uri.queryParameters['noi'] == '1',
+              // Nhóm ví chung trong bộ chọn ví (spec 2026-11-16): chọn ví chung là form đổi tại chỗ sang khoản của nhà.
+              viChung: sl.isRegistered<ViChungChoFormNguon>() ? sl<ViChungChoFormNguon>() : null,
             ),
             routes: [
               GoRoute(
@@ -313,6 +341,13 @@ class AppRouter {
                 builder: (_, state) => ChooseCategoryPage(
                   classify: state.extra as String? ?? 'chi',
                 ),
+              ),
+              // Bộ chọn danh mục của NHÀ khi form `/add` đang ở chế độ nhà (spec 2026-11-16) — con của `/add` để `push` không
+              // dựng form `/nha/khoan` phía dưới.
+              GoRoute(
+                path: 'nha-category',
+                redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+                builder: (_, state) => _chonDanhMucNha(state),
               ),
             ],
           ),
@@ -425,16 +460,7 @@ class AppRouter {
               GoRoute(
                 path: 'category',
                 redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
-                builder: (_, state) {
-                  // Lấy id nhà MỘT lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
-                  final idNha = sl<NhaRepository>().hienTai.nha?.id;
-                  if (idNha == null) return const NhaMinhPage();
-                  return ChooseCategoryPage(
-                    classify: state.extra as String? ?? 'chi',
-                    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
-                    duongQuanLy: '/nha/danh-muc',
-                  );
-                },
+                builder: (_, state) => _chonDanhMucNha(state),
               ),
             ],
           ),
@@ -710,6 +736,7 @@ class AppRouter {
           GoRoute(
               path: '/settings/khoa-app/dat-pin',
               builder: (_, state) => DatMaPinPage(che: CheDatPin.tuTen(state.uri.queryParameters['che']))),
+          GoRoute(path: '/settings/du-lieu-cua-toi', builder: (_, __) => const DuLieuCuaToiPage()),
           GoRoute(
               path: '/settings/delete-account',
               builder: (_, __) => const DeleteAccountPage()),
@@ -722,10 +749,14 @@ class AppRouter {
   /// Route công khai (không cần đăng nhập) — MỘT định nghĩa cho `authRedirect` và cho lớp khoá ứng dụng.
   static bool laRouteCongKhai(String? tenRoute) => _publicRoutes.contains(tenRoute);
 
+  /// Route Điều khoản / Chính sách — mở được khi chưa lẫn đã đăng nhập.
+  static bool laRouteMoChoCaHai(String? tenRoute) => _laRouteChinhSach(tenRoute);
+
   static String? authRedirect({
     required AuthState authState,
     required String matchedLocation,
   }) {
+    if (laRouteMoChoCaHai(matchedLocation)) return null;
     final isGoingPublic = laRouteCongKhai(matchedLocation);
 
     // Startup restoration may keep the requested route while token state is

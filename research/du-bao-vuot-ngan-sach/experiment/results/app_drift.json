@@ -1,0 +1,25 @@
+{
+ "users": 300,
+ "transactions": 985834,
+ "null_results": 0,
+ "max_abs_diff": {
+  "p0": 0.0,
+  "p1": 0.0,
+  "p2": 4.15063065029031e-8,
+  "p3": 9.992007221626409e-16
+ },
+ "rows_over_1e-6": {
+  "p0": 0,
+  "p1": 0,
+  "p2": 0,
+  "p3": 0
+ },
+ "ignored_rows_per_user": [
+  "salary each month",
+  "opening balance 3 months before first expense",
+  "balance adjustment 50M",
+  "transfer 30M",
+  "deleted expense 40M"
+ ],
+ "seconds": 99
+}
