@@ -301,4 +301,37 @@ void main() {
         reason: 'Kỳ tính tiền kết thúc ở periodEnd, không phải hạn trả.');
     expect(find.textContaining('16/10/2026'), findsOneWidget);
   });
+
+  testWidgets('ví KHÔNG cho âm không đủ tiền → hỏi "Số dư ví sẽ âm"; Huỷ giữ bảng, Vẫn ghi mới trả (2026-11-20)',
+      (tester) async {
+    final daTra = <double>[];
+    final ngheo = vi('w1', 'Tiền mặt').copyWith(balance: 50000);
+    await moBang(tester, wallets: [ngheo], onConfirmed: (_, s, __, ___) => daTra.add(s));
+    await tester.tap(find.text('Thanh toán bằng Tiền mặt'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('hop-vi-se-am')), findsOneWidget,
+        reason: 'trả hoá đơn 200.000 từ ví còn 50.000 đang tắt "Cho phép số dư âm" — trước đây trả luôn, ví âm');
+    expect(find.textContaining('sẽ còn -150.000'), findsOneWidget);
+    await tester.tap(find.text('Huỷ'));
+    await tester.pumpAndSettle();
+    expect(daTra, isEmpty);
+    expect(find.text('Thanh toán bằng Tiền mặt'), findsOneWidget, reason: 'Huỷ giữ bảng, số vừa gõ còn nguyên');
+    await tester.tap(find.text('Thanh toán bằng Tiền mặt'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Vẫn ghi'));
+    await tester.pumpAndSettle();
+    expect(daTra, [200000.0]);
+    expect(find.text('Thanh toán bằng Tiền mặt'), findsNothing);
+  });
+
+  testWidgets('ví CHO PHÉP âm, hoặc đủ tiền → không hỏi, trả luôn', (tester) async {
+    final daTra = <double>[];
+    await moBang(tester,
+        wallets: [vi('w1', 'Tiền mặt').copyWith(balance: 50000, allowNegative: true)],
+        onConfirmed: (_, s, __, ___) => daTra.add(s));
+    await tester.tap(find.text('Thanh toán bằng Tiền mặt'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('hop-vi-se-am')), findsNothing);
+    expect(daTra, [200000.0]);
+  });
 }

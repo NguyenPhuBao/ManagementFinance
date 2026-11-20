@@ -61,11 +61,20 @@ List<ViSeAm> viSeAm({
   final ra = <ViSeAm>[];
   final daXet = <String>{};
   for (final w in vi) {
-    if (w.choPhepAm || !daXet.add(w.id)) continue;
-    final d = doi[w.id] ?? 0;
-    if (d >= 0) continue;
-    final sau = w.soDu + d;
-    if (sau < -kDungSaiTien) ra.add(ViSeAm(ten: w.ten, soDuSau: sau));
+    if (!daXet.add(w.id)) continue;
+    final v = _seAm(w, doi[w.id] ?? 0);
+    if (v != null) ra.add(v);
   }
   return ra;
+}
+
+/// Một khoản CHI [soTien] từ [vi] — cho lối trừ tiền không qua form giao dịch (bảng Thanh toán hoá đơn, người dùng
+/// chốt 2026-11-20). Cùng luật với [viSeAm].
+ViSeAm? viSeAmKhiChi(ViKiemAm vi, double soTien) => _seAm(vi, -soTien);
+
+/// Luật chung: chỉ ví KHÔNG cho âm, chỉ khi bị trừ thêm ([doi] < 0), và chỉ khi số dư sau thấp hơn 0 quá nửa đồng.
+ViSeAm? _seAm(ViKiemAm w, double doi) {
+  if (w.choPhepAm || doi >= 0) return null;
+  final sau = w.soDu + doi;
+  return sau < -kDungSaiTien ? ViSeAm(ten: w.ten, soDuSau: sau) : null;
 }

@@ -71,6 +71,14 @@ void main() {
     expect(viSeAm(vi: [_vi('A', -1000)], moi: [_gd('chi', 1000)]).single.soDuSau, -2000);
   });
 
+  test('viSeAmKhiChi (trả hoá đơn tay) — cùng luật với viSeAm', () {
+    expect(viSeAmKhiChi(_vi('A', 500000), 2000000)?.soDuSau, -1500000,
+        reason: 'trả hoá đơn 2 triệu từ ví còn 500k, ví không cho âm → phải hỏi');
+    expect(viSeAmKhiChi(_vi('A', 500000, choPhepAm: true), 2000000), isNull);
+    expect(viSeAmKhiChi(_vi('A', 2000000), 2000000), isNull);
+    expect(viSeAmKhiChi(_vi('A', 99999.7), 100000), isNull);
+  });
+
   test('lệch dưới nửa đồng (số dư mang đuôi lẻ) → không hỏi', () {
     expect(viSeAm(vi: [_vi('A', 99999.7)], moi: [_gd('chi', 100000)]), isEmpty);
   });
