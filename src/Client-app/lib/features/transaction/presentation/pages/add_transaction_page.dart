@@ -25,6 +25,7 @@ import '../bloc/nghe_giong_noi_cubit.dart';
 import '../bloc/nghe_giong_noi_state.dart';
 import '../bloc/them_giao_dich_cubit.dart';
 import '../bloc/them_giao_dich_state.dart';
+import '../widgets/bao_thong_bao_nghe.dart';
 import '../widgets/hop_vi_se_am.dart';
 import '../widgets/khoi_tach.dart';
 import '../widgets/sheet_them_phan.dart';
@@ -372,19 +373,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     await nghe.batDau();
   }
 
-  void _baoNghe(ThongBaoNghe t) {
-    final n = _nguonGiongNoi;
-    final hanhDong = switch (t) {
-      ThongBaoNghe.biChanQuyen when n != null => HanhDongToast('Mở cài đặt', () => unawaited(n.micro.moCaiDat())),
-      ThongBaoNghe.khongCoLoi => HanhDongToast('Cài đặt AI', () {
-          if (mounted) unawaited(context.push('/ai-settings'));
-        }),
-      _ => null,
-    };
-    // Thông báo hứa "bấm micro nói lại bằng AI trên máy" (kThuGemmaLuotSau) và "không nghe rõ" là thông tin, không lỗi.
-    final thongTin = kThuGemmaLuotSau.contains(t) || t == ThongBaoNghe.khongNgheRo;
-    baoNhanh(cauThongBaoNghe(t), loai: thongTin ? LoaiThongBao.thongTin : LoaiThongBao.loi, hanhDong: hanhDong);
-  }
+  void _baoNghe(ThongBaoNghe t) => baoThongBaoNghe(t, nguon: _nguonGiongNoi, moCaiDatAi: () {
+        if (mounted) unawaited(context.push('/ai-settings'));
+      });
 
   Future<void> _boQuaBienDong() async {
     await _cubit.boQuaBienDong();
