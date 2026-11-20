@@ -40,6 +40,11 @@ class Wallets extends Table {
   /// phép âm **luôn** nằm dưới mọi ngưỡng "sắp cạn", nên tắt mỗi cảnh báo âm
   /// là đổi một dòng nhiễu lấy một dòng nhiễu khác.
   ///
+  /// TẮT (mặc định) thì form Thêm / Sửa giao dịch **hỏi lại** trước khi lưu một
+  /// khoản làm ví xuống dưới 0 (`transaction/domain/vi_se_am.dart`; người dùng
+  /// chốt 2026-11-20 — hỏi rồi cho lưu, không chặn). Trước đó cờ chỉ tắt cảnh
+  /// báo SAU khi đã ghi, nên ví không cho âm vẫn âm mà không ai hỏi.
+  ///
   /// ## Vì sao là một CỜ, không phải một loại ví
   ///
   /// Tới 2026-09-09 chỗ bám là `type == 'debt'`. Loại ấy **chết** cùng ngày:
@@ -63,8 +68,9 @@ class Wallets extends Table {
   ///
   /// ## Vì sao KHÔNG có hàm thuần dùng chung
   ///
-  /// Hai nơi đọc cờ này làm **hai việc khác nhau**: bộ luật thông báo bỏ qua
-  /// hai loại cảnh báo, còn danh sách ví bỏ màu đỏ. Một vị từ chung sẽ phải
+  /// Ba nơi đọc cờ này làm **ba việc khác nhau**: bộ luật thông báo bỏ qua
+  /// hai loại cảnh báo, danh sách ví bỏ màu đỏ, form giao dịch thôi hỏi lại
+  /// (form đọc qua `ViKiemAm.choPhepAm`). Một vị từ chung sẽ phải
   /// mang hai nghĩa, nên ở đây cố ý đọc thẳng cột — khác `viTinhVaoTong`, nơi
   /// ba chỗ gọi hỏi đúng **một** câu.
   BoolColumn get allowNegative =>

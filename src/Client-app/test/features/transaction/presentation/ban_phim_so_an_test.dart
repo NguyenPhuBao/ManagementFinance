@@ -64,7 +64,7 @@ void main() {
               builder: (_, __) => AddTransactionPage(
                 transactionBloc: bloc,
                 categoryRepository: categories(),
-                wallets: [makeWallet()],
+                wallets: [makeWallet(balance: 10000000)], // đủ tiền: ví không cho âm mà vượt số dư thì có hộp hỏi lại (2026-11-20)
                 idaccount: 1,
                 initial: initial,
                 budgetLookup: (_, __) async => null,

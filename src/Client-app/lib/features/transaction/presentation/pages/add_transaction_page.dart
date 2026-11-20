@@ -15,6 +15,7 @@ import '../../data/datasources/kho_anh_quet.dart';
 import '../../domain/ban_phim_so_tien.dart';
 import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/tach_giao_dich.dart';
+import '../../domain/vi_se_am.dart';
 import '../../data/doc_cau_bang_ai.dart';
 import '../../data/nguon_giong_noi.dart';
 import '../../domain/chon_loi_nghe.dart';
@@ -556,6 +557,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               : await _confirmOverBudget(context, r.canXacNhan.single);
           if (ok != true || !context.mounted) return;
         }
+        if (r.viSeAm.isNotEmpty) {
+          final ok = await _xacNhanViAm(context, r.viSeAm);
+          if (ok != true || !context.mounted) return;
+        }
         _cubit.daGuiLuu(r);
         final bloc = context.read<TransactionBloc>();
         // Chế độ nhà: khoản MỚI mang `idhousehold` (thiếu là lưu thành khoản riêng trỏ ví nhà). Sửa thì hàng cũ đã mang nhà.
@@ -572,6 +577,33 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         }
     }
   }
+
+  /// Ví tắt "Cho phép số dư âm" sẽ âm vì lần ghi này — hỏi rồi cho lưu (người dùng chốt 2026-11-20, không chặn hẳn).
+  Future<bool?> _xacNhanViAm(BuildContext context, List<ViSeAm> ds) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          key: const Key('hop-vi-se-am'),
+          title: const Text('Số dư ví sẽ âm'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final v in ds)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('Ví "${v.ten}" sẽ còn ${CurrencyFormatter.format(v.soDuSau)}.'),
+                ),
+              Text(ds.length == 1
+                  ? 'Ví này đang tắt "Cho phép số dư âm". Bạn vẫn muốn ghi?'
+                  : 'Các ví này đang tắt "Cho phép số dư âm". Bạn vẫn muốn ghi?'),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Huỷ')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Vẫn ghi')),
+          ],
+        ),
+      );
 
   Future<bool?> _xacNhanVuotNhieu(BuildContext context, List<BudgetImpact> chan) => showDialog<bool>(
         context: context,

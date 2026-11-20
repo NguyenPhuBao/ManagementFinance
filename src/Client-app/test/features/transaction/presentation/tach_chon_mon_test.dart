@@ -92,7 +92,7 @@ void main() {
                     'an': ['pho'],
                   },
                 ),
-                wallets: [makeWallet()],
+                wallets: [makeWallet(balance: 10000000)], // đủ tiền: ví không cho âm mà vượt số dư thì có hộp hỏi lại (2026-11-20)
                 idaccount: 1,
                 huongBanDau: bienDong == null ? 'chi' : null,
                 budgetLookup: (_, __) async => null,
