@@ -7,6 +7,8 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/bill_status.dart';
+import '../../../transaction/domain/vi_se_am.dart';
+import '../../../transaction/presentation/widgets/hop_vi_se_am.dart';
 import 'bill_status_visuals.dart';
 
 /// Bảng thanh toán hoá đơn: **thông tin hoá đơn** ở trên, ba ô nhập (số tiền
@@ -111,7 +113,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
     setState(() => _ngay = DateTime(picked.year, picked.month, picked.day));
   }
 
-  void _xacNhan() {
+  Future<void> _xacNhan() async {
     final vi = _vi;
     if (vi == null) return;
     final soTien = CurrencyFormatter.parse(_soTien.text);
@@ -120,6 +122,11 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
       setState(() => _loi = 'Nhập số tiền lớn hơn 0');
       return;
     }
+    // Ví tắt "Cho phép số dư âm" sẽ âm → hỏi rồi cho trả (người dùng chốt 2026-11-20); Huỷ giữ bảng, không trả.
+    final seAm = viSeAmKhiChi(
+        ViKiemAm(id: vi.id, ten: vi.name, soDu: vi.balance, choPhepAm: vi.allowNegative), soTien);
+    if (seAm != null && !await hoiViSeAm(context, [seAm])) return;
+    if (!mounted) return;
     Navigator.pop(context);
     final ghiChu = _ghiChu.text.trim();
     widget.onConfirmed(vi, soTien, _ngay, ghiChu.isEmpty ? null : ghiChu);

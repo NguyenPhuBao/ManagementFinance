@@ -36,8 +36,8 @@ final _png = base64Decode(
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
   final luong = makeCategory(id: 'luong', name: 'Lương', classify: 'thu', isDefault: true);
-  final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt');
-  final mb = makeWallet(id: 'mb', name: 'MB').copyWith(type: 'bank', isDefault: false);
+  final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt', balance: 10000000);
+  final mb = makeWallet(id: 'mb', name: 'MB', balance: 10000000).copyWith(type: 'bank', isDefault: false);
 
   final tin = TinBienDong(
     soTien: 150000,

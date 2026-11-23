@@ -41,3 +41,28 @@ class DongDangNghe extends StatelessWidget {
         ),
       );
 }
+
+/// Nhãn *"● Đang nghe…"* — đầu thẻ Nhập nhanh và trên thanh nhập Trợ lý AI (2026-11-20; khoá do chỗ gọi đặt).
+/// Stitch `d696e81e…` trạng thái 2: chữ 11 / 600 đỏ lỗi trên nền đỏ 10 %, viên tròn.
+class NhanDangNghe extends StatelessWidget {
+  const NhanDangNghe({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration:
+            BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+            const SizedBox(width: 4),
+            const Text('Đang nghe…',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.error)),
+          ],
+        ),
+      );
+}

@@ -43,8 +43,8 @@ class KhoAnhQuetGia implements KhoAnhQuet {
 
 void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
-  final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt'); // ví MẶC ĐỊNH
-  final mb = makeWallet(id: 'mb', name: 'MB').copyWith(type: 'bank', isDefault: false);
+  final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt', balance: 10000000); // ví MẶC ĐỊNH
+  final mb = makeWallet(id: 'mb', name: 'MB', balance: 10000000).copyWith(type: 'bank', isDefault: false);
   const anh = 'a1b2c3d4.jpg';
 
   DienSanBienDong dienSan({bool ai = false, List<double> chon = const [], String? dm, String note = 'PHO 24'}) =>

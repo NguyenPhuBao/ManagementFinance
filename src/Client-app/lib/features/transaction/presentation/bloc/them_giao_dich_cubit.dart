@@ -37,43 +37,12 @@ import '../../domain/doc_cau_giao_dich.dart';
 import '../../domain/goi_y_chuyen_khoan.dart';
 import '../../domain/tach_giao_dich.dart';
 import '../../domain/vi_chon_san.dart';
+import '../../domain/vi_se_am.dart';
 import 'doi_che_do_nha.dart';
+import 'ket_qua_chuan_bi_luu.dart';
 import 'them_giao_dich_state.dart';
 
-/// Kết quả [ThemGiaoDichCubit.chuanBiLuu].
-sealed class KetQuaChuanBiLuu {
-  const KetQuaChuanBiLuu();
-}
-
-/// Không lưu được — trang báo [cau] bằng toast lỗi.
-class LoiLuu extends KetQuaChuanBiLuu {
-  const LoiLuu(this.cau);
-  final String cau;
-}
-
-/// Sẵn sàng gửi cho `TransactionBloc`.
-class SanSangLuu extends KetQuaChuanBiLuu {
-  const SanSangLuu({
-    required this.giaoDich,
-    required this.truoc,
-    required this.laTach,
-    required this.tacDong,
-    required this.canXacNhan,
-  });
-
-  /// Một phần tử, trừ khi [laTach].
-  final List<TransactionEntity> giaoDich;
-
-  /// Giao dịch đang sửa → `UpdateTransactionEvent(before: truoc, after: giaoDich.single)`.
-  final TransactionEntity? truoc;
-  final bool laTach;
-
-  /// Tác động ngân sách cho lời nhắn sau lưu.
-  final BudgetImpact? tacDong;
-
-  /// Ngân sách *Chặn* bị vượt — rỗng = không hỏi. Tách: MỘT hộp cho cả lô.
-  final List<BudgetImpact> canXacNhan;
-}
+export 'ket_qua_chuan_bi_luu.dart';
 
 class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   ThemGiaoDichCubit({
@@ -748,8 +717,16 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       laTach: false,
       tacDong: impact,
       canXacNhan: impact != null && impact.requiresConfirmation ? [impact] : const [],
+      viSeAm: _viSeAm([tx], editing),
     );
   }
+
+  /// Ví KHÔNG cho âm sẽ âm vì [moi] (thay [truoc]) — trang hỏi lại (`domain/vi_se_am.dart`, người dùng chốt 2026-11-20).
+  /// Thêm [viNguon] / [viDich] vì giao dịch đang sửa có thể ở ví lưu trữ (không có trong bộ chọn [vi]).
+  List<ViSeAm> _viSeAm(List<TransactionEntity> moi, TransactionEntity? truoc) => viSeAm(moi: moi, truoc: truoc, vi: [
+        for (final w in [...state.vi, ...state.viChung, if (state.viNguon != null) state.viNguon!, if (state.viDich != null) state.viDich!])
+          ViKiemAm(id: w.id, ten: w.name, soDu: w.balance, choPhepAm: w.allowNegative),
+      ]);
 
   /// A5 mục 11.4–11.5 — lưu khoản đã tách: kiểm hợp lệ, ngân sách TỪNG phần (một hộp cho cả lô nếu có ngân sách *Chặn*
   /// bị vượt), rồi MỘT `AddTransactionsEvent`. Ở đây chỉ dựng và kiểm — event do trang gửi.
@@ -776,6 +753,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       laTach: true,
       tacDong: impacts.where((i) => i.exceeds || i.nearLimitAfter).firstOrNull,
       canXacNhan: [for (final i in impacts) if (i.requiresConfirmation) i],
+      viSeAm: _viSeAm(ds, null),
     );
   }
 

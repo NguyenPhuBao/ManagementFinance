@@ -71,6 +71,7 @@ void main() {
     DienSanBienDong? bienDong,
     KhoAnhQuet? kho,
     List<(int, String)>? daXoaHang,
+    double soDuVi = 10000000,
   }) {
     final bloc = TransactionBloc(transactionRepository: repo);
     CategoryTree cay(List<CategoryEntity> c) =>
@@ -94,7 +95,7 @@ void main() {
               builder: (_, __) => AddTransactionPage(
                 transactionBloc: bloc,
                 categoryRepository: cats,
-                wallets: [makeWallet()],
+                wallets: [makeWallet(balance: soDuVi)], // mặc định đủ tiền: ví không cho âm mà vượt số dư thì có hộp hỏi lại (2026-11-20)
                 idaccount: 1,
                 huongBanDau: bienDong == null ? huong : null,
                 budgetLookup: (_, dm) async => nganSachTheoDm[dm],
@@ -119,8 +120,9 @@ void main() {
     return MaterialApp.router(routerConfig: router);
   }
 
-  Future<void> mo(WidgetTester tester, {String huong = 'chi', Map<String, BudgetView> ns = const {}}) async {
-    await tester.pumpWidget(app(huong: huong, nganSachTheoDm: ns));
+  Future<void> mo(WidgetTester tester,
+      {String huong = 'chi', Map<String, BudgetView> ns = const {}, double soDuVi = 10000000}) async {
+    await tester.pumpWidget(app(huong: huong, nganSachTheoDm: ns, soDuVi: soDuVi));
     await tester.pumpAndSettle();
   }
 
@@ -265,6 +267,25 @@ void main() {
     await tester.tap(find.text('Vẫn ghi'));
     await tester.pumpAndSettle();
     expect(repo.luotThemNhieu, [3]);
+  });
+
+  testWidgets('ví KHÔNG cho âm, khoản chi vượt số dư → hộp "Số dư ví sẽ âm"; Huỷ không lưu, Vẫn ghi lưu (2026-11-20)',
+      (tester) async {
+    await mo(tester, soDuVi: 100000);
+    await goTong(tester);
+    await chonDanhMuc(tester, 'Ăn uống');
+    await luu(tester);
+    expect(find.byKey(const Key('hop-vi-se-am')), findsOneWidget,
+        reason: 'lỗi người dùng báo: ví tắt "Cho phép số dư âm" vẫn âm mà không hỏi gì');
+    expect(find.textContaining('sẽ còn -312.000'), findsOneWidget);
+    await tester.tap(find.text('Huỷ'));
+    await tester.pumpAndSettle();
+    expect(repo.added, isEmpty);
+    await luu(tester);
+    await tester.tap(find.text('Vẫn ghi'));
+    await tester.pumpAndSettle();
+    expect([for (final a in repo.added) a.transaction.amount], [412000.0]);
+    expect(find.text('Trang trước'), findsOneWidget);
   });
 
   testWidgets('ngân sách Cảnh báo bị vượt → toast "Đã lưu 3 giao dịch. Ngân sách … đã vượt hạn mức."', (tester) async {

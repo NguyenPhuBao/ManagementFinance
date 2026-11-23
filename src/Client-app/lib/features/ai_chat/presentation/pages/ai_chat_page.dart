@@ -36,6 +36,8 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../auth/presentation/bloc/current_account.dart';
+import '../../../transaction/data/nguon_giong_noi.dart';
+import '../widgets/tro_ly_ai/thanh_nhap_tro_ly.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/network/connection_monitor.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -236,7 +238,11 @@ class AiChatPage extends StatefulWidget {
     this.onHoiOnline,
     this.coMang,
     this.congTacOnline,
+    this.giongNoi,
   });
+
+  /// Micro của thanh nhập (2026-11-20). `null` = `sl<NguonGiongNoi>()` nếu đã đăng ký; không có thì không micro.
+  final NguonGiongNoi? giongNoi;
 
   /// Khe tiêm cho test: luồng sự kiện của nhánh online (spec trợ lý online 2026-10-11). `null` = đường thật qua
   /// `TroLyOnlineRepository` (DI); chưa đăng ký → online tắt.
@@ -292,6 +298,8 @@ class AiChatPage extends StatefulWidget {
 
 class _AiChatPageState extends State<AiChatPage> {
   final _oNhap = TextEditingController();
+  late final NguonGiongNoi? _giongNoi =
+      widget.giongNoi ?? (sl.isRegistered<NguonGiongNoi>() ? sl<NguonGiongNoi>() : null);
   final _cuon = ScrollController();
   final _tinNhan = <_TinNhan>[];
 
@@ -1125,68 +1133,20 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
         ],
       );
-  Widget _thanhNhap() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _oNhap,
-                // Basic / tạm ngừng khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
-                enabled: !_dangHoi && !_khoaCaO,
-                maxLines: 4,
-                minLines: 1,
-                maxLength: kToiDaKyTuCauHoi,
-                // Chỉ hiện bộ đếm khi sắp chạm giới hạn để không chiếm chỗ của ô nhập.
-                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-                    currentLength < kToiDaKyTuCauHoi - 100 ? null : Text('$currentLength/$maxLength'),
-                textInputAction: TextInputAction.send,
-                onSubmitted: _hoi,
-                style: const TextStyle(
-                    fontSize: 16, color: AppColors.onSurface),
-                decoration: InputDecoration(
-                  // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
-                  hintText: _khoaCaO
-                      ? (_lyDoKhoa == LyDoKhoaHoiDap.tamNgung ? kTheKhoaTamNgung : 'Tính năng Premium')
-                      : _coMoHinh
-                          ? 'Hỏi về số liệu của bạn…'
-                          : 'VD: tạo hoá đơn Netflix 100k',
-                  hintStyle: const TextStyle(color: AppColors.outline),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 8, horizontal: 8),
-                ),
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: !_dangHoi && !_khoaCaO
-                    ? AppColors.primary
-                    : AppColors.outline,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: IconButton(
-                tooltip: 'Gửi',
-                icon: const Icon(Icons.send, color: Colors.white),
-                onPressed:
-                    !_dangHoi && !_khoaCaO ? () => _hoi(_oNhap.text) : null,
-                constraints: const BoxConstraints(),
-                padding: const EdgeInsets.all(10),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _thanhNhap() => ThanhNhapTroLy(
+        controller: _oNhap,
+        dangHoi: _dangHoi,
+        khoaCaO: _khoaCaO,
+        // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
+        goiY: _khoaCaO
+            ? (_lyDoKhoa == LyDoKhoaHoiDap.tamNgung ? kTheKhoaTamNgung : 'Tính năng Premium')
+            : _coMoHinh
+                ? 'Hỏi về số liệu của bạn…'
+                : 'VD: tạo hoá đơn Netflix 100k',
+        toiDaKyTu: kToiDaKyTuCauHoi,
+        onGui: _hoi,
+        giongNoi: _giongNoi,
+      );
 }
 
 /// Tách ra một hàm để `debugPrint` không nằm giữa thân `_hoiThat` — và để chỗ

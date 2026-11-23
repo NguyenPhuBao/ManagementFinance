@@ -109,7 +109,7 @@ class ONhapNhanh extends StatelessWidget {
                 ],
               ),
               if (dangThu)
-                const _NhanDangNghe()
+                const NhanDangNghe(key: Key('nhap-nhanh-dang-nghe'))
               else if (laPremium && coMicro)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -349,29 +349,4 @@ class ONhapNhanh extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Nhãn *"● Đang nghe…"* ở đầu thẻ — Stitch `d696e81e…` trạng thái 2: chữ 11 / 600 đỏ lỗi trên nền đỏ 10 %, viên tròn.
-class _NhanDangNghe extends StatelessWidget {
-  const _NhanDangNghe();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        key: const Key('nhap-nhanh-dang-nghe'),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration:
-            BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
-            const SizedBox(width: 4),
-            const Text('Đang nghe…',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.error)),
-          ],
-        ),
-      );
 }

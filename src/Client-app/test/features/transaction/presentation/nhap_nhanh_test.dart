@@ -408,6 +408,10 @@ void main() {
     expect(tomTat(tester), 'Đã điền: 500.000 đ · Chuyển ví · Tiền mặt → Techcombank');
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
+    // Tiền mặt chỉ có 100.000 đ và không cho âm → hỏi lại trước khi lưu (2026-11-20).
+    expect(find.byKey(const Key('hop-vi-se-am')), findsOneWidget);
+    await tester.tap(find.text('Vẫn ghi'));
+    await tester.pumpAndSettle();
     final t = repo.added.single.transaction;
     expect(t.type, 'transfer');
     expect(t.amount, 500000);

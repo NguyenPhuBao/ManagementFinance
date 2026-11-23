@@ -760,6 +760,30 @@ void main() {
       expect(r.canXacNhan, isEmpty);
     });
 
+    test('ví KHÔNG cho âm mà khoản chi vượt số dư → viSeAm báo ví ấy; ví cho âm → không (2026-11-20)', () async {
+      Future<SanSangLuu> chi(bool choPhepAm) async {
+        final c = await sanSang(
+            nguon: NguonThemGiaoDichGia(vi: [tcb.copyWith(isDefault: true, balance: 100000, allowNegative: choPhepAm)]));
+        for (final k in ['1', '5', '0', '0', '0', '0']) {
+          c.goPhim(k);
+        }
+        c.chonDanhMuc(anUong);
+        return await c.chuanBiLuu() as SanSangLuu;
+      }
+
+      expect((await chi(false)).viSeAm.map((v) => (v.ten, v.soDuSau)), [('Techcombank', -50000.0)],
+          reason: 'lỗi người dùng báo: ví tắt "Cho phép số dư âm" vẫn âm mà không hỏi gì');
+      expect((await chi(true)).viSeAm, isEmpty);
+    });
+
+    test('sửa khoản chi cũ: số dư đã gồm khoản cũ, chỉ phần tăng thêm mới tính', () async {
+      // Ví còn 10.000 SAU khi đã trừ khoản chi cũ 45.000 → giữ nguyên số tiền thì không âm.
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat.copyWith(balance: 10000)]),
+          dangSua: giaoDichCu(), danhMucDangSua: anUong);
+      await c.moTrang();
+      expect((await c.chuanBiLuu() as SanSangLuu).viSeAm, isEmpty);
+    });
+
     test('tách sai (phần còn lại ≤ 0) → câu lỗi của tách', () async {
       final c = await sanSang();
       c.goPhim('5');
