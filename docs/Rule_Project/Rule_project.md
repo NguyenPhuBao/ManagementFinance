@@ -95,7 +95,7 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
 
 1. **Bản tường minh SQL:** Bắt buộc tạo file script `.sql` trong thư mục `database/` để làm bản sao lưu và phục vụ khôi phục thảm họa.
 2. **Khai báo Prisma:** Cập nhật chính xác `src/Backend/prisma/schema.prisma`.
-3. **Migration:** CSDL được quản lý đồng bộ qua tệp script `database/N_*.sql` (đến migration **13**; sổ ghi tệp đã áp ở bảng dưới) kết hợp cập nhật `schema.prisma` và lệnh `prisma generate` để đồng bộ Client ORM.
+3. **Migration:** Lược đồ cài mới là một tệp `database/FlowMoney_Schema.sql` (dựng 2026-11-23 từ lược đồ thật của CSDL vận hành, đã gồm migration đến 56; các tệp `New_Database.sql`, `5..56_*.sql` cũ đã xoá). Thay đổi CSDL đang chạy: viết `database/N_*.sql` luỹ đẳng (N bắt đầu từ 57) → áp lên CSDL vận hành → cập nhật `schema.prisma`, `prisma generate`, `npm run db:verify-indexes` → `node scripts/gop-migration.js database/N_*.sql` để gộp vào tệp lược đồ rồi xoá tệp `N`. Bảng sổ ghi bên dưới là lịch sử, không còn cập nhật.
 4. **BẮT BUỘC ĐỒNG BỘ MODULE SYNC:**  
    Mọi thay đổi cột, bảng hoặc quan hệ trong CSDL đều **bắt buộc phải cập nhật Module Sync** (`sync.service.js`, `sync.repository.js`, `sync.validation.js`) theo đúng khuôn mẫu hiện tại để đảm bảo Client-app có thể đẩy/kéo các trường mới.
 5. **An toàn dữ liệu (Data Safety):**

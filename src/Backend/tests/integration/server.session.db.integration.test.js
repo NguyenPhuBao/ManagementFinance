@@ -1,19 +1,15 @@
 /**
  * Tầng 2 trên CSDL thử thật (TEST_DATABASE_URL trỏ máy này, vd. flowmoney_adminweb).
- * Kế hoạch 2026-11-15: B19 (migration 52 luỹ đẳng), B9 (đóng phiên treo, giữ phiên còn sống),
+ * Kế hoạch 2026-11-15: B19 (bảng server_session đúng cột, ràng buộc), B9 (đóng phiên treo, giữ phiên còn sống),
  * và hai hàm khôi phục bảo trì của repository (loadRestoreState, closeRecord) chạy SQL thật.
  * Chỉ tạo / xoá bản ghi có nhãn thử (instance 'it-ss-*', lý do 'IT-RESTORE *').
  */
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
 const { pool } = require('../../config/db');
 const { ServerSessionTracker } = require('../../core/resilience/server-session');
 const { MaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-
-const SQL = fs.readFileSync(path.join(__dirname, '../../database/52_server_session.sql'), 'utf8').replace(/^﻿/, '');
 
 async function cleanup() {
   await pool.query(`DELETE FROM "server_session" WHERE "instance_id" LIKE 'it-ss-%'`).catch(() => {});
@@ -28,9 +24,7 @@ describe('server_session + khôi phục bảo trì trên CSDL thử', () => {
   });
   after(async () => { await cleanup(); });
 
-  it('B19. Migration 52 chạy hai lần không lỗi, đúng cột và ràng buộc', async () => {
-    await pool.query(SQL);
-    await pool.query(SQL);
+  it('B19. Bảng server_session đúng cột và ràng buộc', async () => {
     const cols = (await pool.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'server_session' ORDER BY ordinal_position`
     )).rows.map((r) => r.column_name);

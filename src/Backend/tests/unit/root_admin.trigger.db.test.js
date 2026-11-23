@@ -1,6 +1,6 @@
 /**
- * Trigger trg_protect_root_admin (database/56_root_admin_guard.sql) trên CSDL thật.
- * Chỉ chạy khi có TEST_DATABASE_URL (CSDL thử trên máy này, đã áp migration 56); không có thì bỏ qua.
+ * Trigger trg_protect_root_admin (database/FlowMoney_Schema.sql) trên CSDL thật.
+ * Chỉ chạy khi có TEST_DATABASE_URL (CSDL thử trên máy này, dựng từ database/FlowMoney_Schema.sql); không có thì bỏ qua.
  * Mọi thao tác nằm trong một giao tác và ROLLBACK ở cuối: không để lại dữ liệu.
  */
 const test = require('node:test');

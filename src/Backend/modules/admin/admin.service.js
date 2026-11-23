@@ -908,7 +908,7 @@ const adminService = {
   async resetPermissionsToDefault(adminUser = null) {
     const fs = require('fs');
     const path = require('path');
-    const sqlPath = path.join(__dirname, '../../database/32_seed_permissions_4_pillars_data.sql');
+    const sqlPath = path.join(__dirname, '../../database/seed_permissions.sql');
 
     if (!fs.existsSync(sqlPath)) {
       const err = new Error('Không tìm thấy tệp SQL khôi phục mặc định');

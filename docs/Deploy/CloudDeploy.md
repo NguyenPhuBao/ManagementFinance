@@ -85,7 +85,9 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
      ```
      *(Dùng cho `DIRECT_URL` để Prisma chạy Migration hoặc chạy script SQL).*
 3. **Áp dụng Lược đồ CSDL:**
-   - Chạy các script từ `database/1_schema.sql` đến `database/14_fix_grab_keyword_category.sql` qua Supabase SQL Editor.
+   - Chạy một lần tệp `src/Backend/database/FlowMoney_Schema.sql` trên CSDL trống qua Supabase SQL Editor (lược đồ đầy đủ kèm dữ liệu cấu hình gói và phân quyền). Không chạy lại trên CSDL đã có dữ liệu.
+   - Tạo tài khoản quản trị gốc: từ `src/Backend`, đặt `ROOT_ADMIN_USERNAME`, `ROOT_ADMIN_EMAIL`, `ROOT_ADMIN_PASSWORD` rồi `node scripts/seed_root_admin.js --url=<DIRECT_URL> --xac-nhan-tu-xa`.
+   - Kiểm chỉ mục và trigger: `npm run db:verify-indexes` với biến môi trường trỏ tới CSDL vừa tạo.
    - ⚠️ **Cảnh báo:** Tuyệt đối không chạy `prisma migrate dev` trên Supabase để tránh mất mệnh đề `WHERE` của 5 Partial Unique Indexes.
 4. **Tạo bucket Storage (một lần):** từ `src/Backend`, với `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` trong môi trường: `node scripts/setup_storage_buckets.js --xac-nhan-tu-xa` (lũy đẳng; tạo `refund-proofs` 5 MB ảnh / PDF và `data-exports` 20 MB JSON / CSV, đều riêng tư). Gói Free: 1 GB lưu trữ, 5 GB băng thông / tháng; vượt hạn mức không tính tiền nhưng có thể bị hạn chế cả tổ chức.
 
