@@ -102,7 +102,7 @@ describe('FinancialSnapshotService — Logic Nghiệp Vụ Sức Khỏe Tài Ch�
   });
 
   it('6. Tính tỷ lệ Nợ trên Thu nhập (Debt-to-Income Ratio) từ các khoản chi trả nợ thực tế', () => {
-    // Fixture dùng classify='Vay/no' để khớp CSDL thật (ràng buộc CHECK New_Database.sql:111)
+    // Fixture dùng classify='Vay/no' để khớp giá trị cột "Classify" của danh mục vay / nợ trong CSDL thật
     // Trước đây dùng classify='Chi' → test pass nhưng sai thực tế → DTI luôn bằng 0
     const allExpenses = [
       { amount: -5000000, category: { namecategory: 'Ăn uống',           classify: 'Chi'     } },

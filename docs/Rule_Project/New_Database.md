@@ -477,12 +477,12 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `account_device_history.ip_address` giữ vai trò bản che để hiển thị.
 - `aiops_ip_quarantine.raw_ip`: đổi `VARCHAR(45)` → `TEXT`, lưu bản mã AES-256-GCM thay cho IP thô.
 - `aiops_ip_quarantine.ip_hash`, `aiops_quarantine_incident_link.ip_hash`, `aiops_incident.actor_hash` (từ G4.1, 2026-11-13, không đổi cấu trúc): HMAC-SHA256 64 ký tự khóa `BLIND_INDEX_SECRET` (trước đây SHA-256 muối cố định, cắt 16 ký tự). Dòng cũ có `raw_ip` được tính lại khi Backend nạp danh sách chặn; dòng sự cố cũ giữ giá trị cũ.
-- Bản mã và chỉ mục mù bị xóa sau `IP_RETENTION_DAYS` (job `runDailyIpRetentionPurgeTask`). Áp bằng `node scripts/apply_migration_48.js --url=<CSDL>` (bắt buộc chỉ định đích; đích không phải máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.8.
+- Bản mã và chỉ mục mù bị xóa sau `IP_RETENTION_DAYS` (job `runDailyIpRetentionPurgeTask`). Định nghĩa trong `src/Backend/database/FlowMoney_Schema.sql` (migration 48, đã gộp). Chính sách: `Data_Security.md` mục 10.8.
 
 ### 5.6. Chính sách bảo mật & bằng chứng đồng ý (Migration 49, 2026-11-13)
 - `privacy_policy`: `version` (`INTEGER` PK, > 0), `title` (`VARCHAR(200)`), `content` (`TEXT`), `published_at`, `published_by` (FK `account.Idaccount`, `ON DELETE SET NULL`). Phiên bản lớn nhất là hiện hành.
 - `policy_acceptance`: `id` (`BIGSERIAL`), `idaccount` (FK, `ON DELETE CASCADE`), `policy_version` (FK `privacy_policy.version`, `RESTRICT`), `accepted_at`, `ip_hash` (`VARCHAR(64)`), `device_name` (`VARCHAR(150)`), `user_agent`; `UNIQUE (idaccount, policy_version)`; chỉ mục `idx_policy_acceptance_version`.
-- Trigger `protect_policy_immutability` chặn `UPDATE` trên cả hai bảng. Áp bằng `node scripts/apply_migration_file.js --file=49_privacy_policy_acceptance.sql --url=<CSDL>` (đích ngoài máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.10.
+- Trigger `protect_policy_immutability` chặn `UPDATE` trên cả hai bảng. Định nghĩa trong `src/Backend/database/FlowMoney_Schema.sql` (migration 49, đã gộp). Chính sách: `Data_Security.md` mục 10.10.
 
 ### 5.7. Nhiều chính sách, phiên bản theo chính sách, trạng thái (Migration 54, 2026-11-15)
 - Thay quy ước "phiên bản lớn nhất là hiện hành" của mục 5.6.
@@ -490,7 +490,7 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `privacy_policy` thêm: `document_id` (FK `policy_document.id`, `RESTRICT`, NOT NULL), `doc_version` (`INTEGER` > 0, NOT NULL), `status` (`VARCHAR(10)` `ACTIVE` / `INACTIVE`, mặc định `INACTIVE`), `status_changed_at`, `status_changed_by` (FK `account`, `SET NULL`). `version` giữ là mã nội bộ (PK, `policy_acceptance` tham chiếu).
 - Chỉ mục: `uq_privacy_policy_document_version (document_id, doc_version)`, **`uq_privacy_policy_one_active (document_id) WHERE status = 'ACTIVE'`** (mỗi chính sách tối đa một bản đang dùng; có trong `db:verify-indexes`), `idx_privacy_policy_status`.
 - Trigger `trg_protect_privacy_policy` đổi sang hàm `protect_privacy_policy_content`: chỉ cho đổi `status`, `status_changed_*`; `published_by` chỉ được về NULL; `document_id` / `doc_version` chỉ gán một lần. `policy_acceptance` giữ trigger cũ.
-- Chuyển dữ liệu cũ: mỗi tiêu đề thành một chính sách, `doc_version` đánh từ 1 theo thứ tự đăng, bản mới nhất của mỗi tiêu đề `ACTIVE`. Áp bằng `node scripts/apply_migration_file.js --file=54_policy_documents_status.sql --url=<CSDL>`.
+- Chuyển dữ liệu cũ: mỗi tiêu đề thành một chính sách, `doc_version` đánh từ 1 theo thứ tự đăng, bản mới nhất của mỗi tiêu đề `ACTIVE` (migration 54, đã gộp vào `src/Backend/database/FlowMoney_Schema.sql`).
 
 ### 5.7. Yêu cầu bản sao dữ liệu cá nhân (Migration 50, 2026-11-14)
 - `data_export_request`: `id` (`VARCHAR(36)` PK, UUID), `idaccount` (FK `account`, `ON DELETE CASCADE`), `status` (`PROCESSING` / `READY` / `EXPIRED` / `FAILED`, CHECK `ck_data_export_status`), `json_ref`, `csv_ref` (khóa Supabase Storage `sb://data-exports/{idaccount}/{id}.json|csv`), `requested_at`, `ready_at`, `expires_at` (+24 giờ), `email_sent_at`, `error`.

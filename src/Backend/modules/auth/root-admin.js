@@ -2,7 +2,7 @@
  * Tài khoản quản trị gốc (Chủ dự án chốt 2026-11-16).
  *
  * - Nhận diện bằng email cố định ROOT_ADMIN_EMAIL, trùng email viết trong trigger CSDL
- *   database/56_root_admin_guard.sql (không thêm cột vào bảng account). Đổi email phải có migration mới.
+ *   fn_protect_root_admin trong database/FlowMoney_Schema.sql (không thêm cột vào bảng account). Đổi email phải có migration mới.
  * - Đăng nhập hai bước: mật khẩu (băm trong CSDL) + khoá thứ hai ROOT_ADMIN_SECOND_KEY (biến môi trường).
  *   Thiếu biến thì tài khoản gốc không đăng nhập được.
  * - Token của tài khoản gốc mang `root: true` và `rkf` (vân tay khoá = HMAC của khoá thứ hai bằng bí mật JWT).

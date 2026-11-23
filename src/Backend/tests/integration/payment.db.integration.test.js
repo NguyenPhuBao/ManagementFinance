@@ -4,13 +4,17 @@ const crypto = require('crypto');
 const { prisma } = require('../../config/db');
 const paymentRepository = require('../../modules/payment/payment.repository');
 
-describe('Payment Repository - Real Database Integration Test (Supabase Cloud)', () => {
+// Chạy trên CSDL thử (TEST_DATABASE_URL). Sổ thanh toán bất biến (trg_protect_payment_order / _transaction):
+// đơn và dòng sổ tạo ra KHÔNG xoá được, nên mỗi lượt dùng mã giao dịch riêng (tiền tố FT-IT-) để chạy lại được,
+// và bước dọn chỉ khôi phục gói của tài khoản thử.
+describe('Payment Repository - kiểm thử trên CSDL thử thật', () => {
   let testAccount = null;
   let originalAccountType = null;
   let originalPremiumExpiresAt = null;
   let createdOrderId = null;
   let createdTransactionId = null;
   const testOrderCode = Number(Date.now().toString().slice(-9)); // 9 chữ số an toàn
+  const payosTxId = `FT-IT-${crypto.randomUUID()}`;
 
   before(async () => {
     // 1. Tìm một tài khoản thật trong CSDL
@@ -31,33 +35,24 @@ describe('Payment Repository - Real Database Integration Test (Supabase Cloud)',
     originalAccountType = testAccount.type;
     originalPremiumExpiresAt = testAccount.premium_expires_at;
 
-    console.log(`[Integration Test] Đang chạy kiểm thử CSDL thật với Account ID: ${testAccount.idaccount}, Email: ${testAccount.email}`);
+    console.log(`[Integration Test] Kiểm thử trên CSDL thử với Account ID: ${testAccount.idaccount}`);
   });
 
   after(async () => {
-    // Dọn dẹp dữ liệu kiểm thử (Rollback trạng thái)
-    console.log('[Integration Test Cleanup] Bắt đầu dọn dẹp test records trên CSDL Supabase...');
-    if (createdTransactionId) {
-      await prisma.payment_transaction.deleteMany({
-        where: { id: createdTransactionId },
-      });
+    // Khôi phục gói của tài khoản thử. Đơn và dòng sổ giữ lại (CSDL cấm xoá chứng từ thanh toán).
+    try {
+      if (testAccount) {
+        await prisma.account.update({
+          where: { idaccount: testAccount.idaccount },
+          data: {
+            type: originalAccountType,
+            premium_expires_at: originalPremiumExpiresAt,
+          },
+        });
+      }
+    } finally {
+      await prisma.$disconnect();
     }
-    if (createdOrderId) {
-      await prisma.payment_order.deleteMany({
-        where: { id: createdOrderId },
-      });
-    }
-    if (testAccount) {
-      await prisma.account.update({
-        where: { idaccount: testAccount.idaccount },
-        data: {
-          type: originalAccountType,
-          premium_expires_at: originalPremiumExpiresAt,
-        },
-      });
-    }
-    await prisma.$disconnect();
-    console.log('[Integration Test Cleanup] Đã hoàn tất dọn dẹp và khôi phục CSDL an toàn 100%.');
   });
 
   it('1. Nên tạo mới đơn hàng payment_order thành công trên CSDL thật', async () => {
@@ -106,7 +101,7 @@ describe('Payment Repository - Real Database Integration Test (Supabase Cloud)',
         id: createdTransactionId,
         orderId: createdOrderId,
         idaccount: testAccount.idaccount,
-        payosTransactionId: 'PAYOS_TX_REAL_999',
+        payosTransactionId: payosTxId,
         amount: 49000,
         bankCode: 'MBBANK',
         transactionTime: paidAt,
@@ -131,7 +126,7 @@ describe('Payment Repository - Real Database Integration Test (Supabase Cloud)',
       where: { id: createdTransactionId },
     });
     assert.ok(txRecord);
-    assert.equal(txRecord.payos_transaction_id, 'PAYOS_TX_REAL_999');
+    assert.equal(txRecord.payos_transaction_id, payosTxId);
     assert.equal(Number(txRecord.amount), 49000);
   });
 

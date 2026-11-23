@@ -683,7 +683,7 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
                 'AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online '
                 '(khi bật và có mạng) gửi câu hỏi, bản tóm tắt tài chính '
                 'và vài tin gần nhất của cuộc trò chuyện tới máy chủ '
-                'FlowMoney và Google Gemini.',
+                'FlowMoney và dịch vụ AI đám mây.',
                 style: TextStyle(
                     fontSize: 13,
                     height: 1.45,

@@ -1,57 +1,29 @@
 /**
- * Migration 53 trên CSDL thử thật (TEST_DATABASE_URL, máy này). Kế hoạch 2026-11-15 "đơn mẫu chống lạm dụng":
- *  P9  dọn đơn mẫu + giao dịch giả trước khi bật trigger; chạy lại migration không lỗi
+ * Sổ thanh toán bất biến trên CSDL thử thật (TEST_DATABASE_URL, máy này; dựng từ database/FlowMoney_Schema.sql).
+ * Kế hoạch 2026-11-15 "đơn mẫu chống lạm dụng":
  *  P10 sổ giao dịch / nhật ký webhook cấm sửa, cấm xoá; đơn cấm xoá, cấm sửa trường gốc, trường tiền ghi một lần,
  *      đơn REFUNDED khoá hẳn; vẫn cho đổi trạng thái hợp lệ
  *  P14 dòng sổ thiếu mã giao dịch ngân hàng / trùng mã ⇒ CSDL từ chối
- * Lượt đầu (trigger chưa có) mới kiểm được bước dọn; các lượt sau bỏ qua phần đó.
+ * (P9 kiểm bước dọn của migration 53 khi áp lần đầu; migration đã gộp vào lược đồ gốc nên bỏ.)
  */
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const { pool } = require('../../config/db');
 
-const SQL = fs.readFileSync(path.join(__dirname, '../../database/53_payment_legal_retention.sql'), 'utf8').replace(/^﻿/, '');
 const uid = () => crypto.randomUUID();
 const code = () => Number(String(Date.now()).slice(-9) + String(Math.floor(Math.random() * 1000)).padStart(3, '0'));
 
-describe('Migration 53: sổ thanh toán bất biến', () => {
+describe('Sổ thanh toán bất biến', () => {
   let acc;
-  let firstRun;
-  const seeded = {};
 
   before(async () => {
     acc = (await pool.query('SELECT "Idaccount" AS id FROM "account" ORDER BY 1 LIMIT 1')).rows[0].id;
-    firstRun = (await pool.query("SELECT 1 FROM pg_trigger WHERE tgname = 'trg_protect_payment_transaction'")).rowCount === 0;
-    if (firstRun) {
-      seeded.tpl = uid();
-      seeded.real = uid();
-      await pool.query(
-        `INSERT INTO "payment_order" ("id","idaccount","order_code","amount","status","is_template") VALUES ($1,$2,$3,2000,'PAID',TRUE),($4,$2,$5,49000,'PAID',FALSE)`,
-        [seeded.tpl, acc, code(), seeded.real, code()]
-      );
-      await pool.query(
-        `INSERT INTO "payment_transaction" ("id","order_id","idaccount","payos_transaction_id","amount") VALUES
-         ($1,$2,$3,'SAMPLE-TXN-1',2000),($4,$5,$3,$6,49000),($7,$5,$3,$8,49000)`,
-        [uid(), seeded.tpl, acc, uid(), seeded.real, `SIM-REF-${Date.now()}`, uid(), `FT-IT-${Date.now()}`]
-      );
-    }
-    await pool.query(SQL);
+    assert.equal((await pool.query("SELECT 1 FROM pg_trigger WHERE tgname = 'trg_protect_payment_transaction'")).rowCount, 1,
+      'CSDL thử phải dựng từ database/FlowMoney_Schema.sql (thiếu trigger sổ thanh toán)');
   });
 
-  it('P9. Lượt đầu: đơn mẫu và giao dịch giả bị dọn, đơn thật và giao dịch thật giữ nguyên; chạy lại không lỗi', async () => {
-    if (firstRun) {
-      assert.equal((await pool.query('SELECT 1 FROM "payment_order" WHERE "id" = $1', [seeded.tpl])).rowCount, 0);
-      assert.equal((await pool.query(`SELECT 1 FROM "payment_transaction" WHERE "payos_transaction_id" LIKE 'SIM-REF-%' OR "payos_transaction_id" LIKE 'SAMPLE-TXN-%'`)).rowCount, 0);
-      assert.equal((await pool.query('SELECT 1 FROM "payment_order" WHERE "id" = $1', [seeded.real])).rowCount, 1);
-      assert.equal((await pool.query(`SELECT 1 FROM "payment_transaction" WHERE "order_id" = $1 AND "payos_transaction_id" LIKE 'FT-IT-%'`, [seeded.real])).rowCount, 1);
-    }
-    await pool.query(SQL);
-  });
-
-  describe('Sau migration', () => {
+  describe('Trigger bảo vệ sổ', () => {
     let orderId;
     let txId;
     before(async () => {

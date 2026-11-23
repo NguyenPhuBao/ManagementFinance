@@ -160,7 +160,7 @@ describe('Tầng 2: các bước xử lý theo quy trình', () => {
     const routes = fs.readFileSync(require.resolve('../../api/admin.routes'), 'utf8');
     for (const r of ["router.get('/data-incidents'", "router.post('/data-incidents'", "router.patch('/data-incidents/:id'", "router.post('/data-incidents/:id/:action'"]) assert.ok(routes.includes(r), r);
     assert.ok(!/router\.delete\('\/data-incidents/.test(routes));
-    const sql = fs.readFileSync(require.resolve('../../database/51_data_incident.sql'), 'utf8');
-    assert.match(sql, /BEFORE DELETE ON "data_incident"/);
+    const sql = fs.readFileSync(require.resolve('../../database/FlowMoney_Schema.sql'), 'utf8');
+    assert.match(sql, /^CREATE TRIGGER trg_protect_data_incident BEFORE DELETE ON public\.data_incident /m);
   });
 });

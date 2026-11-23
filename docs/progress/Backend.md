@@ -6,6 +6,8 @@ Tài liệu này tổng hợp toàn bộ các tính năng, API, mô hình dữ l
 
 ## 1. Cơ Sở Dữ Liệu & Mô Hình Dữ Liệu Mới (Supabase PostgreSQL)
 
+> **2026-11-23 — Gộp lược đồ:** `src/Backend/database/` chỉ còn `FlowMoney_Schema.sql` (lược đồ cài mới, 37 bảng, dựng từ lược đồ public thật của Supabase bằng `pg_dump --schema-only` chỉ đọc, kèm dữ liệu cấu hình `role`, `feature`, `account_type_permission`, `aiops_setting`) và `seed_permissions.sql` (dùng cho "Đặt lại mặc định" phân quyền). Lý do: chuỗi `New_Database.sql` + `5..56_*.sql` không dựng lại được CSDL thật (vỡ ở tệp 12 vì `bill."Pay_status"` là BOOLEAN trong tệp gốc nhưng VARCHAR(7) trên Supabase). Kiểm: CSDL trống chạy tệp bằng psql và bằng một lần gửi đều cho lược đồ trùng Supabase (0 dòng khác sau chuẩn hoá cách in PG17/18), dữ liệu cấu hình trùng; `db:verify-indexes` đạt. Đã xoá 53 tệp SQL cũ, 24 `scripts/apply_migration_N.js` theo số, `scripts/apply_pending_migrations.js`, `sync_to_supabase.js`; giữ `scripts/apply_migration_file.js` (áp một tệp migration bất kỳ có kiểm soát). Thay đổi sau: `N_*.sql` từ 57, áp xong thì `node scripts/gop-migration.js`. Các mô tả bên dưới là lịch sử.
+
 Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chuẩn [New_Database.md](../Rule_Project/New_Database.md):
 
 * **`Transaction`**:
