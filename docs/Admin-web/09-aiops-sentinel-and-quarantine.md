@@ -5,7 +5,7 @@
 > **Trạng thái:** `Tạm dừng từ 2026-11-17 (xem mục Trạng thái)`  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AIOpsPage.jsx` (ghép khối), `src/Admin-web/src/pages/system/aiops/*` (`useAIOps.js`, `ScaleSection`, `SignalsSection`, `VectorSection`, `TrendSection`, `IncidentsSection`, `QuarantineSection`, `AIOpsModals`, `aiopsFormat.js`), `src/Admin-web/src/components/layout/AppLayout.jsx`  
-> - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`, `src/Backend/database/27b_create_aiops_metric_snapshot_table.sql`  
+> - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`, `src/Backend/database/FlowMoney_Schema.sql` (bảng `aiops_metric_snapshot`)  
 
 ## Trạng thái: tạm dừng (2026-11-17)
 
@@ -225,7 +225,7 @@ Hệ thống giải quyết triệt để tình trạng sai lệch dữ liệu (
 - Danh sách chỉ gồm khoá do AIOps tạo (tự động và thủ công trên trang AIOps); vô hiệu hoá ở trang Người dùng vẫn chỉ hiện ở trang Người dùng.
 
 ### 4.8. Tài khoản quản trị gốc (2026-11-16)
-- Một tài khoản duy nhất, email cố định `admin@wealthcommand.com` (`modules/auth/root-admin.js`, trùng trigger `database/56_root_admin_guard.sql`). Không thêm cột vào `account`.
+- Một tài khoản duy nhất, email cố định `admin@wealthcommand.com` (`modules/auth/root-admin.js`, trùng trigger `fn_protect_root_admin` trong `database/FlowMoney_Schema.sql`). Không thêm cột vào `account`.
 - **Không ai khoá được:** trigger `trg_protect_root_admin` chặn xoá vật lý, đổi Email / Username / Idrole, đưa khỏi `Active`, đặt `Delete_at`, và chặn tài khoản không phải admin dùng email này. Tầng dịch vụ báo 403 `ROOT_ACCOUNT_PROTECTED` trước khi chạm trigger (AIOps khoá tay); AIOps tự khoá bỏ qua tài khoản này. IP của nó vẫn có thể nằm trong danh sách khoá, nhưng request của tài khoản gốc đi qua lớp chặn IP (mục 4.3).
 - **Đăng nhập hai bước:** mật khẩu (bcrypt trong CSDL) + `rootKey` khớp `ROOT_ADMIN_SECOND_KEY` (biến môi trường, so bằng `timingSafeEqual`). Thiếu khoá → 401 `ROOT_KEY_REQUIRED`; sai → 401 `ROOT_KEY_INVALID`; máy chủ chưa đặt biến → 403 `ROOT_KEY_NOT_CONFIGURED`. Admin-web hiện thêm ô "Khoá quản trị gốc" khi nhận `ROOT_KEY_REQUIRED`.
 - **Cắt phiên khi bị lộ:** token mang `root: true` và `rkf` (HMAC của khoá thứ hai bằng bí mật JWT). Đổi `ROOT_ADMIN_SECOND_KEY` rồi khởi động lại → middleware, socket và `/auth/refresh` từ chối phiên cũ (401 `ROOT_SESSION_REVOKED`).

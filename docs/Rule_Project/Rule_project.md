@@ -95,7 +95,7 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
 
 1. **Bản tường minh SQL:** Bắt buộc tạo file script `.sql` trong thư mục `database/` để làm bản sao lưu và phục vụ khôi phục thảm họa.
 2. **Khai báo Prisma:** Cập nhật chính xác `src/Backend/prisma/schema.prisma`.
-3. **Migration:** Lược đồ cài mới là một tệp `database/FlowMoney_Schema.sql` (dựng 2026-11-23 từ lược đồ thật của CSDL vận hành, đã gồm migration đến 56; các tệp `New_Database.sql`, `5..56_*.sql` cũ đã xoá). Thay đổi CSDL đang chạy: viết `database/N_*.sql` luỹ đẳng (N bắt đầu từ 57) → áp lên CSDL vận hành → cập nhật `schema.prisma`, `prisma generate`, `npm run db:verify-indexes` → `node scripts/gop-migration.js database/N_*.sql` để gộp vào tệp lược đồ rồi xoá tệp `N`. Bảng sổ ghi bên dưới là lịch sử, không còn cập nhật.
+3. **Migration:** Lược đồ cài mới là một tệp `database/FlowMoney_Schema.sql` (dựng 2026-11-23 từ lược đồ thật của CSDL vận hành, đã gồm migration đến 56; các tệp `New_Database.sql`, `5..56_*.sql` cũ đã xoá). Thay đổi CSDL đang chạy: viết `database/N_*.sql` luỹ đẳng (N bắt đầu từ 57) → áp lên CSDL vận hành bằng `node scripts/apply_migration_file.js --file=… --url=…` (Supabase chỉ khi Chủ dự án xác nhận) → cập nhật `schema.prisma`, `prisma generate`, `npm run db:verify-indexes` → `node scripts/gop-migration.js database/N_*.sql` để gộp vào tệp lược đồ rồi xoá tệp `N`. Bảng sổ ghi bên dưới là lịch sử, không còn cập nhật.
 4. **BẮT BUỘC ĐỒNG BỘ MODULE SYNC:**  
    Mọi thay đổi cột, bảng hoặc quan hệ trong CSDL đều **bắt buộc phải cập nhật Module Sync** (`sync.service.js`, `sync.repository.js`, `sync.validation.js`) theo đúng khuôn mẫu hiện tại để đảm bảo Client-app có thể đẩy/kéo các trường mới.
 5. **An toàn dữ liệu (Data Safety):**
@@ -135,7 +135,7 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
   * Các danh mục hệ thống mặc định phải dùng tập UUID cố định đóng băng (trong `seed.js`), không được sinh UUID ngẫu nhiên mỗi lần seed lại để tránh lệch dữ liệu với SQLite client.
 * **Toàn vẹn tên danh mục:**
   * Chống trùng tên danh mục giữa các bản ghi đang hoạt động (Partial Unique Index lọc `Delete_at IS NULL`).
-  * Người dùng **được phép** tạo danh mục cá nhân trùng tên với danh mục mẫu hệ thống (mô hình Template & Cloned Model) — trigger chéo cũ đã gỡ (database/5), xem mục 1.2.
+  * Người dùng **được phép** tạo danh mục cá nhân trùng tên với danh mục mẫu hệ thống (mô hình Template & Cloned Model) — trigger chéo cũ đã gỡ (migration 5), xem mục 1.2.
 
 ---
 

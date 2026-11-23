@@ -493,7 +493,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 - **Trụ 2 (Quota Limit):** Basic: `NULL` | Premium: `NULL`
 - **Trụ 3 (Scope Schema & Config):**
   - `scope_schema`: `{"supported_banks": {"type": "array", "items": "string"}, "auto_fill_category": {"type": "boolean"}}`
-  - `scope_config` (Basic): `{"supported_banks": ["VCB", "MB", "TCB", "ACB"], "auto_fill_category": false}` (seed `database/32`; server lưu, không dùng)
+  - `scope_config` (Basic): `{"supported_banks": ["VCB", "MB", "TCB", "ACB"], "auto_fill_category": false}` (seed `database/seed_permissions.sql`; server lưu, không dùng)
   - **App thi hành:** MB Bank, MoMo, ZaloPay, không theo gói.
   - `scope_config` (Premium): `{"supported_banks": ["ALL"], "auto_fill_category": true}`
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`

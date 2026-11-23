@@ -41,9 +41,8 @@ Theo quy định tại `docs/Rule_Project/Data_Security.md`, Nghị định 13/2
 ## 3. THIẾT KẾ CƠ SỞ DỮ LIỆU & QUY TRÌNH MIGRATION
 
 Tuân thủ **Rule 10 (DB Guard)**: Toàn bộ DDL được viết vào các tệp migration kiểm soát trong `database/` để thực thi trên Supabase SQL Editor. Cấm tuyệt đối chạy `prisma migrate dev` hay `db push`.
-- `database/15_create_payment_subscription.sql`: Khởi tạo bảng `payment_order`, `payment_transaction` và cột `premium_expires_at` trong `account`.
-- `database/19_expand_payment_order_reconciliation.sql`: Bổ sung các trường đối soát nâng cao (`recognition_code`, `amount_received`, `fee`, `transfer_content`, `is_template`, `refunded_at`, `refunded_amount`, `refund_reason`, `refund_proof`).
-- `database/28_expand_payment_order_status_length.sql`: Mở rộng độ dài cột `status` lên `VARCHAR(25)` để chứa đủ các trạng thái đối soát mới (`WAITING_CONFIRMATION`, `REFUND_PENDING`).
+- Định nghĩa hiện hành của `payment_order`, `payment_transaction`, `payment_webhook_log` và cột `premium_expires_at` trong `account` nằm trong `src/Backend/database/FlowMoney_Schema.sql` (gồm các migration 19, 27, 28, 29, 38, 53 đã gộp: tạo bảng, `qr_url`, trường đối soát và hoàn tiền, `is_template`, mã giao dịch PayOS duy nhất, sổ thanh toán bất biến).
+- Script DDL ở mục 3.2 dưới đây là bản thiết kế ban đầu, giữ để tham khảo; cấu trúc thật xem tệp lược đồ trên.
 
 ### 3.1. Sơ đồ Quan hệ Thực thể (ERD)
 
@@ -91,7 +90,7 @@ erDiagram
     }
 ```
 
-### 3.2. Script SQL DDL (`database/15_create_payment_subscription.sql`)
+### 3.2. Script SQL DDL (bản thiết kế ban đầu)
 
 ```sql
 -- 1. Bổ sung cột premium_expires_at vào bảng account

@@ -141,16 +141,17 @@ ModuleName/
 
 #### 3.2.4 Database — PostgreSQL (PersonFinance)
 
-- **ORM**: Prisma (`src/Backend/prisma/schema.prisma`, 30 model, đếm 2026-11-14)
+- **ORM**: Prisma (`src/Backend/prisma/schema.prisma`, 34 model, đếm 2026-11-23; CSDL có 37 bảng)
 - **Môi trường**: Production và CSDL dùng chung là Supabase (PostgreSQL); dev / test dùng PostgreSQL cục bộ (CSDL thử riêng, đặt qua `TEST_DATABASE_URL`).
 - **Schema**: `public`
-- Quản lý schema bằng **tệp SQL lũy đẳng** `src/Backend/database/N_*.sql` (hiện tới `54_policy_documents_status.sql`); cấu trúc bảng hiện hành mô tả ở `docs/Rule_Project/New_Database.md` (nguồn sự thật hơn các sơ đồ trong mục này).
+- Lược đồ cài mới: một tệp `src/Backend/database/FlowMoney_Schema.sql` (dựng 2026-11-23 từ lược đồ thật của CSDL vận hành, gồm migration đến 56; các tệp `N_*.sql` cũ đã gộp và xoá); cấu trúc bảng hiện hành mô tả ở `docs/Rule_Project/New_Database.md` (nguồn sự thật hơn các sơ đồ trong mục này).
 
 > **Quy trình thay đổi CSDL (DB Guard, thay quy định 2026-08-18):**
-> 1. Viết DDL vào `database/N_*.sql` lũy đẳng (kiểm trùng số `N` trước).
+> 1. Viết DDL vào `database/N_*.sql` lũy đẳng (N = số lớn nhất đã gộp + 1, bắt đầu từ 57).
 > 2. Áp bằng script có kiểm soát `scripts/apply_migration_file.js` (Supabase chỉ áp khi Chủ dự án xác nhận).
 > 3. Cập nhật `prisma/schema.prisma` → `npm run prisma:generate` → `npm run db:verify-indexes`.
-> 4. **Cấm** `prisma migrate dev` / `prisma db push` trên Supabase / Production: Prisma không giữ partial index và trigger pháp lý (`scripts/db-guard.js` chặn).
+> 4. Gộp vào lược đồ cài mới: `node scripts/gop-migration.js database/N_*.sql`, rồi xoá tệp `N`.
+> 5. **Cấm** `prisma migrate dev` / `prisma db push` trên Supabase / Production: Prisma không giữ partial index và trigger pháp lý (`scripts/db-guard.js` chặn).
 >
 > **Quy tắc bắt buộc khác**: Khi có sự thay đổi CSDL, luôn phải cập nhật Module Sync theo CSDL mới - theo template Sync đã có & đang dùng.
 
@@ -1314,8 +1315,7 @@ Kẻ tấn công dùng Refresh Token đã bị revoked:
 | | `api/auth.routes.js` |
 | | `middleware/auth.js` |
 | | `middleware/authorize.js` |
-| **CSDL** | `database/)1_CSDL_Admin.sql` (Role, Account, User) |
-| | `database/)2_create_refreshtoken_table.sql` (RefreshToken) |
+| **CSDL** | `database/FlowMoney_Schema.sql` (bảng `role`, `account`, `user`, `refreshtoken`) |
 
 ### 7.2 A2 — Category Management
 
